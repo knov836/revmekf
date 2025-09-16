@@ -204,7 +204,7 @@ def acc_from_normal1(norm0,norm,acc,normal,center,start=[0,0,1],s_rot=np.array([
         v0_acc = opt.minimize(lam_h2, 0).x
         
         t_v0_acc = v0_acc[0]
-        plot(((teGG-C).dot(normal).subs(v,v+sym.Rational(float(t3t0)))),(v,-1.5,1.5),title="t3t0 "+str(t3t0))
+        #plot(((teGG-C).dot(normal).subs(v,v+sym.Rational(float(t3t0)))),(v,-1.5,1.5),title="t3t0 "+str(t3t0))
 
         
         if (t1t0 == t2t0 and sign*(teGG-C).dot(normal).evalf(subs={v:t1t0})<0) or sign*(teGG-C).dot(normal).evalf(subs={v:(t1t0+t2t0)/2})<0  or np.abs(t_v0-t3t0)>np.abs(t1t0 -t2t0):
