@@ -63,7 +63,7 @@ class PredictFilter(Filter):
         qq = quat_mult(self.Quaternion,quat_inv(quat))
         logrot1 = log_q(np.array(qq))
         #logrot1 = np.zeros(3)
-        acc1,rot1,irot1,acc2,rot2,irot2,acc3,rot3,irot3= acc_from_normal_imu(np.array(quat_rot([0,*np.array(nAxis,dtype=mpf)],quat))[1:4],np.array([0,1,0],dtype=mpf) , np.array(quat_rot([0,*(nAccelerometer*(self.dt**2))],quat))[1:4], normal, self.surf_center,start = logrot1)
+        acc1,rot1,irot1,acc2,rot2,irot2,acc3,rot3,irot3= acc_from_normal_imu(np.array(quat_rot([0,*np.array(nAxis,dtype=mpf)],quat))[1:4],np.array([0,1,0],dtype=mpf) , np.array(quat_rot([0,*(nAccelerometer*(self.dt**2))],quat))[1:4], normal, self.surf_center,start = logrot1,detection=self.detection)
         acc = np.array(quat_rot([0,*(acc1)],quat_inv(quat)),dtype=mpf)[1:4]
         rot = QuatToRot(quat_inv(quat))@rot1
         return acc
@@ -74,7 +74,8 @@ class PredictFilter(Filter):
     def variant_update_f(self, Time, Surface, Accelerometer,Gyroscope, Magnetometer,Orient):
         self.predict(Gyroscope,Orient)
         mag = Magnetometer
-        #mag = np.array(quat_rot([0,0,1,0], quat_inv(self.Quaternion)))[1:4]
+        if self.detection:
+            mag = np.array(quat_rot([0,0,1,0], quat_inv(self.Quaternion)))[1:4]
         
         grav_earth = self.linalg_correct(Gyroscope, Accelerometer, mag, Orient,normal=self.normal)
         self.gravity_r = grav_earth

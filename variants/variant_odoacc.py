@@ -17,7 +17,7 @@ from proj_func import *
 
 
 class Filter:
-    def __init__(self, rate, Q, R, Pk, grav, quat,Bias,normal,mag0=np.array([0,1,0],dtype=mpf),rotsurf=np.zeros(4,dtype=mpf),proj_fun=None,time=mpf(0),base_width=mpf(1.0)):
+    def __init__(self, rate, Q, R, Pk, grav, quat,Bias,normal,mag0=np.array([0,1,0],dtype=mpf),rotsurf=np.zeros(4,dtype=mpf),proj_fun=None,time=mpf(0),base_width=mpf(1.0),detection=False):
         self.proj_fun = proj_fun
         self.rate = rate
         self.Bias = np.array(Bias,dtype=mpf)
@@ -47,6 +47,7 @@ class Filter:
         self.pleft = mpf(0)
         self.pright = mpf(0)
         self.variant_update = None
+        self.detection=detection
         
         
     def predict_speed(self,acc):

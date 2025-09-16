@@ -24,7 +24,7 @@ from sympy.plotting import plot3d_parametric_line
 import scipy.optimize as opt
 from function_quat import *
 
-def acc_from_normal1(norm0,norm,acc,normal,center,start=[0,0,1],s_rot=np.array([0,0,0])):
+def acc_from_normal1(norm0,norm,acc,normal,center,start=[0,0,1],s_rot=np.array([0,0,0]),detection=False):
     X = sym.Symbol('X')
     Y = sym.Symbol('Y')
     Z = sym.Symbol('Z')
@@ -179,49 +179,58 @@ def acc_from_normal1(norm0,norm,acc,normal,center,start=[0,0,1],s_rot=np.array([
     t3t0 = nsolve(dHHz,t_v0,prec=40,verify=False)
 
     t4t0=(t1t0+t2t0)/2
-    #t3t0 = t4t0 
     t0 = t1t0
     t4t0 = t1t0
-    t1t0=t3t0 #remove noise
-    
-    rot1= (SymExpRot2(FF,t1t0))
-    irot1= (SymExpRot2(FF,-t1t0))
     
     rot2= (SymExpRot2(FF,t3t0))
     irot2= (SymExpRot2(FF,-t3t0))
     rot3= (SymExpRot2(FF,t2t0))
     irot3= (SymExpRot2(FF,-t2t0))
     
-    qq_acc = quat_ntom(np.array(normal,dtype=mpf), acc/np.linalg.norm(acc))
-    FF_acc = log_q(qq_acc)
-    duFF2 = uFF-sym.Matrix(-FF_acc)
-    duFF2 = duFF2.dot(duFF2)
-    lam_h2 = lambdify(v, duFF2)
-    v0_acc = opt.minimize(lam_h2, 0).x
     
-    t_v0_acc = v0_acc[0]
-    
-    if t1t0 == t2t0 and t1t0!=t3t0 or (teGG-C).dot(normal).evalf(subs={v:t3t0})<0 or  np.abs(t_v0-t3t0)>np.abs(t1t0 -t2t0):
-        t1t0 = t_v0
-        t1t0 = t_v0_acc
-        t1t0 = np.linalg.norm(FF_acc)
-        FF = FF_acc/t1t0
-        rot1= (SymExpRot2(FF,-t1t0))
-        irot1= (SymExpRot2(FF,t1t0))
+    if detection:
+        t1t0=t3t0 #remove noise
+        #sign = np.sign((center-acc).dot(normal))
+        #sign = np.sign((acc).dot(normal))
+        a = ((center).dot(normal))
+        b = (teGG).dot(normal).evalf(subs={v:(t1t0+t2t0)/2})
+        sign = np.sign((a*b))
+        #print(sign,a)
+        qq_acc = quat_ntom(np.array(normal,dtype=mpf), acc/np.linalg.norm(acc))
+        FF_acc = log_q(qq_acc)
+        duFF2 = uFF-sym.Matrix(-FF_acc)
+        duFF2 = duFF2.dot(duFF2)
+        lam_h2 = lambdify(v, duFF2)
+        v0_acc = opt.minimize(lam_h2, 0).x
+        
+        t_v0_acc = v0_acc[0]
+        plot(((teGG-C).dot(normal).subs(v,v+sym.Rational(float(t3t0)))),(v,-1.5,1.5),title="t3t0 "+str(t3t0))
 
         
-        t0 = t3t0
-    elif np.abs(t_v0_acc-t4t0)<np.abs(t_v0_acc-t3t0) and np.abs(t_v0-t4t0)<np.abs(t_v0-t3t0):
-        t1t0=t4t0
-        plot(((teGG-C).dot(normal).subs(v,v+sym.Rational(float(t_v0_acc)))),(v,-0.1,0.1),title="t_v0_acc"+str(t_v0_acc))
-        plot(((teGG-C).dot(normal).subs(v,v+sym.Rational(float(t_v0)))),(v,-0.1,0.1),title="t_v0 "+str(t_v0))
-        plot(((teGG-C).dot(normal).subs(v,v+sym.Rational(float(t4t0)))),(v,-0.1,0.1),title="t1t0 "+str(t4t0))
-        plot(((teGG-C).dot(normal).subs(v,v+sym.Rational(float(t2t0)))),(v,-0.1,0.1),title="t2t0 "+str(t2t0))
-        plot(((teGG-C).dot(normal).subs(v,v+sym.Rational(float(t3t0)))),(v,-0.1,0.1),title="t3t0 "+str(t3t0))
-        rot1= (SymExpRot2(FF,t1t0))
-        irot1= (SymExpRot2(FF,-t1t0))
+        if (t1t0 == t2t0 and sign*(teGG-C).dot(normal).evalf(subs={v:t1t0})<0) or sign*(teGG-C).dot(normal).evalf(subs={v:(t1t0+t2t0)/2})<0  or np.abs(t_v0-t3t0)>np.abs(t1t0 -t2t0):
+            t1t0 = t_v0
+            t1t0 = t_v0_acc
+            t1t0 = np.linalg.norm(FF_acc)
+            FF = FF_acc/t1t0
+            t1t0=-t1t0
+            #rot1= (SymExpRot2(FF,-t1t0))
+            #irot1= (SymExpRot2(FF,t1t0))
 
-    
+            
+            t0 = t3t0
+        #elif np.abs(t_v0_acc-t4t0)<np.abs(t_v0_acc-t3t0) and np.abs(t_v0-t4t0)<np.abs(t_v0-t3t0):
+        elif np.abs(t_v0-t4t0)<np.abs(t_v0-t3t0) and sign*(teGG-C).dot(normal).evalf(subs={v:(t1t0+t2t0)/2})>=0:
+            t1t0=t4t0
+            plot(((teGG-C).dot(normal).subs(v,v+sym.Rational(float(t_v0_acc)))),(v,-0.1,0.1),title="t_v0_acc"+str(t_v0_acc))
+            plot(((teGG-C).dot(normal).subs(v,v+sym.Rational(float(t_v0)))),(v,-0.1,0.1),title="t_v0 "+str(t_v0))
+            plot(((teGG-C).dot(normal).subs(v,v+sym.Rational(float(t4t0)))),(v,-0.1,0.1),title="t1t0 "+str(t4t0))
+            plot(((teGG-C).dot(normal).subs(v,v+sym.Rational(float(t2t0)))),(v,-0.1,0.1),title="t2t0 "+str(t2t0))
+            plot(((teGG-C).dot(normal).subs(v,v+sym.Rational(float(t3t0)))),(v,-0.1,0.1),title="t3t0 "+str(t3t0))
+            #rot1= (SymExpRot2(FF,t1t0))
+            #irot1= (SymExpRot2(FF,-t1t0))
+    rot1= (SymExpRot2(FF,t1t0))
+    irot1= (SymExpRot2(FF,-t1t0))
+
     gamma = 0.01
 
     rot= (SymExpRot2(FF,t0))
@@ -230,7 +239,7 @@ def acc_from_normal1(norm0,norm,acc,normal,center,start=[0,0,1],s_rot=np.array([
     return np.array(irot1,dtype=mpf)@np.array([0,0,1],dtype=mpf),irot1,rot1,np.array(irot2,dtype=mpf)@np.array([0,0,1],dtype=mpf),irot2,rot2,np.array(irot3,dtype=mpf)@np.array([0,0,1],dtype=mpf),irot3,rot3
 
 
-def acc_from_normal_imu(norm0,norm,acc,normal,center,start=[0,0,1],s_rot=np.array([0,0,0])):
+def acc_from_normal_imu(norm0,norm,acc,normal,center,start=[0,0,1],s_rot=np.array([0,0,0]),detection=False):
     X = sym.Symbol('X')
     Y = sym.Symbol('Y')
     Z = sym.Symbol('Z')
@@ -387,47 +396,53 @@ def acc_from_normal_imu(norm0,norm,acc,normal,center,start=[0,0,1],s_rot=np.arra
     t0 = t1t0
     t4t0 = t1t0
     
-    
-    
-    rot1= (SymExpRot2(FF,t1t0))
-    irot1= (SymExpRot2(FF,-t1t0))
-    
     rot2= (SymExpRot2(FF,t3t0))
     irot2= (SymExpRot2(FF,-t3t0))
     rot3= (SymExpRot2(FF,t2t0))
     irot3= (SymExpRot2(FF,-t2t0))
     
-    qq_acc = quat_ntom(np.array([0,0,1],dtype=mpf), acc/np.linalg.norm(acc))
-    FF_acc = log_q(qq_acc)
-    duFF2 = uFF-sym.Matrix(-FF_acc)
-    duFF2 = duFF2.dot(duFF2)
-    lam_h2 = lambdify(v, duFF2)
-    v0_acc = opt.minimize(lam_h2, 0).x
     
-    t_v0_acc = v0_acc[0]
-
-    """if (t1t0 == t2t0 and (teGG-C).dot(normal).evalf(subs={v:t1t0})>0) or (teGG-C).dot(normal).evalf(subs={v:(t1t0+t2t0)/2})>0  or np.abs(t_v0-t3t0)>np.abs(t1t0 -t2t0):
-        t1t0 = t_v0
-        t1t0 = t_v0_acc
-        t1t0 = np.linalg.norm(FF_acc)
-        FF = FF_acc/t1t0
-        rot1= (SymExpRot2(FF,-t1t0))
-        irot1= (SymExpRot2(FF,t1t0))
-
+    if detection:
+        t1t0=t3t0 #remove noise
+        #sign = np.sign((center-acc).dot(normal))
+        #sign = np.sign((center).dot(normal))
+        a = ((center).dot(normal))
+        b = (teGG).dot(normal).evalf(subs={v:(t1t0+t2t0)/2})
+        sign = np.sign(a)
+        #print(acc,normal,center)
+        print(sign,a,b)
+        qq_acc = quat_ntom(np.array([0,0,1],dtype=mpf), acc/np.linalg.norm(acc))
+        FF_acc = log_q(qq_acc)
+        duFF2 = uFF-sym.Matrix(-FF_acc)
+        duFF2 = duFF2.dot(duFF2)
+        lam_h2 = lambdify(v, duFF2)
+        v0_acc = opt.minimize(lam_h2, 0).x
         
-        t0 = t3t0
-    #elif np.abs(t_v0_acc-t4t0)<np.abs(t_v0_acc-t3t0) and np.abs(t_v0-t4t0)<np.abs(t_v0-t3t0):
-    elif np.abs(t_v0-t4t0)<np.abs(t_v0-t3t0)*0.5 and (teGG-C).dot(normal).evalf(subs={v:(t1t0+t2t0)/2})<=0:
-        t1t0=t4t0
-        plot(((teGG-C).dot(normal).subs(v,v+sym.Rational(float(t_v0_acc)))),(v,-0.1,0.1),title="t_v0_acc"+str(t_v0_acc))
-        plot(((teGG-C).dot(normal).subs(v,v+sym.Rational(float(t_v0)))),(v,-0.1,0.1),title="t_v0 "+str(t_v0))
-        plot(((teGG-C).dot(normal).subs(v,v+sym.Rational(float(t4t0)))),(v,-0.1,0.1),title="t1t0 "+str(t4t0))
-        plot(((teGG-C).dot(normal).subs(v,v+sym.Rational(float(t2t0)))),(v,-0.1,0.1),title="t2t0 "+str(t2t0))
-        plot(((teGG-C).dot(normal).subs(v,v+sym.Rational(float(t3t0)))),(v,-0.1,0.1),title="t3t0 "+str(t3t0))
-        rot1= (SymExpRot2(FF,t1t0))
-        irot1= (SymExpRot2(FF,-t1t0))"""
-
+        t_v0_acc = v0_acc[0]
         
+        if (t1t0 == t2t0 and sign*(teGG-C).dot(normal).evalf(subs={v:t1t0})<0) or sign*(teGG-C).dot(normal).evalf(subs={v:(t1t0+t2t0)/2})<0  or np.abs(t_v0-t3t0)>np.abs(t1t0 -t2t0):
+            t1t0 = t_v0
+            t1t0 = t_v0_acc
+            t1t0 = np.linalg.norm(FF_acc)
+            FF = FF_acc/t1t0
+            t1t0=-t1t0
+            #rot1= (SymExpRot2(FF,-t1t0))
+            #irot1= (SymExpRot2(FF,t1t0))
+
+            
+            t0 = t3t0
+        elif np.abs(t_v0-t4t0)<np.abs(t_v0-t3t0)*0.5 and sign*(teGG-C).dot(normal).evalf(subs={v:(t1t0+t2t0)/2})>=0:
+            t1t0=t4t0
+            plot(((teGG-C).dot(normal).subs(v,v+sym.Rational(float(t_v0_acc)))),(v,-0.1,0.1),title="t_v0_acc"+str(t_v0_acc))
+            plot(((teGG-C).dot(normal).subs(v,v+sym.Rational(float(t_v0)))),(v,-0.1,0.1),title="t_v0 "+str(t_v0))
+            plot(((teGG-C).dot(normal).subs(v,v+sym.Rational(float(t4t0)))),(v,-0.1,0.1),title="t1t0 "+str(t4t0))
+            plot(((teGG-C).dot(normal).subs(v,v+sym.Rational(float(t2t0)))),(v,-0.1,0.1),title="t2t0 "+str(t2t0))
+            plot(((teGG-C).dot(normal).subs(v,v+sym.Rational(float(t3t0)))),(v,-0.1,0.1),title="t3t0 "+str(t3t0))
+            #rot1= (SymExpRot2(FF,t1t0))
+            #irot1= (SymExpRot2(FF,-t1t0))
+    rot1= (SymExpRot2(FF,t1t0))
+    irot1= (SymExpRot2(FF,-t1t0))
+
     
     gamma = 0.01
     rot= (SymExpRot2(FF,t0))

@@ -209,20 +209,20 @@ pos_earth = newset.pos_earth
 q0,q1,r0,r1 = 10**(-5), 10**(-5), 10**(8), 10**(-2) 
 q0,q1,r0,r1 = 10**(-4), 10**(-4), 10**(-2), 10**(-1)
 q0,q1,r0,r1 = 10**(-4), 10**(-4), 10**(-2), 10**(-1)
-q0,q1,r0,r1 = 10**(-2), 10**(-2), 10**(0), 10**(-1)*2
+q0,q1,r0,r1 = 10**(-2), 10**(-2), 10**(0), 10**(-1)*5*2
 #normal = np.array([-1,1,0],dtype=mpf)10
 normal = newset.normal
 
 
 
 proj_func = correct_proj2
-#proj_func = None
+proj_func = None
 Solv0 = SolverFilterPlan(Integration,q0,q1,r0,r1,normal,newset,start=np.array(newset.quat_calib,dtype=mpf),proj_fun=proj_func)
 Solv1 = SolverFilterPlan(MEKF,q0,q1,r0,r1,normal,newset,start=np.array(newset.quat_calib,dtype=mpf),proj_fun=proj_func)#,grav=newset.grav)
 #q0,q1,r0,r1 = 10**(-2), 10**(-2), 10**(-1), 10**(-1)
 #q0,q1,r0,r1 = 10**(-2), 10**(-2), 10**(0), 10**(-1)
 
-Solv2 = SolverFilterPlan(Rev,q0,q1,r0,r1,normal,newset,start=np.array(newset.quat_calib,dtype=mpf),proj_fun=proj_func)#,grav=newset.grav)
+Solv2 = SolverFilterPlan(Rev,q0,q1,r0,r1,normal,newset,start=np.array(newset.quat_calib,dtype=mpf),proj_fun=proj_func,detection=True)#,grav=newset.grav)
 
 #Solv2 = SolverFilterPlan(PredictFilterPlan,q0,q1,r0,r1,normal,None)   
 

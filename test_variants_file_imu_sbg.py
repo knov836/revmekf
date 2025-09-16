@@ -63,13 +63,13 @@ data_file = 'imu_data_sbg_250624_2055.csv'
 #static
 #data_file= 'imu_data_sbg_250701_1120.csv'
 data_file= 'imu_data_sbg_250701_1120.csv'
-data_file = 'imu_data_sbg_static_120925.csv'
+#data_file = 'imu_data_sbg_static_120925.csv'
 #moving
 #data_file= 'imu_data_sbg_250701_1344.csv'
 #data_file= 'imu_data_sbg_250701_1628.csv'
-data_file = 'imu_data_sbg_plane_09121118.csv'
-data_file = 'imu_data_sbg_plane_09121136.csv'
-data_file = 'imu_data_sbg_plane_09121245.csv'
+#data_file = 'imu_data_sbg_plane_09121118.csv'
+#data_file = 'imu_data_sbg_plane_09121136.csv'
+#data_file = 'imu_data_sbg_plane_09121245.csv'
 #data_file = 'imu_data_fall_09131902.csv'
 #data_file = 'imu_data_vertical_inhand_09131913.csv'
 #data_file = 'imu_data_sbg_car_09141253.csv'
@@ -223,7 +223,7 @@ Solv0 = SolverFilterPlan(Integration,q0,q1,r0,r1,normal,newset,start=np.array(ne
 Solv1 = SolverFilterPlan(MEKF,q0,q1,r0,r1,normal,newset,start=np.array(newset.quat_calib,dtype=mpf),proj_fun=proj_func)#,grav=newset.grav)
 #q0,q1,r0,r1 = 10**(-2), 10**(-2), 10**(0), 10**(-2)
 
-Solv2 = SolverFilterPlan(Rev,q0,q1,r0,r1,normal,newset,start=np.array(newset.quat_calib,dtype=mpf),proj_fun=proj_func)#,grav=newset.grav)
+Solv2 = SolverFilterPlan(Rev,q0,q1,r0,r1,normal,newset,start=np.array(newset.quat_calib,dtype=mpf),proj_fun=proj_func,detection=True)#,grav=newset.grav)
 
 #Solv2 = SolverFilterPlan(PredictFilterPlan,q0,q1,r0,r1,normal,None)   
 
