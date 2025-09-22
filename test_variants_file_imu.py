@@ -79,7 +79,7 @@ data_file = 'imu_data_sbg_plane_09121311.csv'
 
 #dataset
 #data_file = 'dataset_gps_mpu_left.csv'
-data_file = 'selected_data_vehicle0.csv'
+data_file = 'selected_data_vehicle1.csv'
 
 
 #data_file= 'imu_data_sbg_250630_2340_acconly.csv'
@@ -216,7 +216,7 @@ normal = newset.normal
 
 
 proj_func = correct_proj2
-proj_func = None
+#proj_func = None
 Solv0 = SolverFilterPlan(Integration,q0,q1,r0,r1,normal,newset,start=np.array(newset.quat_calib,dtype=mpf),proj_fun=proj_func)
 Solv1 = SolverFilterPlan(MEKF,q0,q1,r0,r1,normal,newset,start=np.array(newset.quat_calib,dtype=mpf),proj_fun=proj_func)#,grav=newset.grav)
 #q0,q1,r0,r1 = 10**(-2), 10**(-2), 10**(-1), 10**(-1)
@@ -254,6 +254,9 @@ transformer = Transformer.from_crs("EPSG:4326", "EPSG:32722", always_xy=True)
 x, y = transformer.transform(gps[:,1], gps[:,0])
 
 coords = np.column_stack((x, y))-np.array([x[0],y[0]])
+correction_applied = np.zeros(N)
+angle_applied = np.zeros(N)
+
 for i in range(0,N-1,1):
     nn+=1
     print("iteration",i)
@@ -264,7 +267,9 @@ for i in range(0,N-1,1):
     #Solv1.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], newset.normal)
     #Solv2.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], newset.normal)
     #print(Solv0.KFilter.speed,Solv1.KFilter.speed)
-    
+    correction_applied[i+1] = Solv2.KFilter.corrected
+    angle_applied[i+1] =angle_applied[i]+Solv2.KFilter.angle
+
     if i%10 ==0 and i>0:
         """fig = plt.figure()
         ax = fig.add_axes([0,0,1,1])
@@ -561,7 +566,7 @@ ax = fig.add_axes([0,0,1,1])
 ax.plot(np.array(coords))
 ax.set_title('gps')
 
-fig = plt.figure()
+"""fig = plt.figure()
 ax = fig.add_axes([0,0,1,1])
 ax.plot([np.linalg.norm(Solv0.position[j,:]) for j in range(N-1)])
 ax.plot([np.linalg.norm(Solv1.position[j,:]) for j in range(N-1)])
@@ -569,4 +574,131 @@ ax.plot([np.linalg.norm(Solv2.position[j,:]) for j in range(N-1)])
 ax.plot([np.linalg.norm(coords[j,:]) for j in range(N-1)])
 ax.legend(['Integration of Gyroscope','MEKF','Rev-MEKF','GPS'])
 ax.set_title('Distance computed in meters')
+plt.show()"""
+
+size  =n_end-n_start
+
+size = n_start+N
+
+from matplotlib.markers import MarkerStyle
+time0=time-time[0]
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(time0[:size-1],[np.linalg.norm(Solv0.position[j,:]) for j in range(size-1)])
+ax.plot(time0[:size-1],[np.linalg.norm(Solv1.position[j,:]) for j in range(size-1)])
+ax.plot(time0[:size-1],[np.linalg.norm(Solv2.position[j,:]) for j in range(size-1)])
+ax.plot(time0[:size-1],[np.linalg.norm(coords[j,:]) for j in range(size-1)])
+ax.plot(time0[np.argwhere(correction_applied).flatten()], [np.linalg.norm(Solv2.position[j,:]) for j in np.argwhere(correction_applied).flatten()],'.',**dict(markersize=10))
+
+ax.legend(['Integration of Gyroscope','MEKF','Rev-MEKF','GPS','Corrections applied by Rev-MEKF'])
+ax.set_title('Distance computed in meters')
 plt.show()
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot([np.arctan2(coords[i,1],coords[i,0]) for i in range(len(coords))])
+ax.set_title('gps')
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(angle_applied)
+ax.set_title('Cumulated corrected angles in radians')
+
+acc_earth = np.array([np.array(quat_rot([0,*newset.acc[i,:]], quaternion2[i,:]))[1:4] for i in range(size-1)])
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(time0[:size-1],np.linalg.norm(acc_earth-Solv2.KFilter.gravity,axis=1))
+ax.set_xlabel('Seconds')
+ax.set_ylabel('m.s^(-2)')
+ax.set_title('Norm of external acceleration')
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(gravity_r[1:size-1,2]*Solv2.KFilter.gravity[2])
+
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+
+ax.plot(time0[:size-1],newset.acc[1:size,2])
+ax.plot(time0[:size-1],gravity_r[1:size,2]*Solv2.KFilter.gravity[2])
+ax.set_xlabel('Seconds')
+ax.set_ylabel('m.s^(-2)')
+ax.legend(['Z coordinate of gravity vector returned by Rev-MEKF','Z coordinate of Accelerometer',])
+ax.set_title('Comparison of z coordinates for different acceleration computed')
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(time0[:size-1],[np.linalg.norm(newset.acc[j,:]) for j in range(size-1)])
+ax.plot(time0[np.argwhere(correction_applied).flatten()], [np.linalg.norm(newset.acc[j,:]) for j in np.argwhere(correction_applied).flatten()],'.',**dict(markersize=10))
+
+ax.legend(['Acc','Corrections applied by Rev-MEKF'])
+ax.set_title('Corrected places on acc')
+plt.show()
+
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(time0[:size-1],[newset.acc[j,:] for j in range(size-1)])
+ax.plot(time0[np.argwhere(correction_applied).flatten()], [newset.acc[j,:] for j in np.argwhere(correction_applied).flatten()],'.',**dict(markersize=10))
+
+ax.legend(['Acc','Corrections applied by Rev-MEKF'])
+ax.set_title('Corrected places on acc')
+plt.show()
+
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(time0[:size-1],[newset.mag[j,:] for j in range(size-1)])
+ax.plot(time0[np.argwhere(correction_applied).flatten()], [newset.mag[j,:] for j in np.argwhere(correction_applied).flatten()],'.',**dict(markersize=10))
+
+ax.legend(['Mag','Corrections applied by Rev-MEKF'])
+ax.set_title('Corrected places on mag')
+plt.show()
+
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(time0[:size-1],[newset.gyro[j,:] for j in range(size-1)])
+ax.plot(time0[np.argwhere(correction_applied).flatten()], [newset.gyro[j,:] for j in np.argwhere(correction_applied).flatten()],'.',**dict(markersize=10))
+
+ax.legend(['Gyro','Corrections applied by Rev-MEKF'])
+ax.set_title('Corrected places on gyro')
+plt.show()
+
+
+p0 = np.argwhere(correction_applied).flatten()[0]
+p_start = p0-10
+p_end = p0+10
+for p0 in np.argwhere(correction_applied).flatten()[2:-1]:
+    p_start = p0-50
+    p_end = p0+50
+    fig = plt.figure()
+    ax = fig.add_axes([0,0,1,1])
+    ax.plot(time0[p_start:p_end],[newset.acc[j,:] for j in range(p_start,p_end)])
+    ax.plot(time0[p0], [newset.acc[j,:] for j in [p0]],'.',**dict(markersize=10))
+    
+    ax.legend(['Acc','Corrections applied by Rev-MEKF'])
+    ax.set_title('Corrected places on acc')
+    plt.show()
+    
+    
+    fig = plt.figure()
+    ax = fig.add_axes([0,0,1,1])
+    ax.plot(time0[p_start:p_end],[newset.mag[j,:] for j in range(p_start,p_end)])
+    ax.plot(time0[p0], [newset.mag[j,:] for j in [p0]],'.',**dict(markersize=10))
+    
+    ax.legend(['Mag','Corrections applied by Rev-MEKF'])
+    ax.set_title('Corrected places on mag')
+    plt.show()
+    
+    
+    fig = plt.figure()
+    ax = fig.add_axes([0,0,1,1])
+    ax.plot(time0[p_start:p_end],[newset.gyro[j,:] for j in range(p_start,p_end)])
+    ax.plot(time0[p0], [newset.gyro[j,:] for j in [p0]],'.',**dict(markersize=10))
+    
+    ax.legend(['Gyro','Corrections applied by Rev-MEKF'])
+    ax.set_title('Corrected places on gyro')
+    plt.show()

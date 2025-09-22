@@ -59,8 +59,10 @@ def acc_from_normal1(norm0,norm,acc,normal,center,start=[0,0,1],s_rot=np.array([
     #lam_h = lambdify(v, duFF)
     #v0 = opt.minimize(lam_h, 0).x
     
-    HH = sym.N(((teGG-C).dot(normal))**2,40)
+    HH = sym.N(((teGG-C).dot(normal)),40)
     dHH = sym.diff(HH,v)
+    ddHH = sym.diff(dHH,v)
+
     HHz = sym.N(((teGG-C).dot(np.array([0,0,1],dtype=mpf))),40)
     dHHz = sym.diff(HHz,v)
     
@@ -177,6 +179,7 @@ def acc_from_normal1(norm0,norm,acc,normal,center,start=[0,0,1],s_rot=np.array([
     t1t0 = mpf(d_angle+t_v0)
     t2t0 = mpf(summ-d_angle+t_v0)
     t3t0 = nsolve(dHHz,t_v0,prec=40,verify=False)
+    #t5t0 = nsolve(dHHz,t_v0,prec=40,verify=False)
 
     t4t0=(t1t0+t2t0)/2
     t0 = t1t0
@@ -192,10 +195,12 @@ def acc_from_normal1(norm0,norm,acc,normal,center,start=[0,0,1],s_rot=np.array([
         t1t0=t3t0 #remove noise
         #sign = np.sign((center-acc).dot(normal))
         #sign = np.sign((acc).dot(normal))
-        a = ((center).dot(normal))
-        b = (teGG).dot(normal).evalf(subs={v:(t1t0+t2t0)/2})
-        sign = np.sign((a*b))
-        #print(sign,a)
+        #a = ((center).dot(normal))
+        #b = (teGG).dot(normal).evalf(subs={v:(t1t0+t2t0)/2})
+        c = -ddHH.evalf(subs={v:t_v0})
+        d = t_v0
+        sign = np.sign((c))
+        print(sign,c,d)
         qq_acc = quat_ntom(np.array(normal,dtype=mpf), acc/np.linalg.norm(acc))
         FF_acc = log_q(qq_acc)
         duFF2 = uFF-sym.Matrix(-FF_acc)
@@ -204,7 +209,7 @@ def acc_from_normal1(norm0,norm,acc,normal,center,start=[0,0,1],s_rot=np.array([
         v0_acc = opt.minimize(lam_h2, 0).x
         
         t_v0_acc = v0_acc[0]
-        #plot(((teGG-C).dot(normal).subs(v,v+sym.Rational(float(t3t0)))),(v,-1.5,1.5),title="t3t0 "+str(t3t0))
+        plot(((teGG-C).dot(normal).subs(v,v+sym.Rational(float(t_v0)))),(v,-1.5,1.5),title="t3t0 "+str(t_v0))
 
         
         if (t1t0 == t2t0 and sign*(teGG-C).dot(normal).evalf(subs={v:t1t0})<0) or sign*(teGG-C).dot(normal).evalf(subs={v:(t1t0+t2t0)/2})<0  or np.abs(t_v0-t3t0)>np.abs(t1t0 -t2t0):
@@ -274,8 +279,9 @@ def acc_from_normal_imu(norm0,norm,acc,normal,center,start=[0,0,1],s_rot=np.arra
     #lam_h = lambdify(v, duFF)
     #v0 = opt.minimize(lam_h, 0).x
     
-    HH = sym.N(((teGG-C).dot(normal))**2,40)
+    HH = sym.N(((teGG-C).dot(normal)),40)
     dHH = sym.diff(HH,v)
+    ddHH = sym.diff(dHH,v)
     HHz = sym.N(((teGG-C).dot(np.array([0,0,1],dtype=mpf))),40)
     dHHz = sym.diff(HHz,v)
     #t_v0 = v0[0]#np.mod(v0[0],np.pi)
@@ -408,9 +414,10 @@ def acc_from_normal_imu(norm0,norm,acc,normal,center,start=[0,0,1],s_rot=np.arra
         #sign = np.sign((center).dot(normal))
         a = ((center).dot(normal))
         b = (teGG).dot(normal).evalf(subs={v:(t1t0+t2t0)/2})
-        sign = np.sign(a)
+        c = -ddHH.evalf(subs={v:t_v0})
+        sign = np.sign(c)
         #print(acc,normal,center)
-        print(sign,a,b)
+        #print(sign,c,b)
         qq_acc = quat_ntom(np.array([0,0,1],dtype=mpf), acc/np.linalg.norm(acc))
         FF_acc = log_q(qq_acc)
         duFF2 = uFF-sym.Matrix(-FF_acc)
@@ -419,8 +426,8 @@ def acc_from_normal_imu(norm0,norm,acc,normal,center,start=[0,0,1],s_rot=np.arra
         v0_acc = opt.minimize(lam_h2, 0).x
         
         t_v0_acc = v0_acc[0]
-        
-        if (t1t0 == t2t0 and sign*(teGG-C).dot(normal).evalf(subs={v:t1t0})<0) or sign*(teGG-C).dot(normal).evalf(subs={v:(t1t0+t2t0)/2})<0  or np.abs(t_v0-t3t0)>np.abs(t1t0 -t2t0):
+        corrected = False
+        if (t1t0 == t2t0 and sign*(teGG-C).dot(normal).evalf(subs={v:t1t0})<0) or sign*(teGG-C).dot(normal).evalf(subs={v:t_v0})<0  or np.abs(t_v0-t3t0)>np.abs(t1t0 -t2t0)*1.5:
             t1t0 = t_v0
             t1t0 = t_v0_acc
             t1t0 = np.linalg.norm(FF_acc)
@@ -431,7 +438,7 @@ def acc_from_normal_imu(norm0,norm,acc,normal,center,start=[0,0,1],s_rot=np.arra
 
             
             t0 = t3t0
-        elif np.abs(t_v0-t4t0)<np.abs(t_v0-t3t0)*0.5 and sign*(teGG-C).dot(normal).evalf(subs={v:(t1t0+t2t0)/2})>=0:
+        elif np.abs(t_v0-t4t0)<np.abs(t_v0-t3t0) and sign*(teGG-C).dot(normal).evalf(subs={v:t_v0})>=0:
             t1t0=t4t0
             plot(((teGG-C).dot(normal).subs(v,v+sym.Rational(float(t_v0_acc)))),(v,-0.1,0.1),title="t_v0_acc"+str(t_v0_acc))
             plot(((teGG-C).dot(normal).subs(v,v+sym.Rational(float(t_v0)))),(v,-0.1,0.1),title="t_v0 "+str(t_v0))
@@ -440,12 +447,14 @@ def acc_from_normal_imu(norm0,norm,acc,normal,center,start=[0,0,1],s_rot=np.arra
             plot(((teGG-C).dot(normal).subs(v,v+sym.Rational(float(t3t0)))),(v,-0.1,0.1),title="t3t0 "+str(t3t0))
             #rot1= (SymExpRot2(FF,t1t0))
             #irot1= (SymExpRot2(FF,-t1t0))
+            corrected=True 
     rot1= (SymExpRot2(FF,t1t0))
     irot1= (SymExpRot2(FF,-t1t0))
+    
 
     
     gamma = 0.01
     rot= (SymExpRot2(FF,t0))
     irot= (SymExpRot2(FF,-t0))
     
-    return np.array(irot1,dtype=mpf)@np.array([0,0,1],dtype=mpf),irot1,rot1,np.array(irot2,dtype=mpf)@np.array([0,0,1],dtype=mpf),irot2,rot2,np.array(irot3,dtype=mpf)@np.array([0,0,1],dtype=mpf),irot3,rot3
+    return np.array(irot1,dtype=mpf)@np.array([0,0,1],dtype=mpf),irot1,rot1,np.array(irot2,dtype=mpf)@np.array([0,0,1],dtype=mpf),irot2,rot2,np.array(irot3,dtype=mpf)@np.array([0,0,1],dtype=mpf),irot3,rot3,corrected,np.abs(t_v0_acc-t1t0)

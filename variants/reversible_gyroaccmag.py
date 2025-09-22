@@ -34,6 +34,8 @@ class PredictFilter(Filter):
     def __init__(self, *args,**kwargs):#rate, Q, R, Pk, grav, quat, Bias,normal,base_width=mpf(1.0),proj_fun=None,rotsurf=None,time=mpf(0)):
         super().__init__(*args,**kwargs)#Q, R, Pk, grav, quat, Bias,normal,base_width=mpf(1.0),proj_fun=proj_fun,rotsurf=None,time=mpf(0))
         self.variant_update=self.variant_update_f
+        self.corrected = False
+        self.angle = 0
     
     def linalg_correct(self,Gyroscope,Accelerometer,Magnetometer,Orient,normal=[0,0,1]):
         quat=self.rotsurf
@@ -63,7 +65,12 @@ class PredictFilter(Filter):
         qq = quat_mult(self.Quaternion,quat_inv(quat))
         logrot1 = log_q(np.array(qq))
         #logrot1 = np.zeros(3)
-        acc1,rot1,irot1,acc2,rot2,irot2,acc3,rot3,irot3= acc_from_normal_imu(np.array(quat_rot([0,*np.array(nAxis,dtype=mpf)],quat))[1:4],np.array([0,1,0],dtype=mpf) , np.array(quat_rot([0,*(nAccelerometer*(self.dt**2))],quat))[1:4], normal, self.surf_center,start = logrot1,detection=self.detection)
+        acc1,rot1,irot1,acc2,rot2,irot2,acc3,rot3,irot3,corrected,angle_acc= acc_from_normal_imu(np.array(quat_rot([0,*np.array(nAxis,dtype=mpf)],quat))[1:4],np.array([0,1,0],dtype=mpf) , np.array(quat_rot([0,*(nAccelerometer*(self.dt**2))],quat))[1:4], normal, self.surf_center,start = logrot1,detection=self.detection)
+        if corrected:
+            self.corrected=True
+            print(angle_acc)
+            self.angle = angle_acc
+
         acc = np.array(quat_rot([0,*(acc1)],quat_inv(quat)),dtype=mpf)[1:4]
         rot = QuatToRot(quat_inv(quat))@rot1
         return acc
@@ -73,6 +80,9 @@ class PredictFilter(Filter):
     
     def variant_update_f(self, Time, Surface, Accelerometer,Gyroscope, Magnetometer,Orient):
         self.predict(Gyroscope,Orient)
+        self.corrected = False
+        self.angle = 0
+
         mag = Magnetometer
         if self.detection:
             mag = np.array(quat_rot([0,0,1,0], quat_inv(self.Quaternion)))[1:4]
