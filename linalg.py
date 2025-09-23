@@ -224,7 +224,7 @@ def acc_from_normal1(norm0,norm,acc,normal,center,start=[0,0,1],s_rot=np.array([
             
             t0 = t3t0
         #elif np.abs(t_v0_acc-t4t0)<np.abs(t_v0_acc-t3t0) and np.abs(t_v0-t4t0)<np.abs(t_v0-t3t0):
-        elif np.abs(t_v0-t4t0)<np.abs(t_v0-t3t0) and sign*(teGG-C).dot(normal).evalf(subs={v:(t1t0+t2t0)/2})>=0:
+        elif np.abs(t_v0-t4t0)<np.abs(t_v0-t3t0) and np.abs((teGG-C).dot(normal).evalf(subs={v:t_v0})-(teGG-C).dot(normal).evalf(subs={v:t4t0}))<np.abs((teGG-C).dot(normal).evalf(subs={v:t_v0})-(teGG-C).dot(normal).evalf(subs={v:t3t0})) and sign*(teGG-C).dot(normal).evalf(subs={v:(t1t0+t2t0)/2})>=0:
             t1t0=t4t0
             plot(((teGG-C).dot(normal).subs(v,v+sym.Rational(float(t_v0_acc)))),(v,-0.1,0.1),title="t_v0_acc"+str(t_v0_acc))
             plot(((teGG-C).dot(normal).subs(v,v+sym.Rational(float(t_v0)))),(v,-0.1,0.1),title="t_v0 "+str(t_v0))
@@ -408,14 +408,10 @@ def acc_from_normal_imu(norm0,norm,acc,normal,center,start=[0,0,1],s_rot=np.arra
     irot3= (SymExpRot2(FF,-t2t0))
     
     corrected = False
-    qq_acc = quat_ntom(np.array([0,0,1],dtype=mpf), acc/np.linalg.norm(acc))
-    FF_acc = log_q(qq_acc)
-    duFF2 = uFF-sym.Matrix(-FF_acc)
-    duFF2 = duFF2.dot(duFF2)
-    lam_h2 = lambdify(v, duFF2)
-    v0_acc = opt.minimize(lam_h2, 0).x
     
-    t_v0_acc = v0_acc[0]
+    
+    t_v0_acc = t3t0
+    
     if heuristic:
         t1t0=t3t0 #remove noise
         #sign = np.sign((center-acc).dot(normal))
@@ -426,7 +422,14 @@ def acc_from_normal_imu(norm0,norm,acc,normal,center,start=[0,0,1],s_rot=np.arra
         sign = np.sign(c)
         #print(acc,normal,center)
         #print(sign,c,b)
-        
+        qq_acc = quat_ntom(np.array([0,0,1],dtype=mpf), acc/np.linalg.norm(acc))
+        FF_acc = log_q(qq_acc)
+        duFF2 = uFF-sym.Matrix(-FF_acc)
+        duFF2 = duFF2.dot(duFF2)
+        lam_h2 = lambdify(v, duFF2)
+        v0_acc = opt.minimize(lam_h2, 0).x
+        t_v0_acc = v0_acc[0]
+        print("compare acc mekf to acc here",t_v0_acc-t3t0)
         
         if (t1t0 == t2t0 and sign*(teGG-C).dot(normal).evalf(subs={v:t1t0})<0) or sign*(teGG-C).dot(normal).evalf(subs={v:t_v0})<0  or np.abs(t_v0-t3t0)>np.abs(t1t0 -t2t0)*1.5:
             t1t0 = t_v0
@@ -439,7 +442,7 @@ def acc_from_normal_imu(norm0,norm,acc,normal,center,start=[0,0,1],s_rot=np.arra
 
             
             t0 = t3t0
-        elif np.abs(t_v0-t4t0)<np.abs(t_v0-t3t0) and sign*(teGG-C).dot(normal).evalf(subs={v:t_v0})>=0:
+        elif np.abs(t_v0-t4t0)<np.abs(t_v0-t3t0) and np.abs((teGG-C).dot(normal).evalf(subs={v:t_v0})-(teGG-C).dot(normal).evalf(subs={v:t4t0}))<np.abs((teGG-C).dot(normal).evalf(subs={v:t_v0})-(teGG-C).dot(normal).evalf(subs={v:t3t0})) and sign*(teGG-C).dot(normal).evalf(subs={v:t_v0})>=0:
             t1t0=t4t0
             plot(((teGG-C).dot(normal).subs(v,v+sym.Rational(float(t_v0_acc)))),(v,-0.1,0.1),title="t_v0_acc"+str(t_v0_acc))
             plot(((teGG-C).dot(normal).subs(v,v+sym.Rational(float(t_v0)))),(v,-0.1,0.1),title="t_v0 "+str(t_v0))
