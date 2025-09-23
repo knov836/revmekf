@@ -319,7 +319,7 @@ proj_func = correct_proj3
 #proj_func = None
 Solv0 = SolverFilterPlan(Integration,q0,q1,r0,r1,normal,newset,start=np.array(qq_final,dtype=mpf),proj_fun=None)
 Solv1 = SolverFilterPlan(MEKF,q0,q1,r0,r1,normal,newset,start=np.array(qq_final,dtype=mpf),proj_fun=proj_func)#,grav=newset.grav)
-Solv2 = SolverFilterPlan(Rev,q0,q1,r0,r1,normal,newset,start=np.array(qq_final,dtype=mpf),proj_fun=proj_func,detection=True)#,grav=newset.grav)
+Solv2 = SolverFilterPlan(Rev,q0,q1,r0,r1,normal,newset,start=np.array(qq_final,dtype=mpf),proj_fun=proj_func,heuristic=True)#,grav=newset.grav)
 
 ggg=Solv2.KFilter.gravity_r
 #Solv2 = SolverFilterPlan(PredictFilterPlan,q0,q1,r0,r1,normal,None)   

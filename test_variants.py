@@ -46,7 +46,7 @@ a_noise=10**(-4)
 angle = int(N/2)
 #mmode = 'OdoAccPre'
 mmode = 'GyroAccMag'
-mmode = 'OdoAccPre'
+#mmode = 'OdoAccPre'
 
 if mmode == 'GyroAcc':
     Integration = IntegrationGyroAcc

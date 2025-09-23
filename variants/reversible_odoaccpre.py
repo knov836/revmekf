@@ -53,7 +53,7 @@ class PredictFilter(Filter):
         nstate = np.array([0,0,acc_angle])
         logrot1 = log_q(np.array(quat_rot(quat_mult(quat_mult(quat,ExpQua(self.state[3:6])),(qq)),(quat0))))
         #acc1,rot1,irot1= acc_from_normal1(mm1,mm1 , np.array(quat_rot(quat_rot([0,*(Accelerometer*(self.dt**2))],quat_inv(qq)),quat0))[1:4], np.array(quat_rot([0,*np.array([0,0,1])],quat0))[1:4], np.array(quat_rot([0,*self.surf_center],quat0))[1:4],start = logrot1,s_rot=self.state[3:6])
-        acc1,rot1,irot1,acc2,rot2,irot2,acc3,rot3,irot3= acc_from_normal1(mm1,mm1 , np.array(quat_rot(quat_rot([0,*(Accelerometer*(self.dt**2))],quat_inv(qq)),quat0))[1:4], np.array(quat_rot([0,*np.array([0,0,1])],quat0))[1:4], np.array(quat_rot([0,*self.surf_center],quat0))[1:4],start = logrot1,s_rot=self.state[3:6],detection=self.detection)
+        acc1,rot1,irot1,acc2,rot2,irot2,acc3,rot3,irot3= acc_from_normal1(mm1,mm1 , np.array(quat_rot(quat_rot([0,*(Accelerometer*(self.dt**2))],quat_inv(qq)),quat0))[1:4], np.array(quat_rot([0,*np.array([0,0,1])],quat0))[1:4], np.array(quat_rot([0,*self.surf_center],quat0))[1:4],start = logrot1,s_rot=self.state[3:6],heuristic=self.heuristic)
         #acc1,rot1,irot1= acc_from_mag(mm1,mm1 , np.array(quat_rot(quat_rot([0,*(Accelerometer*(self.dt**2))],quat_inv(qq)),quat0))[1:4], np.array(quat_rot([0,*np.array([0,0,1])],quat0))[1:4], np.array(quat_rot([0,*self.surf_center],quat0))[1:4],start = logrot1)
         #print(acc1,rot1@np.array([0,0,1],dtype=mpf))
         #q1 = RotToQuat(rot1)

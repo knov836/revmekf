@@ -24,7 +24,7 @@ from sympy.plotting import plot3d_parametric_line
 import scipy.optimize as opt
 from function_quat import *
 
-def acc_from_normal1(norm0,norm,acc,normal,center,start=[0,0,1],s_rot=np.array([0,0,0]),detection=False):
+def acc_from_normal1(norm0,norm,acc,normal,center,start=[0,0,1],s_rot=np.array([0,0,0]),heuristic=False):
     X = sym.Symbol('X')
     Y = sym.Symbol('Y')
     Z = sym.Symbol('Z')
@@ -191,7 +191,7 @@ def acc_from_normal1(norm0,norm,acc,normal,center,start=[0,0,1],s_rot=np.array([
     irot3= (SymExpRot2(FF,-t2t0))
     
     
-    if detection:
+    if heuristic:
         t1t0=t3t0 #remove noise
         #sign = np.sign((center-acc).dot(normal))
         #sign = np.sign((acc).dot(normal))
@@ -209,7 +209,7 @@ def acc_from_normal1(norm0,norm,acc,normal,center,start=[0,0,1],s_rot=np.array([
         v0_acc = opt.minimize(lam_h2, 0).x
         
         t_v0_acc = v0_acc[0]
-        plot(((teGG-C).dot(normal).subs(v,v+sym.Rational(float(t_v0)))),(v,-1.5,1.5),title="t3t0 "+str(t_v0))
+        #plot(((teGG-C).dot(normal).subs(v,v+sym.Rational(float(t_v0)))),(v,-1.5,1.5),title="t3t0 "+str(t_v0))
 
         
         if (t1t0 == t2t0 and sign*(teGG-C).dot(normal).evalf(subs={v:t1t0})<0) or sign*(teGG-C).dot(normal).evalf(subs={v:(t1t0+t2t0)/2})<0  or np.abs(t_v0-t3t0)>np.abs(t1t0 -t2t0):
@@ -244,7 +244,7 @@ def acc_from_normal1(norm0,norm,acc,normal,center,start=[0,0,1],s_rot=np.array([
     return np.array(irot1,dtype=mpf)@np.array([0,0,1],dtype=mpf),irot1,rot1,np.array(irot2,dtype=mpf)@np.array([0,0,1],dtype=mpf),irot2,rot2,np.array(irot3,dtype=mpf)@np.array([0,0,1],dtype=mpf),irot3,rot3
 
 
-def acc_from_normal_imu(norm0,norm,acc,normal,center,start=[0,0,1],s_rot=np.array([0,0,0]),detection=False):
+def acc_from_normal_imu(norm0,norm,acc,normal,center,start=[0,0,1],s_rot=np.array([0,0,0]),heuristic=False):
     X = sym.Symbol('X')
     Y = sym.Symbol('Y')
     Z = sym.Symbol('Z')
@@ -407,8 +407,16 @@ def acc_from_normal_imu(norm0,norm,acc,normal,center,start=[0,0,1],s_rot=np.arra
     rot3= (SymExpRot2(FF,t2t0))
     irot3= (SymExpRot2(FF,-t2t0))
     
+    corrected = False
+    qq_acc = quat_ntom(np.array([0,0,1],dtype=mpf), acc/np.linalg.norm(acc))
+    FF_acc = log_q(qq_acc)
+    duFF2 = uFF-sym.Matrix(-FF_acc)
+    duFF2 = duFF2.dot(duFF2)
+    lam_h2 = lambdify(v, duFF2)
+    v0_acc = opt.minimize(lam_h2, 0).x
     
-    if detection:
+    t_v0_acc = v0_acc[0]
+    if heuristic:
         t1t0=t3t0 #remove noise
         #sign = np.sign((center-acc).dot(normal))
         #sign = np.sign((center).dot(normal))
@@ -418,15 +426,8 @@ def acc_from_normal_imu(norm0,norm,acc,normal,center,start=[0,0,1],s_rot=np.arra
         sign = np.sign(c)
         #print(acc,normal,center)
         #print(sign,c,b)
-        qq_acc = quat_ntom(np.array([0,0,1],dtype=mpf), acc/np.linalg.norm(acc))
-        FF_acc = log_q(qq_acc)
-        duFF2 = uFF-sym.Matrix(-FF_acc)
-        duFF2 = duFF2.dot(duFF2)
-        lam_h2 = lambdify(v, duFF2)
-        v0_acc = opt.minimize(lam_h2, 0).x
         
-        t_v0_acc = v0_acc[0]
-        corrected = False
+        
         if (t1t0 == t2t0 and sign*(teGG-C).dot(normal).evalf(subs={v:t1t0})<0) or sign*(teGG-C).dot(normal).evalf(subs={v:t_v0})<0  or np.abs(t_v0-t3t0)>np.abs(t1t0 -t2t0)*1.5:
             t1t0 = t_v0
             t1t0 = t_v0_acc

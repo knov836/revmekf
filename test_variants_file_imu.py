@@ -123,7 +123,7 @@ if mmode == 'OdoAccPre':
 #print(data.head())
 n_start = 0
 n_end=4000
-n_end=n_start +3000
+n_end=n_start +300
 cols = np.array([0,1,2,3,10,11,12,19,20,21])
 df = data.values[n_start:n_end,cols]
 
@@ -222,7 +222,7 @@ Solv1 = SolverFilterPlan(MEKF,q0,q1,r0,r1,normal,newset,start=np.array(newset.qu
 #q0,q1,r0,r1 = 10**(-2), 10**(-2), 10**(-1), 10**(-1)
 #q0,q1,r0,r1 = 10**(-2), 10**(-2), 10**(0), 10**(-1)
 
-Solv2 = SolverFilterPlan(Rev,q0,q1,r0,r1,normal,newset,start=np.array(newset.quat_calib,dtype=mpf),proj_fun=proj_func,detection=True)#,grav=newset.grav)
+Solv2 = SolverFilterPlan(Rev,q0,q1,r0,r1,normal,newset,start=np.array(newset.quat_calib,dtype=mpf),proj_fun=proj_func,heuristic=True)#,grav=newset.grav)
 
 #Solv2 = SolverFilterPlan(PredictFilterPlan,q0,q1,r0,r1,normal,None)   
 
