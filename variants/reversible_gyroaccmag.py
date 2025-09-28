@@ -68,7 +68,7 @@ class PredictFilter(Filter):
         acc1,rot1,irot1,acc2,rot2,irot2,acc3,rot3,irot3,corrected,angle_acc= acc_from_normal_imu(np.array(quat_rot([0,*np.array(nAxis,dtype=mpf)],quat))[1:4],np.array([0,1,0],dtype=mpf) , np.array(quat_rot([0,*(nAccelerometer*(self.dt**2))],quat))[1:4], normal, self.surf_center,start = logrot1,heuristic=self.heuristic)
         if corrected:
             self.corrected=True
-            print(angle_acc)
+            #print(angle_acc)
             self.angle = angle_acc
 
         acc = np.array(quat_rot([0,*(acc1)],quat_inv(quat)),dtype=mpf)[1:4]
@@ -82,12 +82,15 @@ class PredictFilter(Filter):
         self.predict(Gyroscope,Orient)
         self.corrected = False
         self.angle = 0
-
+        acc = np.copy(Accelerometer)
         mag = Magnetometer
         if self.heuristic:
+            #print(Accelerometer,np.dot(self.gravity/np.linalg.norm(self.gravity),Surface[1:4]/np.linalg.norm(Surface[1:4])))
+            #acc[2] = self.gravity[2]*np.dot(self.gravity/np.linalg.norm(self.gravity),Surface[1:4]/np.linalg.norm(Surface[1:4]))
+            #print(np.dot(self.gravity/np.linalg.norm(self.gravity),Surface[1:4]/np.linalg.norm(Surface[1:4])))
             mag = np.array(quat_rot([0,0,1,0], quat_inv(self.Quaternion)))[1:4]
         
-        grav_earth = self.linalg_correct(Gyroscope, Accelerometer, mag, Orient,normal=self.normal)
+        grav_earth = self.linalg_correct(Gyroscope, acc, mag, Orient,normal=self.normal)
         self.gravity_r = grav_earth
         self.update(Gyroscope,grav_earth,Magnetometer,Orient)
 

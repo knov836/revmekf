@@ -151,11 +151,11 @@ class SolverFilterPlan:
         self.ind = self.ind+1
         if self.ind>=self.N-1:
             self.pad()
-    def update(self,time,gyro,acc,mag,normal):
+    def update(self,time,*args):#gyro,acc,mag,normal):
         KFilter= self.KFilter
         N = self.N
         newset = self.newset#self.newset
-        Surface = np.array(np.concatenate(([0,],normal.astype(mpf),np.zeros(6))),dtype=mpf)
+        
         i = self.ind
         
             
@@ -164,13 +164,29 @@ class SolverFilterPlan:
         if newset==None:
             KFilter.UpdateSensor(mpf(time),Surface,acc,gyro, mag,self.orient[i,:])
         else:
-            if self.mode.startswith('GyroAccMag'):
+            """if self.mode.startswith('GyroAccMag'):
                 KFilter.UpdateSensor(mpf(time),Surface, acc,gyro,mag,self.orient[i,:])
             elif self.mode.startswith('GyroAcc'):
                 KFilter.UpdateSensor(mpf(time),Surface, acc,gyro,self.orient[i,:])
             elif self.mode.startswith('Odo'):
-                KFilter.UpdateSensor(mpf(time),Surface,newset.acc[i+1, :], newset.pressure[i+1],newset.leftw[i+1],newset.rightw[i+1], self.orient[i+1,:])
+                KFilter.UpdateSensor(mpf(time),Surface,newset.acc[i+1, :], newset.pressure[i+1],newset.leftw[i+1],newset.rightw[i+1], self.orient[i+1,:])"""
 
+            if time==-1:
+                time = mpf(i+1)/newset.freq
+            
+            if self.mode == 'GyroAccMag':
+                gyro, acc, mag,normal= args[:4]
+                Surface = np.array(np.concatenate(([0,],normal.astype(mpf),np.zeros(6))),dtype=mpf)
+                KFilter.UpdateSensor(time,Surface, acc,gyro,mag,newset.orient[i,:])
+            elif self.mode == 'GyroAcc':
+                gyro, acc, normal= args[:3]
+                Surface = np.array(np.concatenate(([0,],normal.astype(mpf),np.zeros(6))),dtype=mpf)
+                KFilter.UpdateSensor(time, Surface,newset.acc[i+1, :],newset.gyro[i+1, :],newset.orient[i+1,:])
+            elif self.mode == 'OdoAccPre':
+                acc,pressure,leftw,rightw= args[:4]
+                Surface = np.array(np.concatenate(([0,],normal.astype(mpf),np.zeros(6))),dtype=mpf)
+                KFilter.UpdateSensor(time,Surface,acc, pressure,leftw,rightw,self.orient[i,:])
+        self.gravity_r[i+1, :] = KFilter.gravity_r[0:4]
         
         #KFilter.UpdateSensor(mpf(time),gyro, acc,mag,None,Surface)
         
