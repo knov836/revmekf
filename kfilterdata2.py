@@ -111,6 +111,7 @@ class KFilterDataFile:
         qq = quat_ntom(n_perceived_gravity, np.array([0,0,1],dtype=mpf))
         self.gravity = np.array(quat_rot([0,*perceived_gravity],qq))[1:4]#+0.01#-np.array([0,0,np.linalg.norm(self.pg_std)],dtype=mpf)/10
         self.mag0 = np.array(quat_rot([0,*np.mean(self.mag[:300,:].astype(float),axis=0)], self.quat_calib))[1:4]
+        #self.mag0 = np.array([1,0,0],dtype=mpf)
         
     def cmag(self,normal=None):
         cmag= np.zeros((self.c_size,3),dtype=mpf)
@@ -181,7 +182,10 @@ class KFilterDataFile:
             adm = skewSymmetric(a)@m
             adm = adm/mp.norm(adm)
             new_m = skewSymmetric(adm)@a
-            M = np.array([-adm,new_m,a]).T
+            #new_m = m
+            #M = np.array([-adm,new_m,a]).T
+            print("new_m",new_m,m)
+            M = np.array([new_m,adm,a]).T
             new_orient[i,:] = normalize(quat_inv(RotToQuat(M)))
         return new_orient
     def new_orient(self):

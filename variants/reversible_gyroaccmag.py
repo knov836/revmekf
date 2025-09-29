@@ -88,7 +88,7 @@ class PredictFilter(Filter):
             #print(Accelerometer,np.dot(self.gravity/np.linalg.norm(self.gravity),Surface[1:4]/np.linalg.norm(Surface[1:4])))
             #acc[2] = self.gravity[2]*np.dot(self.gravity/np.linalg.norm(self.gravity),Surface[1:4]/np.linalg.norm(Surface[1:4]))
             #print(np.dot(self.gravity/np.linalg.norm(self.gravity),Surface[1:4]/np.linalg.norm(Surface[1:4])))
-            mag = np.array(quat_rot([0,0,1,0], quat_inv(self.Quaternion)))[1:4]
+            mag = np.array(quat_rot([0,1,0,0], quat_inv(self.Quaternion)))[1:4]
         
         grav_earth = self.linalg_correct(Gyroscope, acc, mag, Orient,normal=self.normal)
         self.gravity_r = grav_earth
