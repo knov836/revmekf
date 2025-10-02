@@ -19,7 +19,7 @@ grav=1
 
 
 class KFilterDataFile:
-    def __init__(self, data,mode='GyroAccMag',g_bias = np.array([0,0,0],dtype=mpf),base_width=mpf(1.0),surf=np.array([-1,1,0],dtype=mpf),normal=np.array([])):
+    def __init__(self, data,mode='GyroAccMag',g_bias = np.array([0,0,0],dtype=mpf),base_width=mpf(1.0),surf=np.array([-1,1,0],dtype=mpf),normal=np.array([]),gravity=np.array([])):
         gyro = np.array(data[:,4:7],dtype=mpf)#/180*np.pi
         acc = np.array(data[:,1:4],dtype=mpf)
         mag = np.array(data[:,7:10],dtype=mpf)
@@ -109,9 +109,12 @@ class KFilterDataFile:
         self.pg_std = np.std(self.acc[:100,:].astype(float),axis=0)
         n_perceived_gravity = perceived_gravity/np.linalg.norm(perceived_gravity)
         qq = quat_ntom(n_perceived_gravity, np.array([0,0,1],dtype=mpf))
-        self.gravity = np.array(quat_rot([0,*perceived_gravity],qq))[1:4]#+0.01#-np.array([0,0,np.linalg.norm(self.pg_std)],dtype=mpf)/10
+        if len(gravity) == 0:
+            self.gravity = np.array(quat_rot([0,*perceived_gravity],qq))[1:4]#+0.01#-np.array([0,0,np.linalg.norm(self.pg_std)],dtype=mpf)/10
+        else:
+            self.gravity=gravity
         self.mag0 = np.array(quat_rot([0,*np.mean(self.mag[:300,:].astype(float),axis=0)], self.quat_calib))[1:4]
-        #self.mag0 = np.array([1,0,0],dtype=mpf)
+        self.mag0 = np.array([0,1,0],dtype=mpf)
         
     def cmag(self,normal=None):
         cmag= np.zeros((self.c_size,3),dtype=mpf)
@@ -119,6 +122,10 @@ class KFilterDataFile:
             a=self.acc[i,:]
             a=a/np.linalg.norm(a)
             m=self.mag[i,:]
+            if mp.norm(m)!=0:
+                m=m/mp.norm(m)
+            cmag[i,:] = m
+            #continue
             if mp.norm(m)!=0:
                 m=m/mp.norm(m)
                 adm = skewSymmetric(a)@m
@@ -136,7 +143,7 @@ class KFilterDataFile:
             if mp.norm(m)!=0:
                 m=m/mp.norm(m)
             omag[i,:] = m
-            continue
+            #continue
             if mp.norm(m)!=0:
                 a=self.acc[i,:]
                 a = a/np.linalg.norm(a)            
@@ -175,6 +182,7 @@ class KFilterDataFile:
             a = self.acc[i,:]
             a = a/mp.norm(a)
             a0 = np.array([0,0,1],dtype=mpf)
+            #a = -a0
             m = self.c_mag[i,:]
             m = m/mp.norm(m)
             m0 = np.array([0,1,0],dtype=mpf)
@@ -183,9 +191,9 @@ class KFilterDataFile:
             adm = adm/mp.norm(adm)
             new_m = skewSymmetric(adm)@a
             #new_m = m
-            #M = np.array([-adm,new_m,a]).T
-            print("new_m",new_m,m)
-            M = np.array([new_m,adm,a]).T
+            M = np.array([-adm,new_m,a]).T
+            #print("new_m",new_m,m)
+            #M = np.array([new_m,adm,a]).T
             new_orient[i,:] = normalize(quat_inv(RotToQuat(M)))
         return new_orient
     def new_orient(self):
@@ -194,14 +202,15 @@ class KFilterDataFile:
             a = self.acc[i,:]
             a = a/mp.norm(a)
             a0 = np.array([0,0,1],dtype=mpf)
+            #a = -a0
             m = self.mag[i,:]
             m = m/mp.norm(m)
             m0 = np.array([0,1,0],dtype=mpf)
             adm = skewSymmetric(a)@m
             adm = adm/mp.norm(adm)
-            #new_m = skewSymmetric(adm)@a
+            new_m = skewSymmetric(adm)@a
             
-            M = np.array([-adm,m,a]).T
+            M = np.array([-adm,new_m,a]).T
             new_orient[i,:] = normalize(quat_inv(RotToQuat(M)))
         return new_orient
     

@@ -65,7 +65,7 @@ data_file = 'imu_data_sbg_250624_2055.csv'
 data_file= 'imu_data_sbg_250701_1120.csv'
 #data_file = 'imu_data_sbg_static_120925.csv'
 #moving
-#data_file= 'imu_data_sbg_250701_1344.csv'
+data_file= 'imu_data_sbg_250701_1344.csv'
 #data_file= 'imu_data_sbg_250701_1628.csv'
 #data_file = 'imu_data_sbg_plane_09121118.csv'
 #data_file = 'imu_data_sbg_plane_09121136.csv'
@@ -218,7 +218,7 @@ normal = newset.normal
 #normal = normal/np.linalg.norm(normal)
 
 proj_func = correct_proj2
-#proj_func = None
+proj_func = None
 Solv0 = SolverFilterPlan(Integration,q0,q1,r0,r1,normal,newset,start=np.array(newset.quat_calib,dtype=mpf),proj_fun=proj_func)
 Solv1 = SolverFilterPlan(MEKF,q0,q1,r0,r1,normal,newset,start=np.array(newset.quat_calib,dtype=mpf),proj_fun=proj_func)#,grav=newset.grav)
 #q0,q1,r0,r1 = 10**(-2), 10**(-2), 10**(0), 10**(-2)
@@ -241,11 +241,11 @@ nn=0
 for i in range(0,N-1,1):
     nn+=1
     print("iteration",i)
-    Solv0.update_noarg(time=time[i+1])
-    Solv1.update_noarg(time=time[i+1])
-    Solv2.update_noarg(time=time[i+1])
-    #Solv0.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], newset.normal)
-    #Solv1.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], newset.normal)
+    #Solv0.update_noarg(time=time[i+1])
+    #Solv1.update_noarg(time=time[i+1])
+    #Solv2.update_noarg(time=time[i+1])
+    Solv0.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], newset.normal)
+    Solv1.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], newset.normal)
     #Solv2.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], newset.normal)
     #print(Solv0.KFilter.speed,Solv1.KFilter.speed)
     

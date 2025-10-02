@@ -438,8 +438,9 @@ def acc_from_normal_imu(norm0,norm,acc,normal,center,start=[0,0,1],s_rot=np.arra
         t1t0 = t_v0_acc
         prob = np.random.random(1)
         prob = 0
-        print("prob",prob,sign*(teGG-C).dot(normal).evalf(subs={v:t_v0})<0,np.abs(t_v0-t3t0)>np.abs(t1t0 -t2t0)*1.5,(t1t0 == t2t0 and sign*(teGG-C).dot(normal).evalf(subs={v:t1t0})<0))
-        if (t1t0 == t2t0 and sign*(teGG-C).dot(normal).evalf(subs={v:t1t0})<0) or sign*(teGG-C).dot(normal).evalf(subs={v:t_v0})<0  or np.abs(t_v0-t3t0)>np.abs(t1t0 -t2t0)*1.5:
+        print("prob",prob,sign*(teGG-C).dot(normal).evalf(subs={v:(t1t0+t2t0)/2})<0,np.abs(t_v0-t3t0)>np.abs(t1t0 -t2t0)*1.5,(t1t0 == t2t0 and sign*(teGG-C).dot(normal).evalf(subs={v:t1t0})<0))
+        print("norms",(np.abs((teGG).dot(normal).evalf(subs={v:t_v0}))),(np.abs((C).dot(normal))))
+        if (t1t0 == t2t0 and sign*(teGG-C).dot(normal).evalf(subs={v:t1t0})<0) or sign*(teGG-C).dot(normal).evalf(subs={v:(t4t0+t2t0)/2})<0  or np.abs(t_v0-t3t0)>np.abs(t1t0 -t2t0)*1.5:
             print("case1",np.abs(t_v0-t3t0),np.abs(t1t0 -t2t0),sign*(teGG-C).dot(normal).evalf(subs={v:t_v0})<0)
             t1t0 = t_v0
             t1t0 = t_v0_acc
@@ -452,17 +453,20 @@ def acc_from_normal_imu(norm0,norm,acc,normal,center,start=[0,0,1],s_rot=np.arra
 
             
             t0 = t3t0
-        elif prob>0.95 or (np.abs(t_v0-t4t0)<np.abs(t_v0-t3t0)*gamma and np.abs((teGG-C).dot(normal).evalf(subs={v:t_v0})-(teGG-C).dot(normal).evalf(subs={v:t4t0}))<np.abs((teGG-C).dot(normal).evalf(subs={v:t_v0})-(teGG-C).dot(normal).evalf(subs={v:t3t0}))*gamma and sign*(teGG-C).dot(normal).evalf(subs={v:t_v0})>=0):
+        elif (np.abs(t_v0-t4t0)<np.abs(t_v0-t3t0)*gamma and np.abs((teGG-C).dot(normal).evalf(subs={v:t_v0})-(teGG-C).dot(normal).evalf(subs={v:t4t0}))<np.abs((teGG-C).dot(normal).evalf(subs={v:t_v0})-(teGG-C).dot(normal).evalf(subs={v:t3t0}))*gamma and sign*(teGG-C).dot(normal).evalf(subs={v:t_v0})>=0):
             print("case 2")
             t1t0=t4t0
+            plot(((teGG-C).dot(normal).subs(v,v+sym.Rational(float(t1t0)))),(v,-0.1,0.1),title="t1t0 "+str(t1t0))
+            plot(((teGG-C).dot(normal).subs(v,v+sym.Rational(float(t3t0)))),(v,-0.1,0.1),title="t1t0 "+str(t3t0))
             """plot(((teGG-C).dot(normal).subs(v,v+sym.Rational(float(t_v0_acc)))),(v,-0.1,0.1),title="t_v0_acc"+str(t_v0_acc))
             plot(((teGG-C).dot(normal).subs(v,v+sym.Rational(float(t_v0)))),(v,-0.1,0.1),title="t_v0 "+str(t_v0))
             plot(((teGG-C).dot(normal).subs(v,v+sym.Rational(float(t4t0)))),(v,-0.1,0.1),title="t1t0 "+str(t4t0))
             plot(((teGG-C).dot(normal).subs(v,v+sym.Rational(float(t2t0)))),(v,-0.1,0.1),title="t2t0 "+str(t2t0))
             plot(((teGG-C).dot(normal).subs(v,v+sym.Rational(float(t3t0)))),(v,-0.1,0.1),title="t3t0 "+str(t3t0))"""
-            #rot1= (SymExpRot2(FF,t1t0))
-            #irot1= (SymExpRot2(FF,-t1t0))
             corrected=True 
+        elif prob>0.95:
+            t1t0=t4t0
+                
     rot1= (SymExpRot2(FF,t1t0))
     irot1= (SymExpRot2(FF,-t1t0))
     
