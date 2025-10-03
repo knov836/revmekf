@@ -84,11 +84,13 @@ clf = RandomForestClassifier(
 )
 clf.fit(X_train_res, y_train_res)
 
-# 7️⃣ Prédictions and probabilités
-y_proba = clf.predict_proba(X_test)[:,1]
+# Predictions and probabilities
+"""y_proba = clf.predict_proba(X_test)[:,1]
 threshold = 0.5  
+y_pred = (y_proba >= threshold).astype(int)"""
+y_proba = clf.predict_proba(X_test)[:,1]
+threshold = 0.3  # plus bas pour détecter plus de 1
 y_pred = (y_proba >= threshold).astype(int)
-
 #Evaluation
 print("📊 Confusion matrix :")
 print(confusion_matrix(y_test, y_pred))
