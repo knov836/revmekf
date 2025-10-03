@@ -19,7 +19,7 @@ grav=1
 
 
 class KFilterDataFile:
-    def __init__(self, data,mode='GyroAccMag',g_bias = np.array([0,0,0],dtype=mpf),base_width=mpf(1.0),surf=np.array([-1,1,0],dtype=mpf),normal=np.array([]),gravity=np.array([])):
+    def __init__(self, data,mode='GyroAccMag',g_bias = np.array([0,0,0],dtype=mpf),base_width=mpf(1.0),surf=np.array([-1,1,0],dtype=mpf),normal=np.array([]),gravity=np.array([]),normals=np.array([])):
         gyro = np.array(data[:,4:7],dtype=mpf)#/180*np.pi
         acc = np.array(data[:,1:4],dtype=mpf)
         mag = np.array(data[:,7:10],dtype=mpf)
@@ -59,6 +59,17 @@ class KFilterDataFile:
         
         self.quat_calib = quat_calib/np.linalg.norm(quat_calib)
         
+        
+        perceived_gravity = -np.mean(self.acc[:self.c_size,:],axis=0)
+        self.pg_std = np.std(self.acc[:100,:].astype(float),axis=0)
+        n_perceived_gravity = perceived_gravity/np.linalg.norm(perceived_gravity)
+        qq = quat_ntom(n_perceived_gravity, np.array([0,0,1],dtype=mpf))
+        if len(gravity) == 0:
+            self.gravity = np.array(quat_rot([0,*perceived_gravity],qq))[1:4]#+0.01#-np.array([0,0,np.linalg.norm(self.pg_std)],dtype=mpf)/10
+        else:
+            self.gravity=gravity
+        
+        
         if len(self.normal)==0:
             self.normal = np.array(quat_rot([0,0,0,1],(self.quat_calib)))[1:4]
             normal = self.normal
@@ -94,7 +105,7 @@ class KFilterDataFile:
         self.alpha_mag = np.linalg.norm(l_rot_mag)*np.sign(np.dot(orth,l_rot_mag))
         assert(np.linalg.norm(l_rot_mag - self.alpha_mag*orth)<10**(-10))
         
-        self.mag = np.copy(self.omag(self.normal))
+        self.mag = np.copy(self.omag(self.gravity))
         self.neworient = self.new_orient()
             
         self.rotsurf = quat_ntom(np.array([0,0,1]),normal)
@@ -105,16 +116,10 @@ class KFilterDataFile:
         self.orient = np.copy(self.neworient)
         self.orient[0,:] = self.quat_calib
         
-        perceived_gravity = -np.mean(self.acc[:self.c_size,:],axis=0)
-        self.pg_std = np.std(self.acc[:100,:].astype(float),axis=0)
-        n_perceived_gravity = perceived_gravity/np.linalg.norm(perceived_gravity)
-        qq = quat_ntom(n_perceived_gravity, np.array([0,0,1],dtype=mpf))
-        if len(gravity) == 0:
-            self.gravity = np.array(quat_rot([0,*perceived_gravity],qq))[1:4]#+0.01#-np.array([0,0,np.linalg.norm(self.pg_std)],dtype=mpf)/10
-        else:
-            self.gravity=gravity
+        
         self.mag0 = np.array(quat_rot([0,*np.mean(self.mag[:300,:].astype(float),axis=0)], self.quat_calib))[1:4]
-        self.mag0 = np.array([0,1,0],dtype=mpf)
+        
+        #self.mag0 = np.array([0,1,0],dtype=mpf)
         
     def cmag(self,normal=None):
         cmag= np.zeros((self.c_size,3),dtype=mpf)
@@ -135,7 +140,7 @@ class KFilterDataFile:
             #print(m,new_m)
         
         return cmag
-    def omag(self,normal):
+    def omag(self,gravity):
         omag= np.zeros((self.size,3),dtype=mpf)
         for i in range(self.size):
             
@@ -143,10 +148,14 @@ class KFilterDataFile:
             if mp.norm(m)!=0:
                 m=m/mp.norm(m)
             omag[i,:] = m
-            #continue
+            continue
             if mp.norm(m)!=0:
                 a=self.acc[i,:]
-                a = a/np.linalg.norm(a)            
+                a = a/np.linalg.norm(a)
+                """a[2] = a[2] /np.linalg.norm(gravity)
+                alpha = np.sqrt(np.max(np.abs(1-a[2]**2),0))
+                a[0:2] = a[0:2]/np.linalg.norm(a[0:2])*alpha"""
+                
                 m=m/mp.norm(m)
                 adm = skewSymmetric(a)@m
                 adm = adm/mp.norm(adm)
@@ -193,7 +202,7 @@ class KFilterDataFile:
             #new_m = m
             M = np.array([-adm,new_m,a]).T
             #print("new_m",new_m,m)
-            #M = np.array([new_m,adm,a]).T
+            M = np.array([new_m,adm,a]).T
             new_orient[i,:] = normalize(quat_inv(RotToQuat(M)))
         return new_orient
     def new_orient(self):
