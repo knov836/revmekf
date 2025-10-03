@@ -6,8 +6,8 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset, random_split
 from sklearn.metrics import classification_report, confusion_matrix, roc_auc_score, f1_score
+from scipy.signal import savgol_filter
 
-# ====================== Chargement ======================
 files = glob.glob("corrections_windows_0.csv")
 df_list = [pd.read_csv(f) for f in files]
 df = pd.concat(df_list, ignore_index=True)
@@ -16,13 +16,61 @@ df.interpolate(method='linear', axis=0, inplace=True)
 df.fillna(method='bfill', inplace=True)
 df.fillna(method='ffill', inplace=True)
 
-# ====================== Préparation séquences ======================
+
+
+
 blocks = ["acc", "gyro", "mag"]
 axes = ["x", "y", "z"]
 timesteps = 40
 
 seq_features = [f"{b}_{a}_{i}" for b in blocks for a in axes for i in range(timesteps)]
-X = df[seq_features].values.reshape(len(df), timesteps, 9)
+#extra_feature_cols += [f"normal_{a}" for a in {"z"} for i in range(timesteps)]
+extra_features=[]
+for block in blocks:
+    #print([c for ax in axes for c in df.columns if c.startswith(f"normal_{ax}_") ])
+    normal = df[[f"normal_{ax}" for ax in axes]]
+    for axis in axes:
+        cols = [c for c in df.columns if c.startswith(f"{block}_{axis}_")]
+        print(df[cols])
+        print(cols)
+        smoothed_cols = savgol_filter(np.array(df[cols]), 5, 2)
+        df[f"s{block}_{axis}_mean"] = np.mean(savgol_filter(np.array(df[cols]), 20, 2),axis=1)
+        #feature_cols += cols
+        #df[f"{block}_{axis}_mean"]=0
+        for ind in [20]:
+            df[f"{block}_{axis}_deriv_{ind}"] = np.diff(smoothed_cols,axis=1)[:,ind]
+            df[f"{block}_{axis}_dderiv_{ind}"] = np.diff(np.diff(smoothed_cols,axis=1),axis=1)[:,ind]
+            #feature_cols += [f"{block}_{axis}_deriv_{ind}",f"{block}_{axis}_dderiv_{ind}"]
+            
+        df[f"{block}_{axis}_deriv_mean"] = np.mean(np.diff(smoothed_cols,axis=1)[:,10:30],axis=1)
+        df[f"{block}_{axis}_dderiv_mean"] = np.mean(np.diff(np.diff(smoothed_cols,axis=1),axis=1)[:,10:30],axis=1)
+        # Moyenne, std, min, max
+        df[f"{block}_{axis}_mean"] = df[cols].mean(axis=1)
+        df[f"{block}_{axis}_std"] = df[cols].std(axis=1)
+        df[f"{block}_{axis}_min"] = df[cols].min(axis=1)
+        df[f"{block}_{axis}_max"] = df[cols].max(axis=1)
+        """feature_cols += [f"{block}_{axis}_mean", f"{block}_{axis}_std",
+                         f"{block}_{axis}_min", f"{block}_{axis}_max"]
+        """
+        extra_features += [f"{block}_{axis}_std"]
+    # Norme of vector
+    df[f"{block}_norm"] = np.sqrt(df[[f"{block}_{ax}_mean" for ax in axes]].pow(2).sum(axis=1))
+    df[f"{block}_norm_crossnormal"] = np.sqrt((np.cross(normal,df[[f"{block}_{ax}_mean" for ax in axes]])**2).sum(axis=1))
+    
+    extra_features+= [f"{block}_norm_crossnormal"]
+
+#seq_features += [f"normal_{a}" for a in {"z"} for i in range(timesteps)]
+seq_features = seq_features+extra_features
+input_dim = 9+len(extra_features)
+#X = df[seq_features].values.reshape(len(df), timesteps, input_dim)
+
+X_seq = df[[f for f in seq_features if f not in extra_features]].values
+X_extra = df[extra_features].values  # shape = (n_samples, n_extra)
+
+X_extra_seq = np.repeat(X_extra[:, np.newaxis, :], timesteps, axis=1)
+
+X = np.concatenate([X_seq.reshape(len(df), timesteps, 9), X_extra_seq], axis=2)
+
 y = df["correction_applied"].values
 
 X_tensor = torch.tensor(X, dtype=torch.float32)
@@ -51,7 +99,6 @@ class LSTMClassifier(nn.Module):
         out = self.fc(out)
         return out
 
-input_dim = 9
 hidden_dim = 64
 num_layers = 2
 output_dim = 2
@@ -109,4 +156,4 @@ print(f"ROC-AUC : {roc_auc_score(y_true, y_proba):.3f}")
 
 # ====================== Sauvegarde modèle ======================
 torch.save(model.state_dict(), "rnn_model.pth")
-print("✅ Modèle sauvegardé dans rnn_model.pth")
+print("✅ Model saved in rnn_model.pth")

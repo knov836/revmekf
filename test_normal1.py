@@ -81,30 +81,12 @@ data_file = 'imu_data_sbg_plane_09121311.csv'
 #data_file = 'dataset_gps_mpu_left.csv'
 data_file = 'selected_data_vehicle1.csv'
 
-
-#data_file= 'imu_data_sbg_250630_2340_acconly.csv'
-#data_file = 'imu_data_rosbag.csv'
-#data_file = 'planar_movement_250625_1057.csv'
-#data_file = 'static_250625_2.csv'
-#data_file = 'static_260625.csv'
-
-#file_name = data_file.split('imu')[1]
-#mag_file = 'mag'+file_name
-
-#N = 10000
 data=pd.read_csv(data_file)
 
 
-'''leica_file = 'leica_data.csv'
-
-leica=pd.read_csv(leica_file)
-leica_values = leica.values
-time_leica = leica_values[:,0]/10**9'''
-
 #mmode = 'OdoAccPre'
 mmode = 'GyroAccMag'
-#mmode = 'GyroAccMag'
-#mmode = 'GyroAcc'
+
 
 if mmode == 'GyroAcc':
     Integration = IntegrationGyroAcc
@@ -119,25 +101,16 @@ if mmode == 'OdoAccPre':
     MEKF = MEKFOdoAccPre
     Rev = RevOdoAccPre
 
-#mag=pd.read_csv(mag_file, header=None)
-#print(data.head())
+
 n_start = 0
 n_end=4000
-n_end=n_start +10000
+n_end=n_start +3000
 cols = np.array([0,1,2,3,10,11,12,19,20,21])
 df = data.values[n_start:n_end,cols]
 
 acc = np.copy(df[:,1:4])
 mag = np.copy(df[:,7:10])
 
-"""df[:,1]=acc[:,1]
-df[:,2]=acc[:,0]
-df[:,3]=-acc[:,2]
-
-df[:,7]=mag[:,1]
-df[:,8]=mag[:,0]
-df[:,9]=-mag[:,2]
-"""
 fs = 50
 sos = butter(2, 24, fs=fs, output='sos')
 #smoothed = sosfiltfilt(sos, newset.acc)
@@ -154,37 +127,9 @@ smoothed = np.stack([
     sosfiltfilt(sos, df[:, 8]),
     sosfiltfilt(sos, df[:, 9]),
 ], axis=1)
-#df[:,1:10] = smoothed
-#df[:,7:10]=smoothed[:,6:9]
+
 df[:,4:7]=df[:,4:7]*np.pi/180
 
-'''smoothed = np.stack([
-    sosfiltfilt(sos, df[:, 1]),
-    sosfiltfilt(sos, df[:, 2]),
-    sosfiltfilt(sos, df[:, 3]),
-    sosfiltfilt(sos, df[:, 4]),
-    sosfiltfilt(sos, df[:, 5])
-], axis=1)
-df[:,1:6] = smoothed'''
-
-'''accx = df[:,4]
-accy = -df[:,3]
-accz = df[:,5]
-df[:,3:6] = np.vstack([accx,accy,accz]).T'''
-
-"""fig = plt.figure()
-ax = fig.add_axes([0,0,1,1])
-ax.plot(smoothed)
-ax.set_title("acc")
-"""
-#gyro = np.array(data.values[:,4:7],dtype=mpf)
-#g_bias = np.mean(gyro[:50,:],axis=0)
-#c_mag = mag.values[n_start:n_end,:]
-
-#df = data.values[n_start:n_end,:]
-#startleic = leica_values[n_start:n_end,3]
-#df[:,6] = startleic
-#df[:,0]=df[:,0]-df[0,0]
 time= np.array(df[:,0],dtype=mpf)#/10**9
 #time = time-2*time[0]+time[1]
 df[:,0]*=10**9
@@ -203,6 +148,34 @@ fig = plt.figure()
 ax = fig.add_axes([0,0,1,1])
 ax.plot(acc_smooth)
 ax.set_title('Acc smoothed')
+
+def intersection_line_from_planes(n1, d1, n2, d2):
+    """
+    Trouve la droite d'intersection de deux plans
+    n1, n2 : normales (vecteurs 3D)
+    d1, d2 : scalaires (termes constants des équations de plan)
+    Retourne : un point P sur la droite et un vecteur directeur v
+    """
+    n1 = np.array(n1, dtype=float)
+    n2 = np.array(n2, dtype=float)
+    
+    # direction = produit vectoriel
+    v = np.cross(n1, n2)
+    
+    if np.allclose(v, 0):
+        raise ValueError("Les deux plans sont parallèles ou confondus (pas de droite unique).")
+    
+    # Résolution du système : n1·X + d1 = 0, n2·X + d2 = 0
+    # On construit une matrice pour résoudre
+    A = np.array([n1, n2, v])  # système avec v comme 3e équation
+    b = -np.array([d1, d2, 0], dtype=float)
+    
+    # Résolution par moindres carrés (on force X à être solution)
+    P = np.linalg.lstsq(A, b, rcond=None)[0]
+    
+    return P, v
+
+import sympy as sp
 N = n_end-n_start
 normals = np.zeros((N,3))
 xaxis = np.array([1,0,0])
@@ -214,36 +187,91 @@ for i in range(0,N,1):
     if i<N-1-ss:
         #acc_mean = np.mean(df[i:ss+i,1:4],axis=0)
         acc_mean = np.mean(acc_smooth[i:ss+i,0:3],axis=0)
-        acc_mean[2] = acc_mean[2] /np.linalg.norm(gravity)
-        alpha = np.sqrt(np.max(np.abs(1-acc_mean[2]**2),0))
-        #acc_mean = acc_mean/np.linalg.norm(acc_mean)
-        #print("alpha",alpha,1-acc_mean[2]**2)
-        acc_mean[0:2] = acc_mean[0:2]/np.linalg.norm(acc_mean[0:2])*alpha
-        #acc_mean = acc_mean/np.linalg.norm(acc_mean)
-        acc_angle = np.arctan2(acc_mean[0],acc_mean[1])#+np.arctan2(1,0)
-        
-        acc_reoriented = np.array(quat_rot([0,*acc_mean],ExpQua(zaxis*acc_angle)))[1:4]
-        normal0 = np.array(quat_rot([0,0,0,1],(quat_ntom(acc_reoriented,np.array([0,0,1])))))[1:4]
-        
-        qq_final0 = quat_mult((quat_ntom(np.array([0,0,1]),normal0)),(ExpQua(zaxis*acc_angle)))
-        #print(normal0,np.linalg.norm(acc_mean))
-        
+        a = np.copy(acc_mean)
+        a=a/np.linalg.norm(a)
         mag_mean = np.mean(df[i:ss+i,7:10],axis=0)
         mag_mean = mag_mean /np.linalg.norm(mag_mean)
         
-        a = acc_mean
-        a = a/mp.norm(a)
-        m = mag_mean
-        m = m/mp.norm(m)
-        adm = skewSymmetric(a)@m
-        adm = adm/mp.norm(adm)
-        new_m = skewSymmetric(adm)@a
-        M = np.array([-skewSymmetric(a)@m,m,a]).T
-        #M = np.array([m,skewSymmetric(a)@m,a]).T
-        #M = np.array([new_m,adm,a]).T
-        quat = normalize(quat_inv(RotToQuat(M)))
-        #print("result",np.array(quat_rot([0,0,0,1], quat))[1:4])
-        normal = np.array(quat_rot([0,0,0,1], quat))[1:4]
+        acc_mean = acc_mean /np.linalg.norm(gravity)
+        alpha = np.sqrt(np.max(np.abs(1-acc_mean[2]**2),0))
+        
+        angle_alpha= np.arccos(alpha)
+        
+        """angle_beta = np.pi/2-angle_alpha
+        beta = np.cos(angle_beta)
+        angle_gamma = np.arccos(np.sign(mag_mean[2])*np.max(np.abs(mag_mean[2]),np.abs(beta))/beta)"""
+        
+        qq1 = quat_ntom( np.array([1,0,0]),mag_mean)
+        rotated_z = np.array(quat_rot(np.array([0,0,0,1]),(qq1)))[1:4]
+        
+        
+        axis1 = mag_mean
+        
+        pacc = np.dot(rotated_z,axis1)*axis1
+        oacc = rotated_z-pacc
+        #normalized_oacc = oacc /np.linalg.norm(oacc)
+        
+        paz = rotated_z[2] - pacc[2]
+        
+        #beta = np.arcsin(np.linalg.norm(paz)/np.linalg.norm(rotated_z))
+        #target_acc = acc_mean[2]/np.sin(beta)
+        n1 =axis1
+        n2 = zaxis
+        d1 = -np.dot(rotated_z,axis1)
+        d2 = -acc_mean[2]
+        point, direction = intersection_line_from_planes(n1, d1, n2, d2)
+        
+        oacc= oacc/np.linalg.norm(oacc)
+        direction = direction/np.linalg.norm(direction)
+        t = sp.Symbol('t', real=True)
+        P = sp.Matrix(point)
+        d = sp.Matrix(direction)
+        A = sp.Matrix(pacc)
+        
+        X_t = P + t * d
+        R = np.linalg.norm(oacc)
+        print("rotated",rotated_z,axis1)
+        eq = sp.N((X_t - A).dot(X_t - A)-R**2,40)
+        #eq = sp.Eq((X_t - A).dot(X_t - A), R**2)
+        #solutions= sp.solve(sp.diff(eq),t)
+        sol0 = sp.nsolve(sp.diff(eq),0)
+        sol1 = -sol0
+        solutions=[sol0,sol1]
+        points = [np.array(X_t.subs(t, sol)).flatten() for sol in solutions]
+        print(P,d,A)
+        print(points)
+        print("test vectors")
+        print(np.dot(point,n1)+d1)
+        print(np.dot(point,n2)+d2)
+        ttheta= 0
+        for p in points:
+            dd = p-pacc
+            dd = dd/np.linalg.norm(dd.astype(float))*np.linalg.norm(oacc.astype(float))
+            print("oacc,dd",oacc,dd,np.dot(oacc,dd),np.linalg.norm(np.array(dd).astype(float)))
+            theta0 = np.arccos(np.sign(np.dot(oacc.astype(float),dd.astype(float)))*np.min([np.abs(np.dot(oacc.astype(float),dd.astype(float))),1]))
+            theta1 = -theta0
+            print(theta0,theta1)
+            v0 = np.array(quat_rot([0,*oacc],ExpQua(theta0*axis1)))[1:4]
+            v1 = np.array(quat_rot([0,*oacc],ExpQua(theta1*axis1)))[1:4]
+            if (np.abs(np.dot(v0,np.array(dd).astype(float))))<(np.abs(np.dot(v1,np.array(dd).astype(float)))):
+                print("1")
+                ttheta = theta1
+            else:
+                print("0")
+                ttheta = theta0
+            print("rotation",np.array(quat_rot([0,*oacc],ExpQua(theta0*axis1)))[1:4],dd)
+            print("rotation",np.array(quat_rot([0,*oacc],ExpQua(theta1*axis1)))[1:4],dd)
+            print("thetas")
+            
+        
+        #ge = np.cross(axis,normalized_oacc)
+        print("vector",pacc,axis1,oacc,direction,np.dot(oacc,direction))
+        
+        
+        qq2 = quat_mult(ExpQua(ttheta*axis1), qq1)
+        print("rotation",np.array(quat_rot([0,0,0,1],qq2))[1:4],a)
+        normal = np.array(quat_rot([0,0,0,1], quat_inv(qq2)))[1:4]
+        print("normal",normal)
     normals[i,:] = normal/np.linalg.norm(normal)
 
 
@@ -255,80 +283,22 @@ g_bias= 10**(-5)
 g_noise=10**(-10)
 a_noise=10**(-4)
 angle = int(N/2)
-#newset = KFilterData(N,mpf(1.),alpha=angle) 
-"""normal_vertical = np.array([mpf('0.004255930241527828857604722545936216541889906'), mpf('-0.003213834762718947045532726200938664393319883'), mpf('0.9999857790608310386391832597563166216076963')],dtype=mpf)
-normal_slope = np.array([mpf('-0.2048232814136505330643787156746757575889839'), mpf('0.1392655006235043046926350641747759506549044'), mpf('0.9688408247627828168544761849522810335526499')],dtype=mpf)
-qq_vertical = np.array([mpf('0.0005238042742003194250313644461650544515406238'), mpf('0.952500508020517862402287684560623411714904'), mpf('-0.3045310020704403439306087292097119761367074'), mpf('0.001837560260556293121729518756430819274065758')],dtype=mpf)
-qq_slope = np.array([mpf('0.03530534031735835920108235692000486469505786'), mpf('0.9572305149107438470437330713031977439517386'), mpf('-0.2607293604697206371253035678210890253121073'), mpf('0.1203473093086762345391241175000634127777685')],dtype=mpf)
-q_var = quat_mult(qq_slope,quat_inv(qq_vertical))
-qq = quat_ntom(normal_vertical, np.array([0,0,1]))
-slope = np.array(quat_rot([0,0,0,1],q_var))[1:4]"""
 
-#best_cand = np.array([ 5.10742705e-03,  7.13755855e-05, -9.98163928e-01],dtype=mpf)
-
-#newset = KFilterDataFile(df,mode=mmode,surf=np.array([1,0,0]),normal=np.array([0,0,-1]))#,normal=slope)#,normal=np.array([0,0,1]))
-#newset = KFilterData(N,mpf(10)/mpf(1),g_bias= 10**(-2),g_noise=10**(-10),a_noise=10**(-4)) 
 orient = newset.orient
 pos_earth = newset.pos_earth
 
-q0,q1,r0,r1 = 10**(-5), 10**(-5), 10**(8), 10**(-2) 
-q0,q1,r0,r1 = 10**(-4), 10**(-4), 10**(-2), 10**(-1)
-q0,q1,r0,r1 = 10**(-4), 10**(-4), 10**(-2), 10**(-1)
 q0,q1,r0,r1 = 10**(-2), 10**(-2), 10**(0), 10**(0)
-#normal = np.array([-1,1,0],dtype=mpf)10
 normal = newset.normal
 
 
 gravity = newset.gravity
-for i in range(10):
-    acc_mean = np.mean(df[i:100+i,1:4],axis=0)
-    acc_mean[2] = acc_mean[2] /np.linalg.norm(gravity)
-    alpha = np.sqrt(1-acc_mean[2]**2)
-    #acc_mean = acc_mean/np.linalg.norm(acc_mean)
-    
-    acc_mean[0:2] = acc_mean[0:2]/np.linalg.norm(acc_mean[0:2])*alpha
-    #acc_mean = acc_mean/np.linalg.norm(acc_mean)
-    acc_angle = np.arctan2(acc_mean[0],acc_mean[1])#+np.arctan2(1,0)
-    
-    acc_reoriented = np.array(quat_rot([0,*acc_mean],ExpQua(zaxis*acc_angle)))[1:4]
-    normal0 = np.array(quat_rot([0,0,0,1],(quat_ntom(acc_reoriented,np.array([0,0,1])))))[1:4]
-    
-    qq_final0 = quat_mult((quat_ntom(np.array([0,0,1]),normal0)),(ExpQua(zaxis*acc_angle)))
-    #print(normal0,np.linalg.norm(acc_mean))
-    
-    mag_mean = np.mean(df[i:100+i,7:10],axis=0)
-    mag_mean = mag_mean /np.linalg.norm(mag_mean)
-    
-    a = acc_mean
-    a = a/mp.norm(a)
-    m = mag_mean
-    m = m/mp.norm(m)
-    M = np.array([-skewSymmetric(a)@m,m,a]).T
-    quat = normalize(quat_inv(RotToQuat(M)))
-    #print(np.array(quat_rot([0,0,0,1], quat))[1:4])
-    """
-    mag_angle = np.arctan2(mag_mean[0],mag_mean[1])#+np.arctan2(1,0)
-    
-    mag_reoriented = np.array(quat_rot([0,*mag_mean],ExpQua(zaxis*mag_angle)))[1:4]
-    normal1_0 = np.array(quat_rot([0,0,0,1],(quat_ntom(mag_reoriented,np.array([1,0,0])))))[1:4]
-    normal1 = np.array([0,0,normal1_0[2]])
-    normal1[0] = np.sqrt(1-normal1[2]**2)
-    
-    qq_final1 = quat_mult((quat_ntom(np.array([0,0,1]),normal1)),(ExpQua(zaxis*mag_angle)))
-    print(normal0,normal1,normal1_0)
-    print(mag_reoriented,mag_mean)
-    print(acc_angle,mag_angle)"""
-    
-    
+
 
 
 proj_func = correct_proj2
 #proj_func = None
 Solv0 = SolverFilterPlan(Integration,q0,q1,r0,r1,normal,newset,start=np.array(newset.quat_calib,dtype=mpf),proj_fun=proj_func)
 Solv1 = SolverFilterPlan(MEKF,q0,q1,r0,r1,normal,newset,start=np.array(newset.quat_calib,dtype=mpf),proj_fun=proj_func,heuristic=True)#,grav=newset.grav)
-#q0,q1,r0,r1 = 10**(-2), 10**(-2), 10**(-1), 10**(-1)
-#q0,q1,r0,r1 = 10**(-2), 10**(-2), 10**(0), 10**(-1)
-
 Solv2 = SolverFilterPlan(Rev,q0,q1,r0,r1,normal,newset,start=np.array(newset.quat_calib,dtype=mpf),proj_fun=proj_func,heuristic=True)#,grav=newset.grav)
 
 #Solv2 = SolverFilterPlan(PredictFilterPlan,q0,q1,r0,r1,normal,None)   
@@ -398,27 +368,15 @@ normals = np.copy(y_smooth)
 for i in range(0,N-1,1):
     
     nn+=1
-    normal = newset.normal
+    normal = normals[i+1,:]
     print("iteration",i)
-    #Solv0.update_noarg(time=time[i+1])
-    #Solv1.update_noarg(time=time[i+1])
-    #Solv2.update_noarg(time=time[i+1])
     Solv0.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], normal)
     Solv1.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], normal)
-
     Solv2.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], normal)
-    #print(Solv0.KFilter.speed,Solv1.KFilter.speed)
     correction_applied[i] = Solv2.KFilter.corrected
     angle_applied[i+1] =angle_applied[i]+Solv2.KFilter.angle
-    
-    
 
     if i%10 ==0 and i>0:
-        """fig = plt.figure()
-        ax = fig.add_axes([0,0,1,1])
-        ax.plot(Solv1.position[i-10:i,:])
-        ax.set_title('position1')"""
-    
         fig = plt.figure()
         ax = fig.add_axes([0,0,1,1])
         ax.plot([np.linalg.norm(Solv0.position[j,:]) for j in range(i+1)])
@@ -641,9 +599,6 @@ for p1 in range(0,N,10):
         "sample": int(p0)+n_start,
         "time": float(time0[p0])+time[0],
         "correction_applied": p0 in np.argwhere(correction_applied).flatten(),
-        "normal_x" : float(newset.normal[0]),
-        "normal_y" : float(newset.normal[1]),
-        "normal_z" : float(newset.normal[2])
     }
 
     for k, j in enumerate(indices):
@@ -668,9 +623,19 @@ for p1 in range(0,N,10):
         row[f"mag_y_{k}"] = newset.mag[j,1]
     for k, j in enumerate(indices):
         row[f"mag_z_{k}"] = newset.mag[j,2]
+        
+        
+    for k, j in enumerate(indices):
+        row[f"normal_x_{k}"] = normals[j,0]
+    for k, j in enumerate(indices):
+        row[f"normal_y_{k}"] = normals[j,1]
+    for k, j in enumerate(indices):
+        row[f"normal_z_{k}"] = normals[j,2]
 
 
     rows.append(row)
 df = pd.DataFrame(rows)
 
-df.to_csv("corrections_windows_"+ str(n_start)+".csv", index=False)
+
+timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+df.to_csv(f"corrections_windows_{timestamp}"+ str(n_start)+".csv", index=False)

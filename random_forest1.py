@@ -7,7 +7,7 @@ from sklearn.metrics import classification_report, confusion_matrix, roc_auc_sco
 from imblearn.over_sampling import RandomOverSampler
 from scipy.signal import savgol_filter
 from matplotlib.markers import MarkerStyle
-
+import matplotlib.pyplot as plt
 files = glob.glob("corrections_windows_0.csv")
 df_list = [pd.read_csv(f) for f in files]
 df = pd.concat(df_list, ignore_index=True)
@@ -19,8 +19,10 @@ df.fillna(method='ffill', inplace=True)
 blocks = ["acc", "gyro", "mag"]
 axes = ["x", "y", "z"]
 feature_cols = []
-
+#feature_cols +=[f"normal_{ax}" for ax in axes]
 for block in blocks:
+    #print([c for ax in axes for c in df.columns if c.startswith(f"normal_{ax}_") ])
+    normal = df[[f"normal_{ax}" for ax in axes]]
     
     for axis in axes:
         cols = [c for c in df.columns if c.startswith(f"{block}_{axis}_")]
@@ -49,8 +51,9 @@ for block in blocks:
         feature_cols += [f"{block}_{axis}_std"]
     # Norme of vector
     df[f"{block}_norm"] = np.sqrt(df[[f"{block}_{ax}_mean" for ax in axes]].pow(2).sum(axis=1))
+    df[f"{block}_norm_crossnormal"] = np.sqrt((np.cross(normal,df[[f"{block}_{ax}_mean" for ax in axes]])**2).sum(axis=1))
     
-    feature_cols.append(f"{block}_norm")
+    feature_cols+= [f"{block}_norm",f"{block}_norm_crossnormal"]
     
     # Differences between axes
     df[f"{block}_xy_diff"] = df[f"{block}_x_mean"] - df[f"{block}_y_mean"]
@@ -61,8 +64,8 @@ for block in blocks:
 df[f"sacc_norm_xy"] = np.sqrt(df[[f"sacc_{ax}_mean" for ax in ["x","y"]]].pow(2).sum(axis=1))
 feature_cols.append(f"sacc_norm_xy")
 
-df[f"smag_norm_xy"] = np.sqrt(df[[f"smag_{ax}_mean" for ax in ["x","y"]]].pow(2).sum(axis=1))
-feature_cols.append(f"smag_norm_xy")
+"""df[f"smag_norm_xy"] = np.sqrt(df[[f"smag_{ax}_mean" for ax in ["x","y"]]].pow(2).sum(axis=1))
+feature_cols.append(f"smag_norm_xy")"""
 #train/test
 X = df[feature_cols]
 y = df["correction_applied"]
@@ -100,7 +103,7 @@ roc_auc = roc_auc_score(y_test, y_proba)
 print(f"\n📊 ROC-AUC : {roc_auc:.3f}")
 
 #Importance of features
-import matplotlib.pyplot as plt
+
 
 importances = clf.feature_importances_
 feat_imp = pd.DataFrame({'feature': feature_cols, 'importance': importances})

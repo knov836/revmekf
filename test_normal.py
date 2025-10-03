@@ -672,5 +672,5 @@ for p1 in range(0,N,10):
 
     rows.append(row)
 df = pd.DataFrame(rows)
-
-df.to_csv("corrections_windows_"+ str(n_start)+".csv", index=False)
+timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+df.to_csv(f"corrections_windows_{timestamp}"+ str(n_start)+".csv", index=False)

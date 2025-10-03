@@ -19,20 +19,66 @@ df.fillna(method='bfill', inplace=True)
 df.fillna(method='ffill', inplace=True)
 
 
-blocks = ["acc", "gyro", "mag"]
+blocks = ["acc", "gyro", "mag","normal"]
 axes = ["x", "y", "z"]
 timesteps = 40  
 
 seq_features = []
+extra_features=[]
 for block in blocks:
+    if block != "normal":
+        for axis in axes:
+            seq_features += [f"{block}_{axis}_{i}" for i in range(timesteps)]
+    else:
+        extra_features += [f"{block}_{axis}"]
+
+
+for block in blocks:
+    #print([c for ax in axes for c in df.columns if c.startswith(f"normal_{ax}_") ])
+    if block == "normal":
+        continue
+    normal = df[[f"normal_{ax}" for ax in axes]]
     for axis in axes:
-        seq_features += [f"{block}_{axis}_{i}" for i in range(timesteps)]
+        cols = [c for c in df.columns if c.startswith(f"{block}_{axis}_")]
+        print(df[cols])
+        print(cols)
+        smoothed_cols = savgol_filter(np.array(df[cols]), 5, 2)
+        df[f"s{block}_{axis}_mean"] = np.mean(savgol_filter(np.array(df[cols]), 20, 2),axis=1)
+        #feature_cols += cols
+        #df[f"{block}_{axis}_mean"]=0
+        for ind in [20]:
+            df[f"{block}_{axis}_deriv_{ind}"] = np.diff(smoothed_cols,axis=1)[:,ind]
+            df[f"{block}_{axis}_dderiv_{ind}"] = np.diff(np.diff(smoothed_cols,axis=1),axis=1)[:,ind]
+            #feature_cols += [f"{block}_{axis}_deriv_{ind}",f"{block}_{axis}_dderiv_{ind}"]
+            
+        df[f"{block}_{axis}_deriv_mean"] = np.mean(np.diff(smoothed_cols,axis=1)[:,10:30],axis=1)
+        df[f"{block}_{axis}_dderiv_mean"] = np.mean(np.diff(np.diff(smoothed_cols,axis=1),axis=1)[:,10:30],axis=1)
+        # Moyenne, std, min, max
+        df[f"{block}_{axis}_mean"] = df[cols].mean(axis=1)
+        df[f"{block}_{axis}_std"] = df[cols].std(axis=1)
+        df[f"{block}_{axis}_min"] = df[cols].min(axis=1)
+        df[f"{block}_{axis}_max"] = df[cols].max(axis=1)
+        """feature_cols += [f"{block}_{axis}_mean", f"{block}_{axis}_std",
+                         f"{block}_{axis}_min", f"{block}_{axis}_max"]
+        """
+        extra_features += [f"{block}_{axis}_std"]
+    # Norme of vector
+    df[f"{block}_norm"] = np.sqrt(df[[f"{block}_{ax}_mean" for ax in axes]].pow(2).sum(axis=1))
+    df[f"{block}_norm_crossnormal"] = np.sqrt((np.cross(normal,df[[f"{block}_{ax}_mean" for ax in axes]])**2).sum(axis=1))
+    
+    extra_features+= [f"{block}_norm_crossnormal"]
 
-X = df[seq_features].values
-y = df["correction_applied"].values
+#seq_features += [f"normal_{a}" for a in {"z"} for i in range(timesteps)]
+seq_features = seq_features+extra_features
+input_dim = 9+len(extra_features)
+#X = df[seq_features].values.reshape(len(df), timesteps, input_dim)
 
-# features_par_timestep = 9 (acc+gyro+mag in xyz)
-X = X.reshape(len(df), timesteps, 9)
+X_seq = df[[f for f in seq_features if f not in extra_features]].values
+X_extra = df[extra_features].values  # shape = (n_samples, n_extra)
+
+X_extra_seq = np.repeat(X_extra[:, np.newaxis, :], timesteps, axis=1)
+
+X = np.concatenate([X_seq.reshape(len(df), timesteps, 9), X_extra_seq], axis=2)
 
 X_tensor = torch.tensor(X, dtype=torch.float32)
 y_tensor = torch.tensor(y, dtype=torch.long)
@@ -50,7 +96,7 @@ test_loader = DataLoader(test_dataset, batch_size=32)
 class LSTMClassifier(nn.Module):
     def __init__(self, input_dim, hidden_dim, num_layers, output_dim):
         super(LSTMClassifier, self).__init__()
-        self.lstm = nn.LSTM(input_dim, hidden_dim, num_layers, batch_first=True)
+        self.lstm = nn.LSTM(input_dim, hidden_dim, num_layers, batch_first=True, dropout=0.3)
         self.dropout = nn.Dropout(0.3)
         self.fc = nn.Linear(hidden_dim, output_dim)
 
@@ -61,9 +107,9 @@ class LSTMClassifier(nn.Module):
         out = self.fc(out)
         return out
 
-input_dim = 9       # acc/gyro/mag (x,y,z)
-hidden_dim = 64
-num_layers = 2
+#input_dim = 9       # acc/gyro/mag (x,y,z)
+hidden_dim = 128
+num_layers = 3
 output_dim = 2      # binary: correction_applied yes/no
 
 model = LSTMClassifier(input_dim, hidden_dim, num_layers, output_dim)
@@ -112,6 +158,6 @@ print(classification_report(y_true, y_pred))
 print(f"ROC-AUC : {roc_auc_score(y_true, y_proba):.3f}")
 
 
-torch.save(model.state_dict(), "rnn_model.pth")
-print("✅ Modèle sauvegardé dans rnn_model.pth")
+torch.save(model.state_dict(), "lstm_model.pth")
+print("✅ Model saved in lstm_model.pth")
 

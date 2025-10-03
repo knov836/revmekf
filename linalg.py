@@ -457,7 +457,7 @@ def acc_from_normal_imu(norm0,norm,acc,normal,center,start=[0,0,1],s_rot=np.arra
             print("case 2")
             t1t0=t4t0
             plot(((teGG-C).dot(normal).subs(v,v+sym.Rational(float(t1t0)))),(v,-0.1,0.1),title="t1t0 "+str(t1t0))
-            plot(((teGG-C).dot(normal).subs(v,v+sym.Rational(float(t3t0)))),(v,-0.1,0.1),title="t1t0 "+str(t3t0))
+            plot(((teGG-C).dot(normal).subs(v,v+sym.Rational(float(t3t0)))),(v,-0.1,0.1),title="t3t0 "+str(t3t0))
             """plot(((teGG-C).dot(normal).subs(v,v+sym.Rational(float(t_v0_acc)))),(v,-0.1,0.1),title="t_v0_acc"+str(t_v0_acc))
             plot(((teGG-C).dot(normal).subs(v,v+sym.Rational(float(t_v0)))),(v,-0.1,0.1),title="t_v0 "+str(t_v0))
             plot(((teGG-C).dot(normal).subs(v,v+sym.Rational(float(t4t0)))),(v,-0.1,0.1),title="t1t0 "+str(t4t0))

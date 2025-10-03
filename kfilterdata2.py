@@ -119,7 +119,7 @@ class KFilterDataFile:
         
         self.mag0 = np.array(quat_rot([0,*np.mean(self.mag[:300,:].astype(float),axis=0)], self.quat_calib))[1:4]
         
-        #self.mag0 = np.array([0,1,0],dtype=mpf)
+        #self.mag0 = np.array([1,0,0],dtype=mpf)
         
     def cmag(self,normal=None):
         cmag= np.zeros((self.c_size,3),dtype=mpf)
