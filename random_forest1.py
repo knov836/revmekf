@@ -110,14 +110,14 @@ plt.figure(figsize=(10,6))
 plt.barh(feat_imp['feature'].head(20), feat_imp['importance'].head(20))
 plt.gca().invert_yaxis()
 plt.xlabel("Importance")
-plt.title("Top 20 features pour prédire correction_applied")
+plt.title("Top 20 features to predict correction_applied")
 plt.show()
 
 
 sample = df[df["correction_applied"] == 1].iloc[10]
 
 top_features = feat_imp.head(10)['feature'].tolist()  # top 10 features
-print("Top features pour ce sample :")
+print("Top features for this sample :")
 for f in top_features:
     print(f"{f}: {sample[f]}")
     
