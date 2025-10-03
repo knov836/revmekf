@@ -104,7 +104,7 @@ if mmode == 'OdoAccPre':
 
 n_start = 0
 n_end=4000
-n_end=n_start +3000
+n_end=n_start +2000
 cols = np.array([0,1,2,3,10,11,12,19,20,21])
 df = data.values[n_start:n_end,cols]
 
@@ -219,6 +219,7 @@ for i in range(0,N,1):
         n2 = zaxis
         d1 = -np.dot(rotated_z,axis1)
         d2 = -acc_mean[2]
+        print(n1,n2,d1,d2)
         point, direction = intersection_line_from_planes(n1, d1, n2, d2)
         
         oacc= oacc/np.linalg.norm(oacc)
@@ -236,6 +237,7 @@ for i in range(0,N,1):
         #solutions= sp.solve(sp.diff(eq),t)
         sol0 = sp.nsolve(sp.diff(eq),0)
         sol1 = -sol0
+        
         solutions=[sol0,sol1]
         points = [np.array(X_t.subs(t, sol)).flatten() for sol in solutions]
         print(P,d,A)
@@ -243,8 +245,9 @@ for i in range(0,N,1):
         print("test vectors")
         print(np.dot(point,n1)+d1)
         print(np.dot(point,n2)+d2)
-        ttheta= 0
-        for p in points:
+        tthetas= np.zeros(len(points))
+        for k in range(len(points)):
+            p = points[k]
             dd = p-pacc
             dd = dd/np.linalg.norm(dd.astype(float))*np.linalg.norm(oacc.astype(float))
             print("oacc,dd",oacc,dd,np.dot(oacc,dd),np.linalg.norm(np.array(dd).astype(float)))
@@ -255,10 +258,10 @@ for i in range(0,N,1):
             v1 = np.array(quat_rot([0,*oacc],ExpQua(theta1*axis1)))[1:4]
             if (np.abs(np.dot(v0,np.array(dd).astype(float))))<(np.abs(np.dot(v1,np.array(dd).astype(float)))):
                 print("1")
-                ttheta = theta1
+                tthetas[k] = theta1
             else:
                 print("0")
-                ttheta = theta0
+                tthetas[k] = theta0
             print("rotation",np.array(quat_rot([0,*oacc],ExpQua(theta0*axis1)))[1:4],dd)
             print("rotation",np.array(quat_rot([0,*oacc],ExpQua(theta1*axis1)))[1:4],dd)
             print("thetas")
@@ -266,12 +269,22 @@ for i in range(0,N,1):
         
         #ge = np.cross(axis,normalized_oacc)
         print("vector",pacc,axis1,oacc,direction,np.dot(oacc,direction))
-        
+        ttheta = 0
+        theta0 = tthetas[0]
+        theta1 = tthetas[1]
+        v0 = np.array(quat_rot([0,*oacc],ExpQua(theta0*axis1)))[1:4]
+        v1 = np.array(quat_rot([0,*oacc],ExpQua(theta1*axis1)))[1:4]
+        print("cmopa",v0,v1,a)
+        if (np.abs(np.dot(v0,np.array(a).astype(float))))<(np.abs(np.dot(v1,np.array(a).astype(float)))):
+            ttheta = theta1
+        else:
+            ttheta = theta0
+            
         
         qq2 = quat_mult(ExpQua(ttheta*axis1), qq1)
         print("rotation",np.array(quat_rot([0,0,0,1],qq2))[1:4],a)
         normal = np.array(quat_rot([0,0,0,1], quat_inv(qq2)))[1:4]
-        print("normal",normal)
+        print("normal",normal,sol0==sol1,sol1-sol0)
     normals[i,:] = normal/np.linalg.norm(normal)
 
 
@@ -636,6 +649,6 @@ for p1 in range(0,N,10):
     rows.append(row)
 df = pd.DataFrame(rows)
 
-
+from datetime import datetime
 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 df.to_csv(f"corrections_windows_{timestamp}"+ str(n_start)+".csv", index=False)

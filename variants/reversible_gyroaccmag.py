@@ -45,10 +45,14 @@ class PredictFilter(Filter):
         logrot = log_q(self.Quaternion)
         
         nMagnetometer = np.array(quat_rot([0,*Magnetometer],self.Quaternion))[1:4]
-        nAccelerometer = np.array(quat_rot([0,*Accelerometer],self.Quaternion))[1:4]
+        
+        acc= np.copy(Accelerometer)
+        acc[2] = normal[2]*np.linalg.norm(self.gravity)
+        print(acc[2],Accelerometer[2],normal)
+        #nAccelerometer = np.array(quat_rot([0,*acc],self.Quaternion))[1:4]
         
         nMagnetometer = Magnetometer
-        nAccelerometer = Accelerometer
+        nAccelerometer = acc
         
         
         mm0 = nMagnetometer
@@ -65,9 +69,8 @@ class PredictFilter(Filter):
         qq = quat_mult(self.Quaternion,quat_inv(quat))
         logrot1 = log_q(np.array(qq))
         #logrot1 = np.zeros(3)
+        
         acc1,rot1,irot1,acc2,rot2,irot2,acc3,rot3,irot3,corrected,angle_acc= acc_from_normal_imu(np.array(quat_rot([0,*np.array(nAxis,dtype=mpf)],quat))[1:4],np.array([0,1,0],dtype=mpf) , np.array(quat_rot([0,*(nAccelerometer*(self.dt**2))],quat))[1:4], normal, self.surf_center,start = logrot1,heuristic=self.heuristic)
-        print("self surf center",self.surf_center)
-        print("acc",np.array(quat_rot([0,*(nAccelerometer*(self.dt**2))],quat))[1:4])
         if corrected:
             self.corrected=True
             #print(angle_acc)
