@@ -104,7 +104,7 @@ if mmode == 'OdoAccPre':
 
 n_start = 0
 n_end=4000
-n_end=n_start +2000
+n_end=n_start +1000
 cols = np.array([0,1,2,3,10,11,12,19,20,21])
 df = data.values[n_start:n_end,cols]
 
@@ -178,10 +178,35 @@ def intersection_line_from_planes(n1, d1, n2, d2):
 import sympy as sp
 N = n_end-n_start
 normals = np.zeros((N,3))
+std_acc_zs = np.zeros(N)
 xaxis = np.array([1,0,0])
 yaxis = np.array([0,1,0])
 zaxis = np.array([0,0,1])
 gravity = [0,0,np.mean(np.linalg.norm(acc_smooth[:150,:],axis=1))]
+
+def kalman_filter_1d(z, Q=1e-5, R=0.01):
+    n = len(z)
+    x_hat = np.zeros(n)     
+    P = np.zeros(n)         
+    x_hat[0] = z[0]         
+    P[0] = 1.0              
+
+    for k in range(1, n):
+        # ---- Prediction ----
+        x_pred = x_hat[k-1]
+        P_pred = P[k-1] + Q
+
+        # ---- Mise à jour ----
+        K = P_pred / (P_pred + R)          # gain de Kalman
+        x_hat[k] = x_pred + K * (z[k] - x_pred)
+        P[k] = (1 - K) * P_pred
+
+    return x_hat
+
+acc_z = newset.acc[:,2]
+s_acc_z = kalman_filter_1d(acc_z,10**(-3),1)
+newset.acc[:,2] = s_acc_z
+
 for i in range(0,N,1):
     ss = 500
     if i<N-1-ss:
@@ -240,17 +265,14 @@ for i in range(0,N,1):
         
         solutions=[sol0,sol1]
         points = [np.array(X_t.subs(t, sol)).flatten() for sol in solutions]
-        print(P,d,A)
-        print(points)
-        print("test vectors")
-        print(np.dot(point,n1)+d1)
-        print(np.dot(point,n2)+d2)
+        #print(np.dot(point,n1)+d1)
+        #print(np.dot(point,n2)+d2)
         tthetas= np.zeros(len(points))
         for k in range(len(points)):
             p = points[k]
             dd = p-pacc
             dd = dd/np.linalg.norm(dd.astype(float))*np.linalg.norm(oacc.astype(float))
-            print("oacc,dd",oacc,dd,np.dot(oacc,dd),np.linalg.norm(np.array(dd).astype(float)))
+            #print("oacc,dd",oacc,dd,np.dot(oacc,dd),np.linalg.norm(np.array(dd).astype(float)))
             theta0 = np.arccos(np.sign(np.dot(oacc.astype(float),dd.astype(float)))*np.min([np.abs(np.dot(oacc.astype(float),dd.astype(float))),1]))
             theta1 = -theta0
             print(theta0,theta1)
@@ -262,29 +284,31 @@ for i in range(0,N,1):
             else:
                 print("0")
                 tthetas[k] = theta0
-            print("rotation",np.array(quat_rot([0,*oacc],ExpQua(theta0*axis1)))[1:4],dd)
-            print("rotation",np.array(quat_rot([0,*oacc],ExpQua(theta1*axis1)))[1:4],dd)
-            print("thetas")
+            #print("rotation",np.array(quat_rot([0,*oacc],ExpQua(theta0*axis1)))[1:4],dd)
+            #print("rotation",np.array(quat_rot([0,*oacc],ExpQua(theta1*axis1)))[1:4],dd)
+            #print("thetas")
             
         
         #ge = np.cross(axis,normalized_oacc)
-        print("vector",pacc,axis1,oacc,direction,np.dot(oacc,direction))
+        #print("vector",pacc,axis1,oacc,direction,np.dot(oacc,direction))
         ttheta = 0
         theta0 = tthetas[0]
         theta1 = tthetas[1]
         v0 = np.array(quat_rot([0,*oacc],ExpQua(theta0*axis1)))[1:4]
         v1 = np.array(quat_rot([0,*oacc],ExpQua(theta1*axis1)))[1:4]
-        print("cmopa",v0,v1,a)
+        #print("cmopa",v0,v1,a)
         if (np.abs(np.dot(v0,np.array(a).astype(float))))<(np.abs(np.dot(v1,np.array(a).astype(float)))):
             ttheta = theta1
         else:
             ttheta = theta0
             
-        
+        #import pdb; pdb.set_trace()
         qq2 = quat_mult(ExpQua(ttheta*axis1), qq1)
-        print("rotation",np.array(quat_rot([0,0,0,1],qq2))[1:4],a)
+        #print("rotation",np.array(quat_rot([0,0,0,1],qq2))[1:4],a)
         normal = np.array(quat_rot([0,0,0,1], quat_inv(qq2)))[1:4]
-        print("normal",normal,sol0==sol1,sol1-sol0)
+        #print("normal",normal,sol0==sol1,sol1-sol0)
+    else:
+        normal = normals[i-1,:]
     normals[i,:] = normal/np.linalg.norm(normal)
 
 
@@ -377,15 +401,26 @@ fig = plt.figure()
 ax = fig.add_axes([0,0,1,1])
 ax.plot(y_smooth)
 ax.set_title('Evolution of the normal')
-normals = np.copy(y_smooth) 
+normals = np.copy(y_smooth)
+
+
+
+#s_acc_z = acc_z
 for i in range(0,N-1,1):
     
     nn+=1
     normal = normals[i+1,:]
+    
+    std_acc_z =0
+    if i<N-1-40 and i> 40:
+        std_acc_z = np.std(newset.acc[i-20:i+20,2])
+    std_acc_zs[i+1] = std_acc_z 
+    print(std_acc_z)
     print("iteration",i)
+    newset.acc[i+1,2] = s_acc_z[i+1]
     Solv0.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], normal)
     Solv1.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], normal)
-    Solv2.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], normal)
+    Solv2.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], normal,std_acc_z=std_acc_z)
     correction_applied[i] = Solv2.KFilter.corrected
     angle_applied[i+1] =angle_applied[i]+Solv2.KFilter.angle
 
@@ -399,6 +434,16 @@ for i in range(0,N-1,1):
         ax.plot(np.argwhere(correction_applied).flatten(), [np.linalg.norm(Solv2.position[j,:])  for j in np.argwhere(correction_applied).flatten()],'.',**dict(markersize=10))
         plt.show()
         
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(s_acc_z)
+ax.plot(acc_z)
+ax.set_title('Evolution of s_acc_z')  
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(std_acc_zs)
+ax.set_title('Evolution of std_acc_zs')
+       
 fig = plt.figure()
 ax = fig.add_axes([0,0,1,1])
 ax.plot(normals)

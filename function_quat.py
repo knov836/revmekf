@@ -13,7 +13,21 @@ from mpmath import mpf
 from mpmath import mp
 from mpmath import matrix
 
+def kalman_filter_1d(z, Q=1e-5, R=0.01):
+    n = len(z)
+    x_hat = np.zeros(n)     
+    P = np.zeros(n)         
+    x_hat[0] = z[0]         
+    P[0] = 1.0              
 
+    for k in range(1, n):
+        x_pred = x_hat[k-1]
+        P_pred = P[k-1] + Q
+        K = P_pred / (P_pred + R)
+        x_hat[k] = x_pred + K * (z[k] - x_pred)
+        P[k] = (1 - K) * P_pred
+
+    return x_hat
 def SymExpRot(v):
     normv = sym.simplify(sym.sqrt(v.dot(v)))
     if normv==0:
@@ -289,7 +303,21 @@ def QuatToRot(q):
     M[2,2] = 1-2*qx**2-2*qy**2
     return M
 
-
+def intersection_line_from_planes(n1, d1, n2, d2):
+    n1 = np.array(n1, dtype=float)
+    n2 = np.array(n2, dtype=float)
+    
+    v = np.cross(n1, n2)
+    
+    if np.allclose(v, 0):
+        raise ValueError("Planes are colinear.")
+    
+    A = np.array([n1, n2, v])
+    b = -np.array([d1, d2, 0], dtype=float)
+    
+    P = np.linalg.lstsq(A, b, rcond=None)[0]
+    
+    return P, v
 
 a = np.random.random_sample(3)*np.pi
 u = ExpRot(a)

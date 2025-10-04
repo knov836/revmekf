@@ -47,7 +47,8 @@ class PredictFilter(Filter):
         nMagnetometer = np.array(quat_rot([0,*Magnetometer],self.Quaternion))[1:4]
         
         acc= np.copy(Accelerometer)
-        acc[2] = normal[2]*np.linalg.norm(self.gravity)
+        if np.abs(self.std_acc_z)>0.85:
+            acc[2] = normal[2]*np.linalg.norm(self.gravity)
         print(acc[2],Accelerometer[2],normal)
         #nAccelerometer = np.array(quat_rot([0,*acc],self.Quaternion))[1:4]
         
@@ -94,8 +95,8 @@ class PredictFilter(Filter):
             #acc[2] = self.gravity[2]*np.dot(self.gravity/np.linalg.norm(self.gravity),Surface[1:4]/np.linalg.norm(Surface[1:4]))
             #print(np.dot(self.gravity/np.linalg.norm(self.gravity),Surface[1:4]/np.linalg.norm(Surface[1:4])))
             mag = np.array(quat_rot([0,1,0,0], quat_inv(self.Quaternion)))[1:4]
-            """mag0 =np.copy(self.mag0)
-            mag0[2] = 0
+            mag0 =np.copy(self.mag0)
+            """mag0[2] = 0
             mag0 = mag0/np.linalg.norm(mag0)
             mag = np.array(quat_rot([0,*mag0], quat_inv(self.Quaternion)))[1:4]"""
         grav_earth = self.linalg_correct(Gyroscope, acc, mag, Orient,normal=self.normal)

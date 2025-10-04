@@ -433,12 +433,41 @@ def acc_from_normal_imu(norm0,norm,acc,normal,center,start=[0,0,1],s_rot=np.arra
         v0_acc = opt.minimize(lam_h2, 0).x
         t_v0_acc = v0_acc[0]
         t_v0_acc = -FF_acc[1]
+        t1t0 = t_v0_acc
         #print("ff acc",-FF_acc)
         gamma = 1.0
-        #plot(((teGG-C).dot(normal).subs(v,v+sym.Rational(float(t_v0)))),(v,-0.1,0.1),title="t_v0 "+str(t_v0))
+        l_HH = (teGG-C).dot(normal).subs(v,v+sym.Rational(float(t_v0)))
+        x_pts = [float(t1t0 - t_v0), float(t4t0 - t_v0), float(t2t0 - t_v0)]
+        y_pts = np.array([l_HH.evalf(subs={v: float(t1t0)}),
+         l_HH.evalf(subs={v: float(t4t0)}),
+         l_HH.evalf(subs={v: float(t2t0)})]).astype(float)
+        
+        labels = ["t1", "t4", "t2"]
+        f = sym.lambdify(v, l_HH, 'numpy')
+        vv = np.linspace(-0.5, 0.5, 200)
+        fig, ax = plt.subplots(figsize=(6,4))
+        ax.plot(vv, f(vv), label='l_HH(v)', color='blue')
+        ax.scatter(x_pts, y_pts, color='red', marker='o', s=60,label='interesting points')
+        for x, y, label in zip(x_pts, y_pts, labels):
+            ax.annotate(label,
+                xy=(x, y),                # position du point
+                xytext=(0, 8),            # décalage texte en points
+                textcoords='offset points',
+                ha='center',
+                color='green',
+                fontsize=12)
+        # Axes, grille, labels
+        ax.axhline(0, color='black', linewidth=0.8)
+        ax.axvline(0, color='black', linewidth=0.8)
+        ax.grid(True, linestyle='--', alpha=0.6)
+        ax.set_xlabel("v")
+        ax.set_ylabel("l_HH(v)")
+        ax.set_title("l_HH")
+        ax.legend()
+
         #print("angles",t_v0,t3t0,t4t0,t_v0_acc)
         #print("t1t0",t1t0,t2t0)
-        t1t0 = t_v0_acc
+        
         prob = np.random.random(1)
         prob = 0
         #print("prob",prob,sign*(teGG-C).dot(normal).evalf(subs={v:(t1t0+t2t0)/2})<0,np.abs(t_v0-t3t0)>np.abs(t1t0 -t2t0)*1.5,(t1t0 == t2t0 and sign*(teGG-C).dot(normal).evalf(subs={v:t1t0})<0))
@@ -457,12 +486,12 @@ def acc_from_normal_imu(norm0,norm,acc,normal,center,start=[0,0,1],s_rot=np.arra
 
             
             t0 = t3t0
-        elif ( ((np.abs(t_v0-t4t0)<np.abs(t_v0-t1t0)*gamma and np.abs((teGG-C).dot(normal).evalf(subs={v:t_v0})-(teGG-C).dot(normal).evalf(subs={v:t4t0}))<np.abs((teGG-C).dot(normal).evalf(subs={v:t_v0})-(teGG-C).dot(normal).evalf(subs={v:t1t0}))*gamma)) and sign*(teGG-C).dot(normal).evalf(subs={v:(t4t0+t2t0)/2})>=0):
+        elif (((np.abs(t_v0-t4t0)<np.abs(t_v0-t1t0)*gamma and np.abs((teGG-C).dot(normal).evalf(subs={v:t_v0})-(teGG-C).dot(normal).evalf(subs={v:t4t0}))<np.abs((teGG-C).dot(normal).evalf(subs={v:t_v0})-(teGG-C).dot(normal).evalf(subs={v:t1t0}))*gamma)) and sign*(teGG-C).dot(normal).evalf(subs={v:(t4t0+t2t0)/2})>=0):
             #print("case 2")
-            t1t0=(t4t0*1+t_v0*2)/3
-            #t1t0=t4t0
-            plot(((teGG-C).dot(normal).subs(v,v+sym.Rational(float(t1t0)))),(v,-0.1,0.1),title="t1t0 "+str(t1t0))
-            plot(((teGG-C).dot(normal).subs(v,v+sym.Rational(float(t3t0)))),(v,-0.1,0.1),title="t3t0 "+str(t3t0))
+            #t1t0=(t4t0*1+t_v0*2)/3
+            t1t0=t4t0
+            #plot(((teGG-C).dot(normal).subs(v,v+sym.Rational(float(t1t0)))),(v,-0.1,0.1),title="t1t0 "+str(t1t0))
+            #plot(((teGG-C).dot(normal).subs(v,v+sym.Rational(float(t3t0)))),(v,-0.1,0.1),title="t3t0 "+str(t3t0))
             """plot(((teGG-C).dot(normal).subs(v,v+sym.Rational(float(t_v0_acc)))),(v,-0.1,0.1),title="t_v0_acc"+str(t_v0_acc))
             plot(((teGG-C).dot(normal).subs(v,v+sym.Rational(float(t_v0)))),(v,-0.1,0.1),title="t_v0 "+str(t_v0))
             plot(((teGG-C).dot(normal).subs(v,v+sym.Rational(float(t4t0)))),(v,-0.1,0.1),title="t1t0 "+str(t4t0))

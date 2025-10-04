@@ -44,6 +44,7 @@ class Filter:
         self.grav_earth = np.copy(self.gravity)
         self.mag0 = mag0
         self.heuristic=heuristic
+        self.std_acc_z = 0
         self.variant_update = None
         
         
@@ -82,7 +83,7 @@ class Filter:
         self.center= self.position-np.dot(normal,self.position)*normal+cst*normal #+/- cst ???
         self.surf_center= -np.dot(normal,self.position)*normal+cst*normal
 
-    def UpdateSensor(self, *args):
+    def UpdateSensor(self, *args,**kargs):
         Time, Surface, Accelerometer = args[:3]
         self.dt = mpf(Time) - self.time
         self.time = mpf(Time)
@@ -98,7 +99,8 @@ class Filter:
         self.predict_position()
         self.compute_center(Surface)
         self.acc = Accelerometer
-        
+        if kargs["std_acc_z"]!= None:
+            self.std_acc_z = kargs["std_acc_z"]
         if self.variant_update !=None:
             self.variant_update(*args)
         
