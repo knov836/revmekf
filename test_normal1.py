@@ -18,6 +18,12 @@ from variants.reversible_odoaccpre import PredictFilter as RevOdoAccPre
 from mpmath import mp
 from mpmath import mpf
 import pandas as pd
+import sympy as sp
+from scipy.signal import savgol_filter
+from matplotlib.markers import MarkerStyle
+from pyproj import Proj
+
+from pyproj import Transformer
 from scipy.signal import butter, sosfiltfilt
 
 from proj_func import correct_proj2
@@ -43,42 +49,6 @@ g_bias= 10**(-5)
 g_noise=10**(-10)
 a_noise=10**(-4)
 
-
-data_file = 'imu_data5.csv'
-data_file = 'calibration_data_250523.csv'
-data_file = 'calibration_020625.csv'
-data_file = 'calibration_030625.csv'
-data_file = 'imu_data_sbg_250624_2055.csv'
-
-"""data_file = 'imu_data_sbg.csv'
-
-#N = 10000
-data=pd.read_csv(data_file)
-#print(data.head())
-df = data.values
-time= np.array(df[:,1],dtype=mpf)/10**9
-"""
-#data_file = 'imu_data_sbg_250624_2259.csv'
-data_file = 'imu_data_sbg_250624_2055.csv'
-
-#static
-#data_file= 'imu_data_sbg_250701_1120.csv'
-data_file= 'imu_data_sbg_250701_1120.csv'
-data_file = 'imu_data_sbg_static_120925.csv'
-#moving
-#data_file= 'imu_data_sbg_250701_1344.csv'
-#data_file= 'imu_data_sbg_250701_1628.csv'
-data_file = 'imu_data_sbg_plane_09121118.csv'
-data_file = 'imu_data_sbg_plane_09121136.csv'
-data_file = 'imu_data_sbg_plane_09121245.csv'
-data_file = 'imu_data_sbg_plane_09121311.csv'
-#slope
-#data_file= 'imu_data_sbg_250701_1710.csv'
-
-#data_file = 'odo_data.csv'
-
-#dataset
-#data_file = 'dataset_gps_mpu_left.csv'
 data_file = 'selected_data_vehicle1.csv'
 
 data=pd.read_csv(data_file)
@@ -104,7 +74,7 @@ if mmode == 'OdoAccPre':
 
 n_start = 0
 n_end=4000
-n_end=n_start +1000
+n_end=n_start +2000
 cols = np.array([0,1,2,3,10,11,12,19,20,21])
 df = data.values[n_start:n_end,cols]
 
@@ -116,18 +86,6 @@ sos = butter(2, 24, fs=fs, output='sos')
 #smoothed = sosfiltfilt(sos, newset.acc)
 accs = np.copy(df[:,1:7])
 
-smoothed = np.stack([
-    sosfiltfilt(sos, df[:, 1]),
-    sosfiltfilt(sos, df[:, 2]),
-    sosfiltfilt(sos, df[:, 3]),
-    sosfiltfilt(sos, df[:, 4]),
-    sosfiltfilt(sos, df[:, 5]),
-    sosfiltfilt(sos, df[:, 6]),
-    sosfiltfilt(sos, df[:, 7]),
-    sosfiltfilt(sos, df[:, 8]),
-    sosfiltfilt(sos, df[:, 9]),
-], axis=1)
-
 df[:,4:7]=df[:,4:7]*np.pi/180
 
 time= np.array(df[:,0],dtype=mpf)#/10**9
@@ -138,44 +96,8 @@ df[:,0]*=10**9
 
 #normal = np.mean(df[:100,7:10],axis=0)
 
-from scipy.signal import savgol_filter
-from matplotlib.markers import MarkerStyle
-acc_smooth0 = savgol_filter(df[:,1], 500, 2)
-acc_smooth1 = savgol_filter(df[:,2], 500, 2)
-acc_smooth2 = savgol_filter(df[:,3], 500, 2)
-acc_smooth = np.vstack((acc_smooth0,acc_smooth1,acc_smooth2)).T
-fig = plt.figure()
-ax = fig.add_axes([0,0,1,1])
-ax.plot(acc_smooth)
-ax.set_title('Acc smoothed')
 
-def intersection_line_from_planes(n1, d1, n2, d2):
-    """
-    Trouve la droite d'intersection de deux plans
-    n1, n2 : normales (vecteurs 3D)
-    d1, d2 : scalaires (termes constants des équations de plan)
-    Retourne : un point P sur la droite et un vecteur directeur v
-    """
-    n1 = np.array(n1, dtype=float)
-    n2 = np.array(n2, dtype=float)
-    
-    # direction = produit vectoriel
-    v = np.cross(n1, n2)
-    
-    if np.allclose(v, 0):
-        raise ValueError("Les deux plans sont parallèles ou confondus (pas de droite unique).")
-    
-    # Résolution du système : n1·X + d1 = 0, n2·X + d2 = 0
-    # On construit une matrice pour résoudre
-    A = np.array([n1, n2, v])  # système avec v comme 3e équation
-    b = -np.array([d1, d2, 0], dtype=float)
-    
-    # Résolution par moindres carrés (on force X à être solution)
-    P = np.linalg.lstsq(A, b, rcond=None)[0]
-    
-    return P, v
 
-import sympy as sp
 N = n_end-n_start
 normals = np.zeros((N,3))
 std_acc_zs = np.zeros(N)
@@ -184,29 +106,15 @@ yaxis = np.array([0,1,0])
 zaxis = np.array([0,0,1])
 gravity = [0,0,np.mean(np.linalg.norm(acc_smooth[:150,:],axis=1))]
 
-def kalman_filter_1d(z, Q=1e-5, R=0.01):
-    n = len(z)
-    x_hat = np.zeros(n)     
-    P = np.zeros(n)         
-    x_hat[0] = z[0]         
-    P[0] = 1.0              
 
-    for k in range(1, n):
-        # ---- Prediction ----
-        x_pred = x_hat[k-1]
-        P_pred = P[k-1] + Q
-
-        # ---- Mise à jour ----
-        K = P_pred / (P_pred + R)          # gain de Kalman
-        x_hat[k] = x_pred + K * (z[k] - x_pred)
-        P[k] = (1 - K) * P_pred
-
-    return x_hat
-
-acc_z = newset.acc[:,2]
-s_acc_z = kalman_filter_1d(acc_z,10**(-3),1)
-newset.acc[:,2] = s_acc_z
-
+acc_smooth0 = savgol_filter(df[:,1], 500, 2)
+acc_smooth1 = savgol_filter(df[:,2], 500, 2)
+acc_smooth2 = savgol_filter(df[:,3], 500, 2)
+acc_smooth = np.vstack((acc_smooth0,acc_smooth1,acc_smooth2)).T
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(acc_smooth)
+ax.set_title('Acc smoothed')
 for i in range(0,N,1):
     ss = 500
     if i<N-1-ss:
@@ -244,7 +152,6 @@ for i in range(0,N,1):
         n2 = zaxis
         d1 = -np.dot(rotated_z,axis1)
         d2 = -acc_mean[2]
-        print(n1,n2,d1,d2)
         point, direction = intersection_line_from_planes(n1, d1, n2, d2)
         
         oacc= oacc/np.linalg.norm(oacc)
@@ -256,7 +163,6 @@ for i in range(0,N,1):
         
         X_t = P + t * d
         R = np.linalg.norm(oacc)
-        print("rotated",rotated_z,axis1)
         eq = sp.N((X_t - A).dot(X_t - A)-R**2,40)
         #eq = sp.Eq((X_t - A).dot(X_t - A), R**2)
         #solutions= sp.solve(sp.diff(eq),t)
@@ -275,14 +181,11 @@ for i in range(0,N,1):
             #print("oacc,dd",oacc,dd,np.dot(oacc,dd),np.linalg.norm(np.array(dd).astype(float)))
             theta0 = np.arccos(np.sign(np.dot(oacc.astype(float),dd.astype(float)))*np.min([np.abs(np.dot(oacc.astype(float),dd.astype(float))),1]))
             theta1 = -theta0
-            print(theta0,theta1)
             v0 = np.array(quat_rot([0,*oacc],ExpQua(theta0*axis1)))[1:4]
             v1 = np.array(quat_rot([0,*oacc],ExpQua(theta1*axis1)))[1:4]
             if (np.abs(np.dot(v0,np.array(dd).astype(float))))<(np.abs(np.dot(v1,np.array(dd).astype(float)))):
-                print("1")
                 tthetas[k] = theta1
             else:
-                print("0")
                 tthetas[k] = theta0
             #print("rotation",np.array(quat_rot([0,*oacc],ExpQua(theta0*axis1)))[1:4],dd)
             #print("rotation",np.array(quat_rot([0,*oacc],ExpQua(theta1*axis1)))[1:4],dd)
@@ -306,10 +209,17 @@ for i in range(0,N,1):
         qq2 = quat_mult(ExpQua(ttheta*axis1), qq1)
         #print("rotation",np.array(quat_rot([0,0,0,1],qq2))[1:4],a)
         normal = np.array(quat_rot([0,0,0,1], quat_inv(qq2)))[1:4]
+        normals[i,:] = normal/np.linalg.norm(normal)
+
         #print("normal",normal,sol0==sol1,sol1-sol0)
     else:
-        normal = normals[i-1,:]
-    normals[i,:] = normal/np.linalg.norm(normal)
+        normals[i,:]= normals[i-1,:]
+
+
+acc_z = df[:,3]
+s_acc_z = acc_z
+s_acc_z = kalman_filter_1d(acc_z,10**(-2),0.1)
+df[:,3] = s_acc_z
 
 
 newset = KFilterDataFile(df[:,:],mode=mmode,g_bias=g_bias,base_width=0.23,normals=normals)#,gravity=np.array([0,0,9.80665],dtype=mpf))#,normal=np.array([0.1101,1,0])) 
@@ -338,36 +248,19 @@ Solv0 = SolverFilterPlan(Integration,q0,q1,r0,r1,normal,newset,start=np.array(ne
 Solv1 = SolverFilterPlan(MEKF,q0,q1,r0,r1,normal,newset,start=np.array(newset.quat_calib,dtype=mpf),proj_fun=proj_func,heuristic=True)#,grav=newset.grav)
 Solv2 = SolverFilterPlan(Rev,q0,q1,r0,r1,normal,newset,start=np.array(newset.quat_calib,dtype=mpf),proj_fun=proj_func,heuristic=True)#,grav=newset.grav)
 
-#Solv2 = SolverFilterPlan(PredictFilterPlan,q0,q1,r0,r1,normal,None)   
-
-
-"""for i in range(0,N-1,1):
-    Solv0.update_noarg(time=time[i+1])
-    #Solv0.update((i+1)/newset.freq, newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], newset.normal)
-    #Solv0.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], newset.normal)
-"""
-    #Solv0.update((i+1)/newset.freq, newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], newset.normal)
 newset.orient = Solv0.quaternion[:,:]  
 nn=0
-#neworient = newset.new_orient()
-#N=2
-from pyproj import Proj
 
-from pyproj import Transformer
-# Définir une projection UTM (zone 31N ici, adaptée à Paris)
 proj_utm = Proj(proj="utm", zone=31, ellps="WGS84")
-
-
 gps = data.values[n_start:n_end,[-3,-2]]
 R = 6371000
 x, y = proj_utm(gps[:,1], gps[:,0])
-
 transformer = Transformer.from_crs("EPSG:4326", "EPSG:32722", always_xy=True)
-
-# Conversion (lon, lat) -> (x, y) en mètres
 x, y = transformer.transform(gps[:,1], gps[:,0])
-
 coords = np.column_stack((x, y))-np.array([x[0],y[0]])
+
+
+
 correction_applied = np.zeros(N)
 angle_applied = np.zeros(N)
 
@@ -378,18 +271,17 @@ ax = fig.add_axes([0,0,1,1])
 ax.plot(normals)
 ax.set_title('Evolution of the normal')
      
-sos = butter(2, 2, fs=fs, output='sos')
+"""sos = butter(2, 2, fs=fs, output='sos')
 smoothed = np.stack([
     sosfiltfilt(sos, normals[:, 0]),
     sosfiltfilt(sos, normals[:, 1]),
     sosfiltfilt(sos, normals[:, 2]),
 ], axis=1)
 normals = smoothed
-
+"""
 
 y = normals
 
-# Savitzky-Golay (fenêtre=11, polynôme=3)
 y_smooth0 = savgol_filter(y[:,0], 500, 2)
 y_smooth1 = savgol_filter(y[:,1], 500, 2)
 y_smooth2 = savgol_filter(y[:,2], 500, 2)
