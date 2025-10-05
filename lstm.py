@@ -8,9 +8,12 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset, random_split
 from sklearn.metrics import classification_report, confusion_matrix, roc_auc_score
+from scipy.signal import savgol_filter
 
 
-files = glob.glob("corrections_windows_0.csv")
+#files = glob.glob("corrections_windows_0.csv")
+files = glob.glob("corrections_windows_20251005_1852230.csv")
+
 df_list = [pd.read_csv(f) for f in files]
 df = pd.concat(df_list, ignore_index=True)
 
@@ -19,25 +22,25 @@ df.fillna(method='bfill', inplace=True)
 df.fillna(method='ffill', inplace=True)
 
 
-blocks = ["acc", "gyro", "mag","normal"]
+blocks = ["normal","acc", "gyro", "mag"]
 axes = ["x", "y", "z"]
 timesteps = 40  
 
 seq_features = []
 extra_features=[]
 for block in blocks:
-    if block != "normal":
+    for axis in axes:
+        seq_features += [f"{block}_{axis}_{i}" for i in range(timesteps)]
+    """if block != "normal":
         for axis in axes:
             seq_features += [f"{block}_{axis}_{i}" for i in range(timesteps)]
     else:
-        extra_features += [f"{block}_{axis}"]
+        extra_features += [f"{block}_{axis}"]"""
 
 
 for block in blocks:
     #print([c for ax in axes for c in df.columns if c.startswith(f"normal_{ax}_") ])
-    if block == "normal":
-        continue
-    normal = df[[f"normal_{ax}" for ax in axes]]
+    
     for axis in axes:
         cols = [c for c in df.columns if c.startswith(f"{block}_{axis}_")]
         print(df[cols])
@@ -63,6 +66,9 @@ for block in blocks:
         """
         extra_features += [f"{block}_{axis}_std"]
     # Norme of vector
+    if block == "normal":
+        continue
+    normal = df[[f"normal_{ax}_mean" for ax in axes]]
     df[f"{block}_norm"] = np.sqrt(df[[f"{block}_{ax}_mean" for ax in axes]].pow(2).sum(axis=1))
     df[f"{block}_norm_crossnormal"] = np.sqrt((np.cross(normal,df[[f"{block}_{ax}_mean" for ax in axes]])**2).sum(axis=1))
     
@@ -70,7 +76,7 @@ for block in blocks:
 
 #seq_features += [f"normal_{a}" for a in {"z"} for i in range(timesteps)]
 seq_features = seq_features+extra_features
-input_dim = 9+len(extra_features)
+input_dim = 12+len(extra_features)
 #X = df[seq_features].values.reshape(len(df), timesteps, input_dim)
 
 X_seq = df[[f for f in seq_features if f not in extra_features]].values
@@ -78,7 +84,9 @@ X_extra = df[extra_features].values  # shape = (n_samples, n_extra)
 
 X_extra_seq = np.repeat(X_extra[:, np.newaxis, :], timesteps, axis=1)
 
-X = np.concatenate([X_seq.reshape(len(df), timesteps, 9), X_extra_seq], axis=2)
+X = np.concatenate([X_seq.reshape(len(df), timesteps, 12), X_extra_seq], axis=2)
+
+y = df["correction_applied"].values
 
 X_tensor = torch.tensor(X, dtype=torch.float32)
 y_tensor = torch.tensor(y, dtype=torch.long)

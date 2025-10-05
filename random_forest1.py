@@ -8,7 +8,11 @@ from imblearn.over_sampling import RandomOverSampler
 from scipy.signal import savgol_filter
 from matplotlib.markers import MarkerStyle
 import matplotlib.pyplot as plt
-files = glob.glob("corrections_windows_0.csv")
+from scipy.signal import savgol_filter
+
+
+#files = glob.glob("corrections_windows_0.csv")
+files = glob.glob("corrections_windows_20251005_1852230.csv")
 df_list = [pd.read_csv(f) for f in files]
 df = pd.concat(df_list, ignore_index=True)
 
@@ -16,17 +20,16 @@ df.interpolate(method='linear', axis=0, inplace=True)
 df.fillna(method='bfill', inplace=True)
 df.fillna(method='ffill', inplace=True)
 
-blocks = ["acc", "gyro", "mag"]
+blocks = ["normal","acc", "gyro", "mag"]
 axes = ["x", "y", "z"]
 feature_cols = []
 #feature_cols +=[f"normal_{ax}" for ax in axes]
 for block in blocks:
     #print([c for ax in axes for c in df.columns if c.startswith(f"normal_{ax}_") ])
-    normal = df[[f"normal_{ax}" for ax in axes]]
+    
     
     for axis in axes:
         cols = [c for c in df.columns if c.startswith(f"{block}_{axis}_")]
-        print(df[cols])
         print(cols)
         smoothed_cols = savgol_filter(np.array(df[cols]), 5, 2)
         df[f"s{block}_{axis}_mean"] = np.mean(savgol_filter(np.array(df[cols]), 20, 2),axis=1)
@@ -50,16 +53,18 @@ for block in blocks:
         """
         feature_cols += [f"{block}_{axis}_std"]
     # Norme of vector
-    df[f"{block}_norm"] = np.sqrt(df[[f"{block}_{ax}_mean" for ax in axes]].pow(2).sum(axis=1))
-    df[f"{block}_norm_crossnormal"] = np.sqrt((np.cross(normal,df[[f"{block}_{ax}_mean" for ax in axes]])**2).sum(axis=1))
-    
-    feature_cols+= [f"{block}_norm",f"{block}_norm_crossnormal"]
-    
-    # Differences between axes
-    df[f"{block}_xy_diff"] = df[f"{block}_x_mean"] - df[f"{block}_y_mean"]
-    df[f"{block}_xz_diff"] = df[f"{block}_x_mean"] - df[f"{block}_z_mean"]
-    df[f"{block}_yz_diff"] = df[f"{block}_y_mean"] - df[f"{block}_z_mean"]
-    feature_cols += [f"{block}_xy_diff", f"{block}_xz_diff", f"{block}_yz_diff"]
+    if block != "normal":
+        df[f"{block}_norm"] = np.sqrt(df[[f"{block}_{ax}_mean" for ax in axes]].pow(2).sum(axis=1))
+        normal = df[[f"normal_{ax}_mean" for ax in axes]]
+        df[f"{block}_norm_crossnormal"] = np.sqrt((np.cross(normal,df[[f"{block}_{ax}_mean" for ax in axes]])**2).sum(axis=1))
+        
+        feature_cols+= [f"{block}_norm",f"{block}_norm_crossnormal"]
+        
+        # Differences between axes
+        df[f"{block}_xy_diff"] = df[f"{block}_x_mean"] - df[f"{block}_y_mean"]
+        df[f"{block}_xz_diff"] = df[f"{block}_x_mean"] - df[f"{block}_z_mean"]
+        df[f"{block}_yz_diff"] = df[f"{block}_y_mean"] - df[f"{block}_z_mean"]
+        feature_cols += [f"{block}_xy_diff", f"{block}_xz_diff", f"{block}_yz_diff"]
     
 df[f"sacc_norm_xy"] = np.sqrt(df[[f"sacc_{ax}_mean" for ax in ["x","y"]]].pow(2).sum(axis=1))
 feature_cols.append(f"sacc_norm_xy")
@@ -92,7 +97,7 @@ clf.fit(X_train_res, y_train_res)
 threshold = 0.5  
 y_pred = (y_proba >= threshold).astype(int)"""
 y_proba = clf.predict_proba(X_test)[:,1]
-threshold = 0.3  # plus bas pour détecter plus de 1
+threshold = 0.5  # plus bas pour détecter plus de 1
 y_pred = (y_proba >= threshold).astype(int)
 #Evaluation
 print("📊 Confusion matrix :")
