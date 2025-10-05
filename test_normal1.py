@@ -104,13 +104,16 @@ std_acc_zs = np.zeros(N)
 xaxis = np.array([1,0,0])
 yaxis = np.array([0,1,0])
 zaxis = np.array([0,0,1])
-gravity = [0,0,np.mean(np.linalg.norm(acc_smooth[:150,:],axis=1))]
+
 
 
 acc_smooth0 = savgol_filter(df[:,1], 500, 2)
 acc_smooth1 = savgol_filter(df[:,2], 500, 2)
 acc_smooth2 = savgol_filter(df[:,3], 500, 2)
 acc_smooth = np.vstack((acc_smooth0,acc_smooth1,acc_smooth2)).T
+gravity = [0,0,np.mean(np.linalg.norm(acc_smooth[:150,:],axis=1))]
+
+
 fig = plt.figure()
 ax = fig.add_axes([0,0,1,1])
 ax.plot(acc_smooth)
@@ -146,8 +149,6 @@ for i in range(0,N,1):
         
         paz = rotated_z[2] - pacc[2]
         
-        #beta = np.arcsin(np.linalg.norm(paz)/np.linalg.norm(rotated_z))
-        #target_acc = acc_mean[2]/np.sin(beta)
         n1 =axis1
         n2 = zaxis
         d1 = -np.dot(rotated_z,axis1)
@@ -271,14 +272,6 @@ ax = fig.add_axes([0,0,1,1])
 ax.plot(normals)
 ax.set_title('Evolution of the normal')
      
-"""sos = butter(2, 2, fs=fs, output='sos')
-smoothed = np.stack([
-    sosfiltfilt(sos, normals[:, 0]),
-    sosfiltfilt(sos, normals[:, 1]),
-    sosfiltfilt(sos, normals[:, 2]),
-], axis=1)
-normals = smoothed
-"""
 
 y = normals
 
@@ -401,7 +394,7 @@ ax.plot(time0[:size-1],newset.acc[1:size,2])
 ax.plot(time0[:size-1],gravity_r[1:size,2]*Solv2.KFilter.gravity[2])
 ax.set_xlabel('Seconds')
 ax.set_ylabel('m.s^(-2)')
-ax.legend(['Z coordinate of gravity vector returned by Rev-MEKF','Z coordinate of Accelerometer',])
+ax.legend(['Z coordinate of Accelerometer','Z coordinate of gravity vector returned by Rev-MEKF'])
 ax.set_title('Comparison of z coordinates for different acceleration computed')
 
 fig = plt.figure()
