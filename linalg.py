@@ -12,6 +12,7 @@ import numdifftools as nd
 from sympy.plotting import plot
 
 import sympy as sym
+import pdb
 
 
 from sympy import symbols, cos, sin
@@ -281,8 +282,9 @@ def acc_from_normal_imu(norm0,norm,acc,normal,center,start=[0,0,1],s_rot=np.arra
     duFF = duFF.dot(duFF)
     #lam_h = lambdify(v, duFF)
     #v0 = opt.minimize(lam_h, 0).x
-    
     HH = sym.N(((teGG-C).dot(normal)),40)
+    HHt = sym.N(((teGG-C).dot(normal))**2,40)
+    dHHt = sym.diff(HHt,v)
     dHH = sym.diff(HH,v)
     ddHH = sym.diff(dHH,v)
     HHz = sym.N(((teGG-C).dot(np.array([0,0,1],dtype=mpf))),40)
@@ -355,13 +357,16 @@ def acc_from_normal_imu(norm0,norm,acc,normal,center,start=[0,0,1],s_rot=np.arra
             direc = skewSymmetric(e)@normal
             x = (depth-center[1])/direc[1]
             P1 = x*direc+center
+            #R = mp.norm([pracc[0],pracc[2]])
             R = mp.norm(pracc)
+            
             
             if mp.norm(P1)>R:
                 beta = mpf(0)
                 t4t0 = t_v0
             else:
                 beta = mp.acos(mp.norm(P1)/R)
+                #beta = mp.acos(mp.norm([P1[0],P1[2]])/R)
             Q0 = np.array(P1+R*mp.sin(beta)*L1,dtype=mpf)
             Q1 = np.array(P1-R*mp.sin(beta)*L1,dtype=mpf)
         else:
@@ -401,6 +406,7 @@ def acc_from_normal_imu(norm0,norm,acc,normal,center,start=[0,0,1],s_rot=np.arra
     t1t0 = mpf(d_angle+t_v0)
     t2t0 = mpf(summ-d_angle+t_v0)
     t3t0 = nsolve(dHHz,t_v0,prec=40,verify=False)
+    t5t0 = nsolve(dHHt,t_v0,prec=40,verify=False)
     t4t0=(t1t0+t2t0)/2
     t0 = t1t0
     t4t0 = t1t0
@@ -436,13 +442,16 @@ def acc_from_normal_imu(norm0,norm,acc,normal,center,start=[0,0,1],s_rot=np.arra
         t1t0 = t_v0_acc
         #print("ff acc",-FF_acc)
         gamma = 1.0
-        l_HH = (teGG-C).dot(normal).subs(v,v+sym.Rational(float(t_v0)))
-        x_pts = [float(t1t0 - t_v0), float(t4t0 - t_v0), float(t2t0 - t_v0)]
-        y_pts = np.array([l_HH.evalf(subs={v: float(t1t0)}),
-         l_HH.evalf(subs={v: float(t4t0)}),
-         l_HH.evalf(subs={v: float(t2t0)})]).astype(float)
         
-        labels = ["t1", "t4", "t2"]
+        plot(HH,(-1.5,1.5))
+        l_HH = (teGG-C).dot(normal).subs(v,v+sym.Rational(float(t_v0)))
+        x_pts = [float(t1t0 - t_v0), float(t4t0 - t_v0), float(t2t0 - t_v0),float(t5t0 - t_v0)]
+        y_pts = np.array([l_HH.evalf(subs={v: float(t1t0 - t_v0)}),
+         l_HH.evalf(subs={v: float(t4t0 - t_v0)}),
+         l_HH.evalf(subs={v: float(t2t0 - t_v0)}),
+         l_HH.evalf(subs={v: float(t5t0 - t_v0)})]).astype(float)
+        
+        labels = ["t1", "t4", "t2","t5"]
         f = sym.lambdify(v, l_HH, 'numpy')
         vv = np.linspace(-0.5, 0.5, 200)
         fig, ax = plt.subplots(figsize=(6,4))
@@ -470,6 +479,7 @@ def acc_from_normal_imu(norm0,norm,acc,normal,center,start=[0,0,1],s_rot=np.arra
         
         prob = np.random.random(1)
         prob = 0
+        
         #print("prob",prob,sign*(teGG-C).dot(normal).evalf(subs={v:(t1t0+t2t0)/2})<0,np.abs(t_v0-t3t0)>np.abs(t1t0 -t2t0)*1.5,(t1t0 == t2t0 and sign*(teGG-C).dot(normal).evalf(subs={v:t1t0})<0))
         #print("norms",(np.abs((teGG).dot(normal).evalf(subs={v:t_v0}))),(np.abs((C).dot(normal))))
         print("racc",np.abs(np.linalg.norm(np.array([racc[0],racc[2]]).astype(float))/np.linalg.norm(center.astype(float)))>20,np.linalg.norm(np.array([racc[0],racc[2]]).astype(float)), np.linalg.norm(center.astype(float)))
@@ -503,7 +513,8 @@ def acc_from_normal_imu(norm0,norm,acc,normal,center,start=[0,0,1],s_rot=np.arra
             t1t0 = np.linalg.norm(FF_acc)
             FF = FF_acc/t1t0
             t1t0=-t1t0"""
-                
+    if np.abs(t4t0-t_v0)>np.pi/4:
+        pdb.set_trace()
     rot1= (SymExpRot2(FF,t1t0))
     irot1= (SymExpRot2(FF,-t1t0))
     
