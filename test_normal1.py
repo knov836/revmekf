@@ -74,7 +74,7 @@ if mmode == 'OdoAccPre':
 
 n_start = 0
 n_end=4000
-n_end=n_start +2500
+n_end=n_start +10000
 cols = np.array([0,1,2,3,10,11,12,19,20,21])
 df = data.values[n_start:n_end,cols]
 
@@ -300,7 +300,7 @@ for i in range(0,N-1,1):
     if i<N-1-40 and i> 40:
         std_acc_z = np.std(newset.acc[i-20:i+20,2])
     std_acc_zs[i+1] = std_acc_z 
-    print(std_acc_z)
+    #print(std_acc_z)
     print("iteration",i)
     newset.acc[i+1,2] = s_acc_z[i+1]
     Solv0.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], normal)

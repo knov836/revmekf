@@ -12,8 +12,9 @@ from scipy.signal import savgol_filter
 
 
 #files = glob.glob("corrections_windows_0.csv")
-files = glob.glob("corrections_windows_20251005_1852230.csv")
+#files = glob.glob("corrections_windows_20251005_1852230.csv")
 
+files = glob.glob("corrections_windows_20251005_2339290.csv")
 df_list = [pd.read_csv(f) for f in files]
 df = pd.concat(df_list, ignore_index=True)
 
@@ -159,13 +160,13 @@ with torch.no_grad():
 threshold = 0.5
 y_pred = (np.array(y_proba) >= threshold).astype(int)
 
-print("📊 Confusion matrix :")
+print("Confusion matrix :")
 print(confusion_matrix(y_true, y_pred))
-print("\n📊 Classification report :")
+print("\nClassification report :")
 print(classification_report(y_true, y_pred))
 print(f"ROC-AUC : {roc_auc_score(y_true, y_proba):.3f}")
 
 
 torch.save(model.state_dict(), "lstm_model.pth")
-print("✅ Model saved in lstm_model.pth")
+print("Model saved in lstm_model.pth")
 

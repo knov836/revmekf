@@ -786,7 +786,7 @@ def acc_from_normal_imu_grav(norm0,norm,acc,grav,normal,center,start=[0,0,1],s_r
         
         #print("prob",prob,sign*(teGG-C).dot(normal).evalf(subs={v:(t1t0+t2t0)/2})<0,np.abs(t_v0-t3t0)>np.abs(t1t0 -t2t0)*1.5,(t1t0 == t2t0 and sign*(teGG-C).dot(normal).evalf(subs={v:t1t0})<0))
         #print("norms",(np.abs((teGG).dot(normal).evalf(subs={v:t_v0}))),(np.abs((C).dot(normal))))
-        print("racc",np.abs(np.linalg.norm(np.array([racc[0],racc[2]]).astype(float))/np.linalg.norm(center.astype(float)))>20,np.linalg.norm(np.array([racc[0],racc[2]]).astype(float)), np.linalg.norm(center.astype(float)))
+        #print("racc",np.abs(np.linalg.norm(np.array([racc[0],racc[2]]).astype(float))/np.linalg.norm(center.astype(float)))>20,np.linalg.norm(np.array([racc[0],racc[2]]).astype(float)), np.linalg.norm(center.astype(float)))
         if (t4t0 == t2t0 and sign*(teGG-C).dot(normal).evalf(subs={v:(t4t0+t2t0)/2})<0) or sign*(teGG-C).dot(normal).evalf(subs={v:(t4t0+t2t0)/2})<0  or np.abs(t_v0-t3t0)>np.abs(t4t0 -t2t0)*1.5:
             #print("case1",np.abs(t_v0-t3t0),np.abs(t1t0 -t2t0),sign*(teGG-C).dot(normal).evalf(subs={v:t_v0})<0)
             t1t0 = t_v0
@@ -804,57 +804,54 @@ def acc_from_normal_imu_grav(norm0,norm,acc,grav,normal,center,start=[0,0,1],s_r
             #print("case 2")
             #t1t0=(t4t0*1+t_v0*2)/3
             t1t0=t4t0
-            plot(((teGG-C).dot(normal).subs(v,v+sym.Rational(float(t1t0)))),(v,-0.1,0.1),title="t1t0 "+str(t1t0))
-            plot(((teGG-C).dot(normal).subs(v,v+sym.Rational(float(t3t0)))),(v,-0.1,0.1),title="t3t0 "+str(t3t0))
+            plot(((teGG-C).dot(normal).subs(v,v+sym.Rational(float(t_v0)))),(v,-0.1,0.1),title="t_v0 "+str(t_v0))
+            #plot(((teGG-C).dot(normal).subs(v,v+sym.Rational(float(t3t0)))),(v,-0.1,0.1),title="t3t0 "+str(t3t0))
             """plot(((teGG-C).dot(normal).subs(v,v+sym.Rational(float(t_v0_acc)))),(v,-0.1,0.1),title="t_v0_acc"+str(t_v0_acc))
             plot(((teGG-C).dot(normal).subs(v,v+sym.Rational(float(t_v0)))),(v,-0.1,0.1),title="t_v0 "+str(t_v0))
             plot(((teGG-C).dot(normal).subs(v,v+sym.Rational(float(t4t0)))),(v,-0.1,0.1),title="t1t0 "+str(t4t0))
             plot(((teGG-C).dot(normal).subs(v,v+sym.Rational(float(t2t0)))),(v,-0.1,0.1),title="t2t0 "+str(t2t0))
             plot(((teGG-C).dot(normal).subs(v,v+sym.Rational(float(t3t0)))),(v,-0.1,0.1),title="t3t0 "+str(t3t0))"""
             corrected=True 
-        if not((t4t0 == t2t0 and sign*(teGG-C).dot(normal).evalf(subs={v:(t4t0+t2t0)/2})<0) or sign*(teGG-C).dot(normal).evalf(subs={v:(t4t0+t2t0)/2})<0 ) and np.abs(t4t0-t_v0)>np.pi/10 and np.abs(t4t0-t_v0)<np.pi/2 and np.abs(t_v0-(t4t0+t2t0)/2)>np.pi/20:
-            t1t0 = np.sign(float(t1t0g-t_v0))*np.log(float(1+np.abs(t1t0g-t_v0)))+t_v0
-            corrected = True
-            
-            l_HH = (teGG-C).dot(normal).subs(v,v+sym.Rational(float(t_v0)))
-            x_pts = [float(t1t0 - t_v0),float(t1t0g - t_v0), float(t4t0 - t_v0), float(t2t0 - t_v0),float(t5t0 - t_v0)]
-            y_pts = np.array([l_HH.evalf(subs={v: float(t1t0 - t_v0)}),l_HH.evalf(subs={v: float(t1t0g - t_v0)}),
-             l_HH.evalf(subs={v: float(t4t0 - t_v0)}),
-             l_HH.evalf(subs={v: float(t2t0 - t_v0)}),
-             l_HH.evalf(subs={v: float(t5t0 - t_v0)})]).astype(float)
-            
-            labels = ["t1", "t1g","t4", "t2","t5"]
-            f = sym.lambdify(v, l_HH, 'numpy')
-            vv = np.linspace(-1.0, 1.0, 400)
-            fig, ax = plt.subplots(figsize=(6,4))
-            ax.plot(vv, f(vv), label='l_HH(v)', color='blue')
-            ax.scatter(x_pts, y_pts, color='red', marker='o', s=60,label='interesting points')
-            
-            for x, y, label in zip(x_pts, y_pts, labels):
-                ax.annotate(label,
-                    xy=(x, y),                # position du point
-                    xytext=(0, 8),            # décalage texte en points
-                    textcoords='offset points',
-                    ha='center',
-                    color='green',
-                    fontsize=12)
-            # Axes, grille, labels
-            ax.axhline(0, color='black', linewidth=0.8)
-            ax.axvline(0, color='black', linewidth=0.8)
-            ax.grid(True, linestyle='--', alpha=0.6)
-            ax.set_xlabel("v")
-            ax.set_ylabel("l_HH(v)")
-            ax.set_title("l_HH")
-            ax.legend()
-            #pdb.set_trace()
-        """else:
-            t1t0 = t_v0_acc
-            t1t0 = np.linalg.norm(FF_acc)
-            FF = FF_acc/t1t0
-            t1t0=-t1t0"""
-    """if np.abs(t1t0-t_v0)>np.pi/4:
-        
-        pdb.set_trace()"""
+        else:
+            if not((t4t0 == t2t0 and sign*(teGG-C).dot(normal).evalf(subs={v:(t4t0+t2t0)/2})<0) or sign*(teGG-C).dot(normal).evalf(subs={v:(t4t0+t2t0)/2})<0 ):
+                l_HH = (teGG-C).dot(normal).subs(v,v+sym.Rational(float(t_v0)))
+                x_pts = [float(t_v0_acc - t_v0),float(t4t0 - t_v0), float(t2t0 - t_v0)]
+                y_pts = np.array([l_HH.evalf(subs={v: float(t_v0_acc - t_v0)}),
+                 l_HH.evalf(subs={v: float(t4t0 - t_v0)}),
+                 l_HH.evalf(subs={v: float(t2t0 - t_v0)})]).astype(float)
+                
+                labels = ["t_v0_acc", "t4", "t2"]
+                tt = np.max([np.abs(float(t4t0)),np.abs(float(t2t0))])
+                f = sym.lambdify(v, l_HH, 'numpy')
+                vv = np.linspace(-tt, tt, 1000)
+                
+                if (np.abs(t4t0-t_v0)>np.pi/10 and np.abs(t4t0-t_v0)<np.pi/2 and np.abs(t_v0-(t4t0+t2t0)/2)>np.pi/20) or (np.abs(t2t0-t_v0)>2*np.abs(t4t0-t_v0) and 3*np.abs(t_v0_acc-t_v0)>np.abs(t4t0-t_v0) and np.abs(t4t0-t2t0)>0.4):
+                    print(np.abs(t_v0_acc-t_v0),np.abs(t4t0-t_v0))
+                    t1t0 = np.sign(float(t4t0-t_v0))*np.log(float(1+np.abs(t4t0-t_v0)))+t_v0
+                    t1t0 = np.sign(float(t4t0-t_v0))*np.abs(float(np.abs(t4t0-t_v0)))/2+t_v0
+                    corrected = True
+                    fig, ax = plt.subplots(figsize=(6,4))
+                    ax.plot(vv, f(vv), label='l_HH(v)', color='blue')
+                    ax.scatter(x_pts, y_pts, color='red', marker='o', s=60,label='interesting points')
+                    
+                    for x, y, label in zip(x_pts, y_pts, labels):
+                        ax.annotate(label,
+                            xy=(x, y),                # position du point
+                            xytext=(0, 8),            # décalage texte en points
+                            textcoords='offset points',
+                            ha='center',
+                            color='green',
+                            fontsize=12)
+                    # Axes, grille, labels
+                    ax.axhline(0, color='black', linewidth=0.8)
+                    ax.axvline(0, color='black', linewidth=0.8)
+                    ax.grid(True, linestyle='--', alpha=0.6)
+                    ax.set_xlabel("v")
+                    ax.set_ylabel("l_HH(v)")
+                    ax.set_title("l_HH")
+                    ax.legend()
+                #pdb.set_trace()
+
     rot1= (SymExpRot2(FF,t1t0))
     irot1= (SymExpRot2(FF,-t1t0))
     
