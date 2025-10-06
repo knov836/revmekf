@@ -2,7 +2,7 @@ import numpy as np
 from math import pi
 import math
 import matplotlib.pyplot as plt
-
+from datetime import datetime
 from variants.integration_gyroaccmag import PredictFilter as IntegrationGyroAccMag
 from variants.mekf_gyroaccmag import PredictFilter as MEKFGyroAccMag
 from variants.reversible_gyroaccmag import PredictFilter as RevGyroAccMag
@@ -43,9 +43,28 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)).split('/examples')[0]
 
 from scipy.spatial.transform import Rotation
 from solver_kalman import SolverFilterPlan
-import torch
+import glob
 
-model = torch.load("lstm_model",weights_only=False)
+import torch
+import torch.nn as nn
+import torch.optim as optim
+class LSTMClassifier(nn.Module):
+    def __init__(self, input_dim, hidden_dim, num_layers, output_dim):
+        super(LSTMClassifier, self).__init__()
+        self.lstm = nn.LSTM(input_dim, hidden_dim, num_layers, batch_first=True, dropout=0.3)
+        self.dropout = nn.Dropout(0.3)
+        self.fc = nn.Linear(hidden_dim, output_dim)
+
+    def forward(self, x):
+        # out: (batch, timesteps, hidden)
+        out, (hn, cn) = self.lstm(x)
+        out = self.dropout(hn[-1])  # dernier état caché
+        out = self.fc(out)
+        return out
+
+
+model = torch.load("lstm_model.pth",weights_only=False)
+model.eval()
 g_bias= 10**(-5)
 g_noise=10**(-10)
 a_noise=10**(-4)
@@ -75,7 +94,7 @@ if mmode == 'OdoAccPre':
 
 n_start = 0
 n_end=4000
-n_end=n_start +3000
+n_end=n_start +600
 cols = np.array([0,1,2,3,10,11,12,19,20,21])
 df = data.values[n_start:n_end,cols]
 
@@ -295,8 +314,8 @@ rows = []
 
 
 window = 20
-
-for p1 in range(0,N,10):
+time0=time-time[0]
+for p1 in range(1,N,1):
     p0 = p1
     p_start = max(0, p0 - window)
     p_end   = min(N, p0 + window)
@@ -307,44 +326,49 @@ for p1 in range(0,N,10):
 
     row = {
         "sample": int(p0)+n_start,
-        "time": float(time0[p0])+time[0],
+        "time": float(time0[p0]+time[0]),
     }
 
 
     for k, j in enumerate(indices):
-        row[f"acc_x_{k}"] = newset.acc[j,0]
+        row[f"acc_x_{k}"] = float(newset.acc[j,0])
     for k, j in enumerate(indices):
-        row[f"acc_y_{k}"] = newset.acc[j,1]
+        row[f"acc_y_{k}"] = float(newset.acc[j,1])
     for k, j in enumerate(indices):
-        row[f"acc_z_{k}"] = newset.acc[j,2]
+        row[f"acc_z_{k}"] = float(newset.acc[j,2])
 
     # Gyro
     for k, j in enumerate(indices):
-        row[f"gyro_x_{k}"] = newset.gyro[j,0]
+        row[f"gyro_x_{k}"] = float(newset.gyro[j,0])
     for k, j in enumerate(indices):
-        row[f"gyro_y_{k}"] = newset.gyro[j,1]
+        row[f"gyro_y_{k}"] = float(newset.gyro[j,1])
     for k, j in enumerate(indices):
-        row[f"gyro_z_{k}"] = newset.gyro[j,2]
+        row[f"gyro_z_{k}"] = float(newset.gyro[j,2])
 
     # Mag
     for k, j in enumerate(indices):
-        row[f"mag_x_{k}"] = newset.mag[j,0]
+        row[f"mag_x_{k}"] = float(newset.mag[j,0])
     for k, j in enumerate(indices):
-        row[f"mag_y_{k}"] = newset.mag[j,1]
+        row[f"mag_y_{k}"] = float(newset.mag[j,1])
     for k, j in enumerate(indices):
-        row[f"mag_z_{k}"] = newset.mag[j,2]
+        row[f"mag_z_{k}"] = float(newset.mag[j,2])
         
         
     for k, j in enumerate(indices):
-        row[f"normal_x_{k}"] = normals[j,0]
+        row[f"normal_x_{k}"] = float(normals[j,0])
     for k, j in enumerate(indices):
-        row[f"normal_y_{k}"] = normals[j,1]
+        row[f"normal_y_{k}"] = float(normals[j,1])
     for k, j in enumerate(indices):
-        row[f"normal_z_{k}"] = normals[j,2]
+        row[f"normal_z_{k}"] = float(normals[j,2])
 
 
     rows.append(row)
 df = pd.DataFrame(rows)
+
+df.to_csv(f"corrections_windows_tmp.csv", index=False)
+files = glob.glob("corrections_windows_tmp.csv")
+df_list = [pd.read_csv(f) for f in files]
+df = pd.concat(df_list, ignore_index=True)
 df.interpolate(method='linear', axis=0, inplace=True)
 df.fillna(method='bfill', inplace=True)
 df.fillna(method='ffill', inplace=True)
@@ -358,15 +382,9 @@ extra_features=[]
 for block in blocks:
     for axis in axes:
         seq_features += [f"{block}_{axis}_{i}" for i in range(timesteps)]
-    """if block != "normal":
-        for axis in axes:
-            seq_features += [f"{block}_{axis}_{i}" for i in range(timesteps)]
-    else:
-        extra_features += [f"{block}_{axis}"]"""
 
 
 for block in blocks:
-    #print([c for ax in axes for c in df.columns if c.startswith(f"normal_{ax}_") ])
     
     for axis in axes:
         cols = [c for c in df.columns if c.startswith(f"{block}_{axis}_")]
@@ -413,15 +431,20 @@ X_extra_seq = np.repeat(X_extra[:, np.newaxis, :], timesteps, axis=1)
 
 X = np.concatenate([X_seq.reshape(len(df), timesteps, 12), X_extra_seq], axis=2)
 X_tensor = torch.tensor(X, dtype=torch.float32)
-
-for i in range(N):
-    X_tensor_1 = torch.tensor(X[i,:,:], dtype=torch.float32)
-    
-    aa = model(X_tensor_1)
-    
-    probs = torch.softmax(aa, dim=0)[1]  # probabilité de la classe 
-    pred_class = torch.argmax(aa)
-    print(pred_class)
+preds_threshold = np.zeros(N)
+threshold=0.80
+with torch.no_grad():
+    for i in range(N-1):
+        X_tensor_1 = torch.tensor(X[i,:,:], dtype=torch.float32).unsqueeze(0)
+        aa = model(X_tensor_1)
+        
+        #aa = model(X_tensor_1)
+        
+        probs = torch.softmax(aa, dim=1)[:,1].numpy()  # probabilité de la classe 
+        #pred_class = torch.argmax(aa,dim=1)
+        print(probs)
+        preds_threshold[i+1] = (probs >= threshold).astype(int)
+print(preds_threshold )
 
 
 for i in range(0,N-1,1):
@@ -483,7 +506,7 @@ size  =n_end-n_start
 #size = n_start+N
 
 
-time0=time-time[0]
+
 fig = plt.figure()
 ax = fig.add_axes([0,0,1,1])
 ax.plot(time0[:size-1],[np.linalg.norm(Solv0.position[j,:]) for j in range(size-1)])

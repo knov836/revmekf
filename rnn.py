@@ -1,14 +1,22 @@
+
 import pandas as pd
 import numpy as np
 import glob
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset, random_split
-from sklearn.metrics import classification_report, confusion_matrix, roc_auc_score, f1_score
+from sklearn.metrics import classification_report, confusion_matrix, roc_auc_score
 from scipy.signal import savgol_filter
 
-files = glob.glob("corrections_windows_0.csv")
+
+#files = glob.glob("corrections_windows_0.csv")
+#files = glob.glob("corrections_windows_20251005_1852230.csv")
+
+files = glob.glob("corrections_windows_20251005_2339290.csv")
+
+#files = glob.glob("corrections_windows_20251006_1029030.csv")
 df_list = [pd.read_csv(f) for f in files]
 df = pd.concat(df_list, ignore_index=True)
 
@@ -17,18 +25,25 @@ df.fillna(method='bfill', inplace=True)
 df.fillna(method='ffill', inplace=True)
 
 
-
-
-blocks = ["acc", "gyro", "mag"]
+blocks = ["normal","acc", "gyro", "mag"]
 axes = ["x", "y", "z"]
-timesteps = 40
+timesteps = 40  
 
-seq_features = [f"{b}_{a}_{i}" for b in blocks for a in axes for i in range(timesteps)]
-#extra_feature_cols += [f"normal_{a}" for a in {"z"} for i in range(timesteps)]
+seq_features = []
 extra_features=[]
 for block in blocks:
+    for axis in axes:
+        seq_features += [f"{block}_{axis}_{i}" for i in range(timesteps)]
+    """if block != "normal":
+        for axis in axes:
+            seq_features += [f"{block}_{axis}_{i}" for i in range(timesteps)]
+    else:
+        extra_features += [f"{block}_{axis}"]"""
+
+
+for block in blocks:
     #print([c for ax in axes for c in df.columns if c.startswith(f"normal_{ax}_") ])
-    normal = df[[f"normal_{ax}" for ax in axes]]
+    
     for axis in axes:
         cols = [c for c in df.columns if c.startswith(f"{block}_{axis}_")]
         print(df[cols])
@@ -54,6 +69,9 @@ for block in blocks:
         """
         extra_features += [f"{block}_{axis}_std"]
     # Norme of vector
+    if block == "normal":
+        continue
+    normal = df[[f"normal_{ax}_mean" for ax in axes]]
     df[f"{block}_norm"] = np.sqrt(df[[f"{block}_{ax}_mean" for ax in axes]].pow(2).sum(axis=1))
     df[f"{block}_norm_crossnormal"] = np.sqrt((np.cross(normal,df[[f"{block}_{ax}_mean" for ax in axes]])**2).sum(axis=1))
     
@@ -61,7 +79,7 @@ for block in blocks:
 
 #seq_features += [f"normal_{a}" for a in {"z"} for i in range(timesteps)]
 seq_features = seq_features+extra_features
-input_dim = 9+len(extra_features)
+input_dim = 12+len(extra_features)
 #X = df[seq_features].values.reshape(len(df), timesteps, input_dim)
 
 X_seq = df[[f for f in seq_features if f not in extra_features]].values
@@ -69,7 +87,7 @@ X_extra = df[extra_features].values  # shape = (n_samples, n_extra)
 
 X_extra_seq = np.repeat(X_extra[:, np.newaxis, :], timesteps, axis=1)
 
-X = np.concatenate([X_seq.reshape(len(df), timesteps, 9), X_extra_seq], axis=2)
+X = np.concatenate([X_seq.reshape(len(df), timesteps, 12), X_extra_seq], axis=2)
 
 y = df["correction_applied"].values
 
@@ -79,40 +97,54 @@ y_tensor = torch.tensor(y, dtype=torch.long)
 dataset = TensorDataset(X_tensor, y_tensor)
 
 # Split train/test
-train_size = int(0.8 * len(dataset))
+"""train_size = int(0.8 * len(dataset))
 test_size = len(dataset) - train_size
-train_dataset, test_dataset = random_split(dataset, [train_size, test_size])
-train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
-test_loader = DataLoader(test_dataset, batch_size=32)
+train_dataset, test_dataset = random_split(dataset, [train_size, test_size])"""
+from sklearn.model_selection import StratifiedShuffleSplit
+from torch.utils.data import Subset, DataLoader
 
-# ====================== Modèle RNN ======================
-class LSTMClassifier(nn.Module):
+# y_tensor = labels (torch tensor) que tu as déjà
+y_numpy = y_tensor.numpy()
+
+# Stratified split 80/20
+sss = StratifiedShuffleSplit(n_splits=1, test_size=0.2, random_state=42)
+train_idx, test_idx = next(sss.split(np.zeros(len(y_numpy)), y_numpy))
+
+train_dataset = Subset(dataset, train_idx)
+test_dataset = Subset(dataset, test_idx)
+
+train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
+test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
+
+class RNNClassifier(nn.Module):
     def __init__(self, input_dim, hidden_dim, num_layers, output_dim):
-        super().__init__()
-        self.lstm = nn.LSTM(input_dim, hidden_dim, num_layers, batch_first=True)
+        super(RNNClassifier, self).__init__()
+        self.rnn = nn.RNN(input_dim, hidden_dim, num_layers, batch_first=True, nonlinearity='tanh', dropout=0.1)
         self.dropout = nn.Dropout(0.3)
         self.fc = nn.Linear(hidden_dim, output_dim)
 
     def forward(self, x):
-        out, (hn, cn) = self.lstm(x)
-        out = self.dropout(hn[-1])
+        # out: (batch, timesteps, hidden)
+        out, hn = self.rnn(x)       # hn = dernier état caché (num_layers, batch, hidden)
+        out = self.dropout(hn[-1])  # on prend le dernier état caché de la dernière couche
         out = self.fc(out)
         return out
 
-hidden_dim = 64
-num_layers = 2
-output_dim = 2
-model = LSTMClassifier(input_dim, hidden_dim, num_layers, output_dim)
+#input_dim = 9       # acc/gyro/mag (x,y,z)
+hidden_dim = 128
+num_layers = 3
+output_dim = 2      # binary: correction_applied yes/no
 
-# ====================== Gestion déséquilibre ======================
+model = RNNClassifier(input_dim, hidden_dim, num_layers, output_dim)
+
+
+#criterion = nn.CrossEntropyLoss()
 class_counts = np.bincount(y)
-weights = 1.0 / torch.tensor(class_counts, dtype=torch.float32)
-weights = weights / weights.sum()
-print("Poids utilisés pour les classes :", weights)
+weights = 1.0 / torch.tensor(class_counts, dtype=torch.float32)  
+weights = weights / weights.sum()   # normalisation
 criterion = nn.CrossEntropyLoss(weight=weights)
-optimizer = optim.Adam(model.parameters(), lr=1e-3)
-
-# ====================== Entraînement ======================
+#optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+optimizer = torch.optim.Adam(model.parameters(), lr=5*1e-5)  # plus petit
 n_epochs = 20
 for epoch in range(n_epochs):
     model.train()
@@ -126,34 +158,43 @@ for epoch in range(n_epochs):
         total_loss += loss.item()
     print(f"Epoch {epoch+1}/{n_epochs}, Loss={total_loss/len(train_loader):.4f}")
 
-# ====================== Évaluation ======================
+
 model.eval()
 y_true, y_pred, y_proba = [], [], []
 with torch.no_grad():
     for X_batch, y_batch in test_loader:
         outputs = model(X_batch)
         probs = torch.softmax(outputs, dim=1)[:,1]
+        preds = torch.argmax(outputs, dim=1)
+
         y_true.extend(y_batch.numpy())
+        y_pred.extend(preds.numpy())
         y_proba.extend(probs.numpy())
 
-# Recherche du seuil optimal F1 pour la classe 1
-thresholds = np.linspace(0,1,50)
-best_f1, best_thresh = 0, 0
-for t in thresholds:
-    preds = (np.array(y_proba) >= t).astype(int)
-    f1 = f1_score(y_true, preds, pos_label=1)
-    if f1 > best_f1:
-        best_f1, best_thresh = f1, t
-print(f"🔎 Best threshold = {best_thresh:.2f} with F1 = {best_f1:.3f}")
+threshold = 0.75
+y_pred = (np.array(y_proba) >= threshold).astype(int)
 
-y_pred = (np.array(y_proba) >= best_thresh).astype(int)
-
-print("📊 Confusion matrix :")
+print("Confusion matrix :")
 print(confusion_matrix(y_true, y_pred))
-print("\n📊 Classification report :")
+print("\nClassification report :")
 print(classification_report(y_true, y_pred))
 print(f"ROC-AUC : {roc_auc_score(y_true, y_proba):.3f}")
 
-# ====================== Sauvegarde modèle ======================
-torch.save(model.state_dict(), "rnn_model.pth")
-print("✅ Model saved in rnn_model.pth")
+
+#torch.save(model.state_dict(), "lstm_model.pth")
+torch.save(model, "lstm_model.pth")
+model = torch.load("lstm_model.pth",weights_only=False)
+model.eval()
+
+with torch.no_grad():
+    outputs = model(X_tensor)  
+    probs = torch.softmax(outputs, dim=1)[:, 1].numpy()  
+    print(torch.softmax(outputs, dim=1)[:, :])
+    preds_threshold = (probs >= threshold).astype(int)
+    print(preds_threshold)
+
+# Ajouter les résultats au DataFrame pour inspection
+df["predicted_class_threshold"] = preds_threshold
+df["predicted_proba_class1"] = probs
+print(df[["sample", "time", "predicted_class_threshold", "predicted_proba_class1"]].head(20))
+df.to_csv("predictions_results.csv", index=False)

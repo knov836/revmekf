@@ -14,7 +14,9 @@ from scipy.signal import savgol_filter
 #files = glob.glob("corrections_windows_0.csv")
 #files = glob.glob("corrections_windows_20251005_1852230.csv")
 
-files = glob.glob("corrections_windows_20251005_2339290.csv")
+#files = glob.glob("corrections_windows_20251005_2339290.csv")
+
+files = glob.glob("corrections_windows_20251006_1029030.csv")
 df_list = [pd.read_csv(f) for f in files]
 df = pd.concat(df_list, ignore_index=True)
 
@@ -157,7 +159,7 @@ with torch.no_grad():
         y_pred.extend(preds.numpy())
         y_proba.extend(probs.numpy())
 
-threshold = 0.5
+threshold = 0.25
 y_pred = (np.array(y_proba) >= threshold).astype(int)
 
 print("Confusion matrix :")
@@ -170,3 +172,17 @@ print(f"ROC-AUC : {roc_auc_score(y_true, y_proba):.3f}")
 #torch.save(model.state_dict(), "lstm_model.pth")
 torch.save(model, "lstm_model.pth")
 
+model.eval()
+
+with torch.no_grad():
+    outputs = model(X_tensor)  
+    probs = torch.softmax(outputs, dim=1)[:, 1].numpy()  
+    preds = torch.argmax(outputs, dim=1).numpy()         
+
+# Ajouter les résultats au DataFrame pour inspection
+df["predicted_class"] = preds
+df["predicted_proba"] = probs
+
+print(df[["sample", "time", "predicted_class", "predicted_proba"]].head(10))
+
+df.to_csv("predictions_results.csv", index=False)

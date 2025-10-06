@@ -12,7 +12,10 @@ from scipy.signal import savgol_filter
 
 
 #files = glob.glob("corrections_windows_0.csv")
-files = glob.glob("corrections_windows_20251005_1852230.csv")
+#files = glob.glob("corrections_windows_20251005_1852230.csv")
+files = glob.glob("corrections_windows_20251005_2339290.csv")
+files = glob.glob("corrections_windows_20251006_1029030.csv")
+
 df_list = [pd.read_csv(f) for f in files]
 df = pd.concat(df_list, ignore_index=True)
 

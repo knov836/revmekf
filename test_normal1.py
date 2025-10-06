@@ -74,7 +74,7 @@ if mmode == 'OdoAccPre':
 
 n_start = 0
 n_end=4000
-n_end=n_start +10000
+n_end=n_start +3000
 cols = np.array([0,1,2,3,10,11,12,19,20,21])
 df = data.values[n_start:n_end,cols]
 
@@ -545,35 +545,35 @@ for p1 in range(0,N,10):
     }
 
     for k, j in enumerate(indices):
-        row[f"acc_x_{k}"] = newset.acc[j,0]
+        row[f"acc_x_{k}"] = float(newset.acc[j,0])
     for k, j in enumerate(indices):
-        row[f"acc_y_{k}"] = newset.acc[j,1]
+        row[f"acc_y_{k}"] = float(newset.acc[j,1])
     for k, j in enumerate(indices):
-        row[f"acc_z_{k}"] = newset.acc[j,2]
+        row[f"acc_z_{k}"] = float(newset.acc[j,2])
 
     # Gyro
     for k, j in enumerate(indices):
-        row[f"gyro_x_{k}"] = newset.gyro[j,0]
+        row[f"gyro_x_{k}"] = float(newset.gyro[j,0])
     for k, j in enumerate(indices):
-        row[f"gyro_y_{k}"] = newset.gyro[j,1]
+        row[f"gyro_y_{k}"] = float(newset.gyro[j,1])
     for k, j in enumerate(indices):
-        row[f"gyro_z_{k}"] = newset.gyro[j,2]
+        row[f"gyro_z_{k}"] = float(newset.gyro[j,2])
 
     # Mag
     for k, j in enumerate(indices):
-        row[f"mag_x_{k}"] = newset.mag[j,0]
+        row[f"mag_x_{k}"] = float(newset.mag[j,0])
     for k, j in enumerate(indices):
-        row[f"mag_y_{k}"] = newset.mag[j,1]
+        row[f"mag_y_{k}"] = float(newset.mag[j,1])
     for k, j in enumerate(indices):
-        row[f"mag_z_{k}"] = newset.mag[j,2]
+        row[f"mag_z_{k}"] = float(newset.mag[j,2])
         
         
     for k, j in enumerate(indices):
-        row[f"normal_x_{k}"] = normals[j,0]
+        row[f"normal_x_{k}"] = float(normals[j,0])
     for k, j in enumerate(indices):
-        row[f"normal_y_{k}"] = normals[j,1]
+        row[f"normal_y_{k}"] = float(normals[j,1])
     for k, j in enumerate(indices):
-        row[f"normal_z_{k}"] = normals[j,2]
+        row[f"normal_z_{k}"] = float(normals[j,2])
 
 
     rows.append(row)
