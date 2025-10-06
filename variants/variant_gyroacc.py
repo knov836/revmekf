@@ -17,7 +17,7 @@ from proj_func import *
 
 
 class Filter:
-    def __init__(self, rate, Q, R, Pk, grav, quat,Bias,normal,mag0=np.array([0,1,0],dtype=mpf),rotsurf=np.zeros(4,dtype=mpf),proj_fun=None,time=mpf(0),base_width=mpf(1.0),heuristic=False):
+    def __init__(self, rate, Q, R, Pk, grav, quat,Bias,normal,mag0=np.array([0,1,0],dtype=mpf),rotsurf=np.zeros(4,dtype=mpf),proj_fun=None,time=mpf(0),base_width=mpf(1.0),heuristic=False,neural=False):
         self.proj_fun = proj_fun
         self.rate = rate
         self.Bias = np.array(Bias,dtype=mpf)
@@ -44,9 +44,19 @@ class Filter:
         self.grav_earth = np.copy(self.gravity)
         self.mag0 = mag0
         self.heuristic=heuristic
+        self.neural=neural
         self.correction = False
         self.std_acc_z = 0
         self.variant_update = None
+        self.t0 = 0
+        self.t4 = 0
+        self.t2 = 0
+        self.t3 = 0
+        self.et0 = 0
+        self.et4 = 0
+        self.et2 = 0
+        self.et3 = 0
+        
         
         
     def predict_speed(self,acc):

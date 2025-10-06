@@ -14,7 +14,9 @@ from scipy.signal import savgol_filter
 #files = glob.glob("corrections_windows_0.csv")
 #files = glob.glob("corrections_windows_20251005_1852230.csv")
 
-files = glob.glob("corrections_windows_20251005_2339290.csv")
+#files = glob.glob("corrections_windows_20251005_2339290.csv")
+files = glob.glob("corrections_windows_angles_20251006_1603280.csv")
+
 
 #files = glob.glob("corrections_windows_20251006_1029030.csv")
 df_list = [pd.read_csv(f) for f in files]
@@ -28,18 +30,15 @@ df.fillna(method='ffill', inplace=True)
 blocks = ["normal","acc", "gyro", "mag"]
 angles = ["t0","t2", "t3", "t4","et0","et2", "et3", "et4",]
 axes = ["x", "y", "z"]
-timesteps = 40  
+timesteps = 20  
 
 seq_features = []
 extra_features=[]
 for block in blocks:
     for axis in axes:
         seq_features += [f"{block}_{axis}_{i}" for i in range(timesteps)]
-    """if block != "normal":
-        for axis in axes:
-            seq_features += [f"{block}_{axis}_{i}" for i in range(timesteps)]
-    else:
-        extra_features += [f"{block}_{axis}"]"""
+for angle in angles:
+        seq_features += [f"{angle}_{i}" for i in range(timesteps)]
 
 
 for block in blocks:
@@ -51,15 +50,7 @@ for block in blocks:
         print(cols)
         smoothed_cols = savgol_filter(np.array(df[cols]), 5, 2)
         df[f"s{block}_{axis}_mean"] = np.mean(savgol_filter(np.array(df[cols]), 20, 2),axis=1)
-        #feature_cols += cols
-        #df[f"{block}_{axis}_mean"]=0
-        for ind in [20]:
-            df[f"{block}_{axis}_deriv_{ind}"] = np.diff(smoothed_cols,axis=1)[:,ind]
-            df[f"{block}_{axis}_dderiv_{ind}"] = np.diff(np.diff(smoothed_cols,axis=1),axis=1)[:,ind]
-            #feature_cols += [f"{block}_{axis}_deriv_{ind}",f"{block}_{axis}_dderiv_{ind}"]
-            
-        df[f"{block}_{axis}_deriv_mean"] = np.mean(np.diff(smoothed_cols,axis=1)[:,10:30],axis=1)
-        df[f"{block}_{axis}_dderiv_mean"] = np.mean(np.diff(np.diff(smoothed_cols,axis=1),axis=1)[:,10:30],axis=1)
+
         # Moyenne, std, min, max
         df[f"{block}_{axis}_mean"] = df[cols].mean(axis=1)
         df[f"{block}_{axis}_std"] = df[cols].std(axis=1)
@@ -77,10 +68,20 @@ for block in blocks:
     df[f"{block}_norm_crossnormal"] = np.sqrt((np.cross(normal,df[[f"{block}_{ax}_mean" for ax in axes]])**2).sum(axis=1))
     
     extra_features+= [f"{block}_norm_crossnormal"]
+    
+
+for block in angles:
+    cols = [c for c in df.columns if c.startswith(f"{block}_")]
+    df[f"{block}_mean"] = df[cols].mean(axis=1)
+    df[f"{block}_std"] = df[cols].std(axis=1)
+    df[f"{block}_min"] = df[cols].min(axis=1)
+    df[f"{block}_max"] = df[cols].max(axis=1)
+    extra_features += [f"{block}_mean", f"{block}_std",
+                     f"{block}_min", f"{block}_max"]
 
 #seq_features += [f"normal_{a}" for a in {"z"} for i in range(timesteps)]
 seq_features = seq_features+extra_features
-input_dim = 12+len(extra_features)
+input_dim = 12+8+len(extra_features)
 #X = df[seq_features].values.reshape(len(df), timesteps, input_dim)
 
 X_seq = df[[f for f in seq_features if f not in extra_features]].values
@@ -88,7 +89,7 @@ X_extra = df[extra_features].values  # shape = (n_samples, n_extra)
 
 X_extra_seq = np.repeat(X_extra[:, np.newaxis, :], timesteps, axis=1)
 
-X = np.concatenate([X_seq.reshape(len(df), timesteps, 12), X_extra_seq], axis=2)
+X = np.concatenate([X_seq.reshape(len(df), timesteps, 12+8), X_extra_seq], axis=2)
 
 y = df["correction_applied"].values
 
@@ -172,7 +173,7 @@ with torch.no_grad():
         y_pred.extend(preds.numpy())
         y_proba.extend(probs.numpy())
 
-threshold = 0.75
+threshold = 0.5
 y_pred = (np.array(y_proba) >= threshold).astype(int)
 
 print("Confusion matrix :")
@@ -183,8 +184,8 @@ print(f"ROC-AUC : {roc_auc_score(y_true, y_proba):.3f}")
 
 
 #torch.save(model.state_dict(), "lstm_model.pth")
-torch.save(model, "lstm_model.pth")
-model = torch.load("lstm_model.pth",weights_only=False)
+torch.save(model, "rnn_model.pth")
+model = torch.load("rnn_model.pth",weights_only=False)
 model.eval()
 
 with torch.no_grad():
@@ -197,5 +198,5 @@ with torch.no_grad():
 # Ajouter les résultats au DataFrame pour inspection
 df["predicted_class_threshold"] = preds_threshold
 df["predicted_proba_class1"] = probs
-print(df[["sample", "time", "predicted_class_threshold", "predicted_proba_class1"]].head(20))
+print(df[["sample", "time", "predicted_class_threshold", "predicted_proba_class1"]][20:40])
 df.to_csv("predictions_results.csv", index=False)

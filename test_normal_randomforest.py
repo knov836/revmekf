@@ -2,7 +2,7 @@ import numpy as np
 from math import pi
 import math
 import matplotlib.pyplot as plt
-
+from datetime import datetime
 from variants.integration_gyroaccmag import PredictFilter as IntegrationGyroAccMag
 from variants.mekf_gyroaccmag import PredictFilter as MEKFGyroAccMag
 from variants.reversible_gyroaccmag import PredictFilter as RevGyroAccMag
@@ -43,6 +43,24 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)).split('/examples')[0]
 
 from scipy.spatial.transform import Rotation
 from solver_kalman import SolverFilterPlan
+import glob
+
+import torch
+import torch.nn as nn
+import torch.optim as optim
+class LSTMClassifier(nn.Module):
+    def __init__(self, input_dim, hidden_dim, num_layers, output_dim):
+        super(LSTMClassifier, self).__init__()
+        self.lstm = nn.LSTM(input_dim, hidden_dim, num_layers, batch_first=True, dropout=0.3)
+        self.dropout = nn.Dropout(0.3)
+        self.fc = nn.Linear(hidden_dim, output_dim)
+
+    def forward(self, x):
+        # out: (batch, timesteps, hidden)
+        out, (hn, cn) = self.lstm(x)
+        out = self.dropout(hn[-1])  # dernier état caché
+        out = self.fc(out)
+        return out
 
 
 g_bias= 10**(-5)
@@ -246,8 +264,8 @@ gravity = newset.gravity
 proj_func = correct_proj2
 #proj_func = None
 Solv0 = SolverFilterPlan(Integration,q0,q1,r0,r1,normal,newset,start=np.array(newset.quat_calib,dtype=mpf),proj_fun=proj_func)
-Solv1 = SolverFilterPlan(MEKF,q0,q1,r0,r1,normal,newset,start=np.array(newset.quat_calib,dtype=mpf),proj_fun=proj_func,heuristic=True)#,grav=newset.grav)
-Solv2 = SolverFilterPlan(Rev,q0,q1,r0,r1,normal,newset,start=np.array(newset.quat_calib,dtype=mpf),proj_fun=proj_func,heuristic=True)#,grav=newset.grav)
+Solv1 = SolverFilterPlan(Rev,q0,q1,r0,r1,normal,newset,start=np.array(newset.quat_calib,dtype=mpf),proj_fun=proj_func,neural=True,heuristic=True)#,grav=newset.grav)
+Solv2 = SolverFilterPlan(Rev,q0,q1,r0,r1,normal,newset,start=np.array(newset.quat_calib,dtype=mpf),proj_fun=proj_func,neural=True,heuristic=True)#,grav=newset.grav)
 
 newset.orient = Solv0.quaternion[:,:]  
 nn=0
@@ -290,7 +308,133 @@ normals = np.copy(y_smooth)
 
 
 
-#s_acc_z = acc_z
+rows = []
+
+
+window = 20
+time0=time-time[0]
+for p1 in range(1,N,1):
+    p0 = p1
+    p_start = max(0, p0 - window)
+    p_end   = min(N, p0 + window)
+    indices = list(range(p_start, p_end))  # indices du voisinage
+    
+    
+    
+
+    row = {
+        "sample": int(p0)+n_start,
+        "time": float(time0[p0]+time[0]),
+    }
+
+
+    for k, j in enumerate(indices):
+        row[f"acc_x_{k}"] = float(newset.acc[j,0])
+    for k, j in enumerate(indices):
+        row[f"acc_y_{k}"] = float(newset.acc[j,1])
+    for k, j in enumerate(indices):
+        row[f"acc_z_{k}"] = float(newset.acc[j,2])
+
+    # Gyro
+    for k, j in enumerate(indices):
+        row[f"gyro_x_{k}"] = float(newset.gyro[j,0])
+    for k, j in enumerate(indices):
+        row[f"gyro_y_{k}"] = float(newset.gyro[j,1])
+    for k, j in enumerate(indices):
+        row[f"gyro_z_{k}"] = float(newset.gyro[j,2])
+
+    # Mag
+    for k, j in enumerate(indices):
+        row[f"mag_x_{k}"] = float(newset.mag[j,0])
+    for k, j in enumerate(indices):
+        row[f"mag_y_{k}"] = float(newset.mag[j,1])
+    for k, j in enumerate(indices):
+        row[f"mag_z_{k}"] = float(newset.mag[j,2])
+        
+        
+    for k, j in enumerate(indices):
+        row[f"normal_x_{k}"] = float(normals[j,0])
+    for k, j in enumerate(indices):
+        row[f"normal_y_{k}"] = float(normals[j,1])
+    for k, j in enumerate(indices):
+        row[f"normal_z_{k}"] = float(normals[j,2])
+
+
+    rows.append(row)
+df = pd.DataFrame(rows)
+
+df.to_csv(f"corrections_windows_tmp.csv", index=False)
+files = glob.glob("corrections_windows_tmp.csv")
+df_list = [pd.read_csv(f) for f in files]
+df = pd.concat(df_list, ignore_index=True)
+df.interpolate(method='linear', axis=0, inplace=True)
+df.fillna(method='bfill', inplace=True)
+df.fillna(method='ffill', inplace=True)
+blocks = ["normal","acc", "gyro", "mag"]
+axes = ["x", "y", "z"]
+feature_cols = []
+#feature_cols +=[f"normal_{ax}" for ax in axes]
+for block in blocks:
+    #print([c for ax in axes for c in df.columns if c.startswith(f"normal_{ax}_") ])
+    
+    
+    for axis in axes:
+        cols = [c for c in df.columns if c.startswith(f"{block}_{axis}_")]
+        print(cols)
+        smoothed_cols = savgol_filter(np.array(df[cols]), 5, 2)
+        df[f"s{block}_{axis}_mean"] = np.mean(savgol_filter(np.array(df[cols]), 20, 2),axis=1)
+        #feature_cols += cols
+        #df[f"{block}_{axis}_mean"]=0
+        for ind in [20]:
+            df[f"{block}_{axis}_deriv_{ind}"] = np.diff(smoothed_cols,axis=1)[:,ind]
+            df[f"{block}_{axis}_dderiv_{ind}"] = np.diff(np.diff(smoothed_cols,axis=1),axis=1)[:,ind]
+            #feature_cols += [f"{block}_{axis}_deriv_{ind}",f"{block}_{axis}_dderiv_{ind}"]
+            
+        df[f"{block}_{axis}_deriv_mean"] = np.mean(np.diff(smoothed_cols,axis=1)[:,10:30],axis=1)
+        df[f"{block}_{axis}_dderiv_mean"] = np.mean(np.diff(np.diff(smoothed_cols,axis=1),axis=1)[:,10:30],axis=1)
+        feature_cols += [f"{block}_{axis}_deriv_mean",f"{block}_{axis}_dderiv_mean"]
+        # Moyenne, std, min, max
+        df[f"{block}_{axis}_mean"] = df[cols].mean(axis=1)
+        df[f"{block}_{axis}_std"] = df[cols].std(axis=1)
+        df[f"{block}_{axis}_min"] = df[cols].min(axis=1)
+        df[f"{block}_{axis}_max"] = df[cols].max(axis=1)
+        """feature_cols += [f"{block}_{axis}_mean", f"{block}_{axis}_std",
+                         f"{block}_{axis}_min", f"{block}_{axis}_max"]
+        """
+        feature_cols += [f"{block}_{axis}_std"]
+    # Norme of vector
+    if block != "normal":
+        df[f"{block}_norm"] = np.sqrt(df[[f"{block}_{ax}_mean" for ax in axes]].pow(2).sum(axis=1))
+        normal = df[[f"normal_{ax}_mean" for ax in axes]]
+        df[f"{block}_norm_crossnormal"] = np.sqrt((np.cross(normal,df[[f"{block}_{ax}_mean" for ax in axes]])**2).sum(axis=1))
+        
+        feature_cols+= [f"{block}_norm",f"{block}_norm_crossnormal"]
+        
+        # Differences between axes
+        df[f"{block}_xy_diff"] = df[f"{block}_x_mean"] - df[f"{block}_y_mean"]
+        df[f"{block}_xz_diff"] = df[f"{block}_x_mean"] - df[f"{block}_z_mean"]
+        df[f"{block}_yz_diff"] = df[f"{block}_y_mean"] - df[f"{block}_z_mean"]
+        feature_cols += [f"{block}_xy_diff", f"{block}_xz_diff", f"{block}_yz_diff"]
+    
+df[f"sacc_norm_xy"] = np.sqrt(df[[f"sacc_{ax}_mean" for ax in ["x","y"]]].pow(2).sum(axis=1))
+feature_cols.append(f"sacc_norm_xy")
+
+"""df[f"smag_norm_xy"] = np.sqrt(df[[f"smag_{ax}_mean" for ax in ["x","y"]]].pow(2).sum(axis=1))
+feature_cols.append(f"smag_norm_xy")"""
+#train/test
+X = df[feature_cols]
+import pickle
+with open("random_forest_model.pkl", "rb") as f:
+    rf_loaded = pickle.load(f)
+threshold=0.1
+probs_loaded = rf_loaded.predict_proba(X)
+
+y_pred = (probs_loaded <= threshold).astype(int)
+
+preds_threshold = np.zeros(N)
+preds_threshold[1:N] = y_pred[:,0]
+preds_threshold[1:21] = 0
+print(preds_threshold )
 for i in range(0,N-1,1):
     
     nn+=1
@@ -304,8 +448,8 @@ for i in range(0,N-1,1):
     print("iteration",i)
     newset.acc[i+1,2] = s_acc_z[i+1]
     Solv0.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], normal)
-    Solv1.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], normal)
-    Solv2.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], normal,std_acc_z=std_acc_z)
+    Solv1.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], normal,correction=0)
+    Solv2.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], normal,correction=preds_threshold[i+1])
     correction_applied[i] = Solv2.KFilter.corrected
     angle_applied[i+1] =angle_applied[i]+Solv2.KFilter.angle
 
@@ -350,7 +494,7 @@ size  =n_end-n_start
 #size = n_start+N
 
 
-time0=time-time[0]
+
 fig = plt.figure()
 ax = fig.add_axes([0,0,1,1])
 ax.plot(time0[:size-1],[np.linalg.norm(Solv0.position[j,:]) for j in range(size-1)])
@@ -518,67 +662,4 @@ p0 = np.argwhere(correction_applied).flatten()[0]
 p_start = p0-10
 p_end = p0+10
     
-rows = []
 
-
-window = 20
-
-for p1 in range(0,N,10):
-    p_start = max(0, p0 - window)
-    p_end   = min(len(time0), p0 + window)
-    indices = list(range(p_start, p_end))  # indices du voisinage
-    
-    
-    corr_indices = np.argwhere(correction_applied).flatten()
-
-    candidates = corr_indices[corr_indices >= p1]
-    
-    if len(candidates) > 0 and (candidates.min() - p1) <= 10:
-        p0 = candidates.min()
-    else:
-        p0 = p1
-
-    row = {
-        "sample": int(p0)+n_start,
-        "time": float(time0[p0])+time[0],
-        "correction_applied": p0 in np.argwhere(correction_applied).flatten(),
-    }
-
-    for k, j in enumerate(indices):
-        row[f"acc_x_{k}"] = float(newset.acc[j,0])
-    for k, j in enumerate(indices):
-        row[f"acc_y_{k}"] = float(newset.acc[j,1])
-    for k, j in enumerate(indices):
-        row[f"acc_z_{k}"] = float(newset.acc[j,2])
-
-    # Gyro
-    for k, j in enumerate(indices):
-        row[f"gyro_x_{k}"] = float(newset.gyro[j,0])
-    for k, j in enumerate(indices):
-        row[f"gyro_y_{k}"] = float(newset.gyro[j,1])
-    for k, j in enumerate(indices):
-        row[f"gyro_z_{k}"] = float(newset.gyro[j,2])
-
-    # Mag
-    for k, j in enumerate(indices):
-        row[f"mag_x_{k}"] = float(newset.mag[j,0])
-    for k, j in enumerate(indices):
-        row[f"mag_y_{k}"] = float(newset.mag[j,1])
-    for k, j in enumerate(indices):
-        row[f"mag_z_{k}"] = float(newset.mag[j,2])
-        
-        
-    for k, j in enumerate(indices):
-        row[f"normal_x_{k}"] = float(normals[j,0])
-    for k, j in enumerate(indices):
-        row[f"normal_y_{k}"] = float(normals[j,1])
-    for k, j in enumerate(indices):
-        row[f"normal_z_{k}"] = float(normals[j,2])
-
-
-    rows.append(row)
-df = pd.DataFrame(rows)
-
-from datetime import datetime
-timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-df.to_csv(f"corrections_windows_{timestamp}"+ str(n_start)+".csv", index=False)

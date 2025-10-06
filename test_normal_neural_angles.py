@@ -2,7 +2,7 @@ import numpy as np
 from math import pi
 import math
 import matplotlib.pyplot as plt
-
+from datetime import datetime
 from variants.integration_gyroaccmag import PredictFilter as IntegrationGyroAccMag
 from variants.mekf_gyroaccmag import PredictFilter as MEKFGyroAccMag
 from variants.reversible_gyroaccmag import PredictFilter as RevGyroAccMag
@@ -43,8 +43,28 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)).split('/examples')[0]
 
 from scipy.spatial.transform import Rotation
 from solver_kalman import SolverFilterPlan
+import glob
+
+import torch
+import torch.nn as nn
+import torch.optim as optim
+class RNNClassifier(nn.Module):
+    def __init__(self, input_dim, hidden_dim, num_layers, output_dim):
+        super(RNNClassifier, self).__init__()
+        self.rnn = nn.RNN(input_dim, hidden_dim, num_layers, batch_first=True, nonlinearity='tanh', dropout=0.1)
+        self.dropout = nn.Dropout(0.3)
+        self.fc = nn.Linear(hidden_dim, output_dim)
+
+    def forward(self, x):
+        # out: (batch, timesteps, hidden)
+        out, hn = self.rnn(x)       # hn = dernier état caché (num_layers, batch, hidden)
+        out = self.dropout(hn[-1])  # on prend le dernier état caché de la dernière couche
+        out = self.fc(out)
+        return out
 
 
+model = torch.load("rnn_model.pth",weights_only=False)
+model.eval()
 g_bias= 10**(-5)
 g_noise=10**(-10)
 a_noise=10**(-4)
@@ -74,7 +94,7 @@ if mmode == 'OdoAccPre':
 
 n_start = 0
 n_end=4000
-n_end=n_start +1000
+n_end=n_start +3000
 cols = np.array([0,1,2,3,10,11,12,19,20,21])
 df = data.values[n_start:n_end,cols]
 
@@ -246,8 +266,8 @@ gravity = newset.gravity
 proj_func = correct_proj2
 #proj_func = None
 Solv0 = SolverFilterPlan(Integration,q0,q1,r0,r1,normal,newset,start=np.array(newset.quat_calib,dtype=mpf),proj_fun=proj_func)
-Solv1 = SolverFilterPlan(MEKF,q0,q1,r0,r1,normal,newset,start=np.array(newset.quat_calib,dtype=mpf),proj_fun=proj_func,heuristic=True)#,grav=newset.grav)
-Solv2 = SolverFilterPlan(Rev,q0,q1,r0,r1,normal,newset,start=np.array(newset.quat_calib,dtype=mpf),proj_fun=proj_func,heuristic=True)#,grav=newset.grav)
+Solv1 = SolverFilterPlan(Rev,q0,q1,r0,r1,normal,newset,start=np.array(newset.quat_calib,dtype=mpf),proj_fun=proj_func,heuristic=True,neural=True)#,grav=newset.grav)
+Solv2 = SolverFilterPlan(Rev,q0,q1,r0,r1,normal,newset,start=np.array(newset.quat_calib,dtype=mpf),proj_fun=proj_func,heuristic=True,neural=True)#,grav=newset.grav)
 
 newset.orient = Solv0.quaternion[:,:]  
 nn=0
@@ -290,34 +310,217 @@ normals = np.copy(y_smooth)
 
 
 
-#s_acc_z = acc_z
-for i in range(0,N-1,1):
-    
-    nn+=1
-    normal = normals[i+1,:]
-    
-    std_acc_z =0
-    if i<N-1-40 and i> 40:
-        std_acc_z = np.std(newset.acc[i-20:i+20,2])
-    std_acc_zs[i+1] = std_acc_z 
-    #print(std_acc_z)
-    print("iteration",i)
-    newset.acc[i+1,2] = s_acc_z[i+1]
-    Solv0.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], normal)
-    Solv1.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], normal)
-    Solv2.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], normal,std_acc_z=std_acc_z)
-    correction_applied[i] = Solv2.KFilter.corrected
-    angle_applied[i+1] =angle_applied[i]+Solv2.KFilter.angle
+rows = []
 
-    if i%10 ==0 and i>0:
-        fig = plt.figure()
-        ax = fig.add_axes([0,0,1,1])
-        ax.plot([np.linalg.norm(Solv0.position[j,:]) for j in range(i+1)])
-        ax.plot([np.linalg.norm(Solv1.position[j,:]) for j in range(i+1)])
-        ax.plot([np.linalg.norm(Solv2.position[j,:]) for j in range(i+1)])        
-        ax.plot([np.linalg.norm(coords[j,:]) for j in range(i+1)])
-        ax.plot(np.argwhere(correction_applied).flatten(), [np.linalg.norm(Solv2.position[j,:])  for j in np.argwhere(correction_applied).flatten()],'.',**dict(markersize=10))
-        plt.show()
+
+window = 20
+time0=time-time[0]
+for p1 in range(window,N,1):
+    p0 = p1
+    p_start = max(0, p0 - window)
+    p_end   = min(N, p0 + window)
+    indices = list(range(p_start, p0))  # indices du voisinage
+    
+    
+    
+
+    row = {
+        "sample": int(p0)+n_start,
+        "time": float(time0[p0]+time[0]),
+    }
+
+    for k, j in enumerate(indices):
+        row[f"t0_{k}"] = float(0)
+        row[f"t2_{k}"] = float(0)
+        row[f"t3_{k}"] = float(0)
+        row[f"t4_{k}"] = float(0)
+        
+        row[f"et0_{k}"] = float(0)
+        row[f"et2_{k}"] = float(0)
+        row[f"et3_{k}"] = float(0)
+        row[f"et4_{k}"] = float(0)
+    for k, j in enumerate(indices):
+        row[f"acc_x_{k}"] = float(newset.acc[j,0])
+    for k, j in enumerate(indices):
+        row[f"acc_y_{k}"] = float(newset.acc[j,1])
+    for k, j in enumerate(indices):
+        row[f"acc_z_{k}"] = float(newset.acc[j,2])
+
+    # Gyro
+    for k, j in enumerate(indices):
+        row[f"gyro_x_{k}"] = float(newset.gyro[j,0])
+    for k, j in enumerate(indices):
+        row[f"gyro_y_{k}"] = float(newset.gyro[j,1])
+    for k, j in enumerate(indices):
+        row[f"gyro_z_{k}"] = float(newset.gyro[j,2])
+
+    # Mag
+    for k, j in enumerate(indices):
+        row[f"mag_x_{k}"] = float(newset.mag[j,0])
+    for k, j in enumerate(indices):
+        row[f"mag_y_{k}"] = float(newset.mag[j,1])
+    for k, j in enumerate(indices):
+        row[f"mag_z_{k}"] = float(newset.mag[j,2])
+        
+        
+    for k, j in enumerate(indices):
+        row[f"normal_x_{k}"] = float(normals[j,0])
+    for k, j in enumerate(indices):
+        row[f"normal_y_{k}"] = float(normals[j,1])
+    for k, j in enumerate(indices):
+        row[f"normal_z_{k}"] = float(normals[j,2])
+
+
+    rows.append(row)
+df = pd.DataFrame(rows)
+
+"""df.to_csv(f"corrections_windows_tmp.csv", index=False)
+files = glob.glob("corrections_windows_tmp.csv")"""
+#df_list = [pd.read_csv(f) for f in files]
+#df = pd.concat(df_list, ignore_index=True)
+df.interpolate(method='linear', axis=0, inplace=True)
+df.fillna(method='bfill', inplace=True)
+df.fillna(method='ffill', inplace=True)
+
+blocks = ["normal","acc", "gyro", "mag"]
+angles = ["t0","t2", "t3", "t4","et0","et2", "et3", "et4",]
+
+axes = ["x", "y", "z"]
+timesteps = 20  
+
+seq_features = []
+a_seq_features = []
+extra_features=[]
+for block in blocks:
+    for axis in axes:
+        seq_features += [f"{block}_{axis}_{i}" for i in range(timesteps)]
+for angle in angles:
+        a_seq_features += [f"{angle}_{i}" for i in range(timesteps)]
+
+for block in blocks:
+    
+    for axis in axes:
+        cols = [c for c in df.columns if c.startswith(f"{block}_{axis}_")]
+        print(df[cols])
+        print(cols)
+        smoothed_cols = savgol_filter(np.array(df[cols]), 5, 2)
+        df[f"{block}_{axis}_mean"] = df[cols].mean(axis=1)
+        df[f"{block}_{axis}_std"] = df[cols].std(axis=1)
+        df[f"{block}_{axis}_min"] = df[cols].min(axis=1)
+        df[f"{block}_{axis}_max"] = df[cols].max(axis=1)
+        """feature_cols += [f"{block}_{axis}_mean", f"{block}_{axis}_std",
+                         f"{block}_{axis}_min", f"{block}_{axis}_max"]
+        """
+        extra_features += [f"{block}_{axis}_std"]
+    # Norme of vector
+    if block == "normal":
+        continue
+    normal = df[[f"normal_{ax}_mean" for ax in axes]]
+    df[f"{block}_norm"] = np.sqrt(df[[f"{block}_{ax}_mean" for ax in axes]].pow(2).sum(axis=1))
+    df[f"{block}_norm_crossnormal"] = np.sqrt((np.cross(normal,df[[f"{block}_{ax}_mean" for ax in axes]])**2).sum(axis=1))
+    
+    extra_features+= [f"{block}_norm_crossnormal"]
+"""for block in angles:
+    cols = [c for c in df.columns if c.startswith(f"{block}_")]
+    df[f"{block}_mean"] = df[cols].mean(axis=1)
+    df[f"{block}_std"] = df[cols].std(axis=1)
+    df[f"{block}_min"] = df[cols].min(axis=1)
+    df[f"{block}_max"] = df[cols].max(axis=1)
+    extra_features += [f"{block}_mean", f"{block}_std",
+                     f"{block}_min", f"{block}_max"]"""
+
+
+#seq_features += [f"normal_{a}" for a in {"z"} for i in range(timesteps)]
+seq_features = seq_features+extra_features
+input_dim = 12+8+len(extra_features)
+#X = df[seq_features].values.reshape(len(df), timesteps, input_dim)
+
+X_seq = df[[f for f in seq_features if f not in extra_features]].values
+X_extra = df[extra_features].values  # shape = (n_samples, n_extra)
+
+X_extra_seq = np.repeat(X_extra[:, np.newaxis, :], timesteps, axis=1)
+
+"""X = np.concatenate([X_seq.reshape(len(df), timesteps, 12+8), X_extra_seq], axis=2)
+X_tensor = torch.tensor(X, dtype=torch.float32)"""
+preds_threshold = np.zeros(N)
+probs = np.zeros(N)
+threshold=0.3
+
+angles_array = np.zeros((len(angles),window))
+angle_features = np.array([])
+
+angle_means = np.mean(angles_array, axis=1)  # (len(angles),)
+angle_stds  = np.std(angles_array, axis=1)
+angle_mins  = np.min(angles_array, axis=1)
+angle_maxs  = np.max(angles_array, axis=1)
+
+
+with torch.no_grad():
+    for i in range(0,N-1,1):
+        
+        nn+=1
+        normal = normals[i+1,:]
+        
+        std_acc_z =0
+        if i<N-1-40 and i> 40:
+            std_acc_z = np.std(newset.acc[i-20:i+20,2])
+        std_acc_zs[i+1] = std_acc_z 
+        #print(std_acc_z)
+        print("iteration",i)
+        newset.acc[i+1,2] = s_acc_z[i+1]
+        correction = 0
+        if i>window:
+            
+            #extra_features = [f"{block}_{stat}" for block in angles for stat in ["mean", "std", "min", "max"]]
+            X_extra = df.loc[i-window, extra_features].values[np.newaxis, :] 
+            X_extra_seq = np.repeat(X_extra[:, np.newaxis, :], timesteps, axis=1)
+            X_seq_i = X_seq[i-window].reshape(1, timesteps, 12)
+    
+            angles_seq = np.repeat(angles_array[np.newaxis, :, :], 1, axis=0)
+            angles_seq = np.transpose(angles_seq, (0, 2, 1))  
+    
+            
+            X_extra_angles = angle_features[np.newaxis, :]
+            X_extra_angles_3D = np.repeat(X_extra_angles[:, np.newaxis, :], timesteps, axis=1)
+            X_input = np.concatenate([X_seq_i, angles_seq, X_extra_seq,X_extra_angles_3D], axis=2)
+    
+            X_tensor_1 = torch.tensor(X_input, dtype=torch.float32)
+            outputs = model(X_tensor_1)
+            soft = torch.softmax(outputs, dim=1).numpy().squeeze()
+    
+            p_class0 = soft[0]
+            p_class1 = soft[1]
+            probs[i] = p_class0
+            correction = int(p_class0 < threshold)
+            print(p_class0,p_class1,correction)
+        
+        Solv0.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], normal)
+        Solv1.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], normal)
+        Solv2.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], normal,correction=correction)
+        
+        current_angles = np.array([Solv2.KFilter.t0,Solv2.KFilter.t2,Solv2.KFilter.t3,Solv2.KFilter.t4,Solv2.KFilter.et0,Solv2.KFilter.et2,Solv2.KFilter.et3,Solv2.KFilter.et4])
+    
+        angles_array = np.roll(angles_array, shift=-1, axis=1)
+        angles_array[:, -1] = current_angles  
+    
+        angle_means = np.mean(angles_array, axis=1)  # (len(angles),)
+        angle_stds  = np.std(angles_array, axis=1)
+        angle_mins  = np.min(angles_array, axis=1)
+        angle_maxs  = np.max(angles_array, axis=1)
+        angle_features = np.concatenate([angle_means, angle_stds, angle_mins, angle_maxs])
+        
+        correction_applied[i] = Solv2.KFilter.corrected
+        angle_applied[i+1] =angle_applied[i]+Solv2.KFilter.angle
+    
+        if i%10 ==0 and i>0:
+            fig = plt.figure()
+            ax = fig.add_axes([0,0,1,1])
+            ax.plot([np.linalg.norm(Solv0.position[j,:]) for j in range(i+1)])
+            ax.plot([np.linalg.norm(Solv1.position[j,:]) for j in range(i+1)])
+            ax.plot([np.linalg.norm(Solv2.position[j,:]) for j in range(i+1)])        
+            ax.plot([np.linalg.norm(coords[j,:]) for j in range(i+1)])
+            ax.plot(np.argwhere(correction_applied).flatten(), [np.linalg.norm(Solv2.position[j,:])  for j in np.argwhere(correction_applied).flatten()],'.',**dict(markersize=10))
+            plt.show()
         
 fig = plt.figure()
 ax = fig.add_axes([0,0,1,1])
@@ -350,7 +553,7 @@ size  =n_end-n_start
 #size = n_start+N
 
 
-time0=time-time[0]
+
 fig = plt.figure()
 ax = fig.add_axes([0,0,1,1])
 ax.plot(time0[:size-1],[np.linalg.norm(Solv0.position[j,:]) for j in range(size-1)])
@@ -518,67 +721,4 @@ p0 = np.argwhere(correction_applied).flatten()[0]
 p_start = p0-10
 p_end = p0+10
     
-rows = []
 
-
-window = 20
-
-for p1 in range(0,N,10):
-    p_start = max(0, p0 - window)
-    p_end   = min(len(time0), p0 + window)
-    indices = list(range(p_start, p_end))  # indices du voisinage
-    
-    
-    corr_indices = np.argwhere(correction_applied).flatten()
-
-    candidates = corr_indices[corr_indices >= p1]
-    
-    if len(candidates) > 0 and (candidates.min() - p1) <= 10:
-        p0 = candidates.min()
-    else:
-        p0 = p1
-
-    row = {
-        "sample": int(p0)+n_start,
-        "time": float(time0[p0])+time[0],
-        "correction_applied": p0 in np.argwhere(correction_applied).flatten(),
-    }
-
-    for k, j in enumerate(indices):
-        row[f"acc_x_{k}"] = float(newset.acc[j,0])
-    for k, j in enumerate(indices):
-        row[f"acc_y_{k}"] = float(newset.acc[j,1])
-    for k, j in enumerate(indices):
-        row[f"acc_z_{k}"] = float(newset.acc[j,2])
-
-    # Gyro
-    for k, j in enumerate(indices):
-        row[f"gyro_x_{k}"] = float(newset.gyro[j,0])
-    for k, j in enumerate(indices):
-        row[f"gyro_y_{k}"] = float(newset.gyro[j,1])
-    for k, j in enumerate(indices):
-        row[f"gyro_z_{k}"] = float(newset.gyro[j,2])
-
-    # Mag
-    for k, j in enumerate(indices):
-        row[f"mag_x_{k}"] = float(newset.mag[j,0])
-    for k, j in enumerate(indices):
-        row[f"mag_y_{k}"] = float(newset.mag[j,1])
-    for k, j in enumerate(indices):
-        row[f"mag_z_{k}"] = float(newset.mag[j,2])
-        
-        
-    for k, j in enumerate(indices):
-        row[f"normal_x_{k}"] = float(normals[j,0])
-    for k, j in enumerate(indices):
-        row[f"normal_y_{k}"] = float(normals[j,1])
-    for k, j in enumerate(indices):
-        row[f"normal_z_{k}"] = float(normals[j,2])
-
-
-    rows.append(row)
-df = pd.DataFrame(rows)
-
-from datetime import datetime
-timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-df.to_csv(f"corrections_windows_{timestamp}"+ str(n_start)+".csv", index=False)

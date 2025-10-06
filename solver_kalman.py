@@ -20,7 +20,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)).split('/examples')[0]
 
 
 class SolverFilterPlan:
-    def __init__(self,kfilter,q0,q1,r0,r1,normal,newset,start=np.array([1,0,0,0],dtype=mpf),gravity=np.array([0,0,1],dtype=mpf),proj_fun=None,size=100,heuristic=False):
+    def __init__(self,kfilter,q0,q1,r0,r1,normal,newset,start=np.array([1,0,0,0],dtype=mpf),gravity=np.array([0,0,1],dtype=mpf),proj_fun=None,size=100,heuristic=False,neural=False):
         """
         Parameters
         ----------
@@ -116,7 +116,7 @@ class SolverFilterPlan:
         self.position = np.zeros((N, 3),dtype=mpf)
 
         
-        self.KFilter = kfilter(dt, QQ,RR,PK, X,Quat, bias, normal,mag0=mag0,rotsurf=self.rotsurf,proj_fun=proj_fun,time=time0,base_width=base_width,heuristic=heuristic)
+        self.KFilter = kfilter(dt, QQ,RR,PK, X,Quat, bias, normal,mag0=mag0,rotsurf=self.rotsurf,proj_fun=proj_fun,time=time0,base_width=base_width,heuristic=heuristic,neural=neural)
         self.gravity_r[0,:] = self.KFilter.gravity_r
         self.ind =0
     

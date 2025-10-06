@@ -13,7 +13,7 @@ from scipy.signal import savgol_filter
 
 #files = glob.glob("corrections_windows_0.csv")
 #files = glob.glob("corrections_windows_20251005_1852230.csv")
-files = glob.glob("corrections_windows_20251005_2339290.csv")
+files = glob.glob("corrections_windows_angles_20251006_1603280.csv")
 #files = glob.glob("corrections_windows_20251006_1029030.csv")
 
 df_list = [pd.read_csv(f) for f in files]
@@ -38,15 +38,7 @@ for block in blocks:
         df[f"s{block}_{axis}_mean"] = np.mean(savgol_filter(np.array(df[cols]), 20, 2),axis=1)
         #feature_cols += cols
         #df[f"{block}_{axis}_mean"]=0
-        for ind in [20]:
-            df[f"{block}_{axis}_deriv_{ind}"] = np.diff(smoothed_cols,axis=1)[:,ind]
-            df[f"{block}_{axis}_dderiv_{ind}"] = np.diff(np.diff(smoothed_cols,axis=1),axis=1)[:,ind]
-            #feature_cols += [f"{block}_{axis}_deriv_{ind}",f"{block}_{axis}_dderiv_{ind}"]
-            
-        df[f"{block}_{axis}_deriv_mean"] = np.mean(np.diff(smoothed_cols,axis=1)[:,10:30],axis=1)
-        df[f"{block}_{axis}_dderiv_mean"] = np.mean(np.diff(np.diff(smoothed_cols,axis=1),axis=1)[:,10:30],axis=1)
-        feature_cols += [f"{block}_{axis}_deriv_mean",f"{block}_{axis}_dderiv_mean"]
-        # Moyenne, std, min, max
+
         df[f"{block}_{axis}_mean"] = df[cols].mean(axis=1)
         df[f"{block}_{axis}_std"] = df[cols].std(axis=1)
         df[f"{block}_{axis}_min"] = df[cols].min(axis=1)
@@ -69,10 +61,25 @@ for block in blocks:
         df[f"{block}_yz_diff"] = df[f"{block}_y_mean"] - df[f"{block}_z_mean"]
         feature_cols += [f"{block}_xy_diff", f"{block}_xz_diff", f"{block}_yz_diff"]
     
-    
-    
+angles = ["t0","t2", "t3", "t4","et0","et2", "et3", "et4",]
 df[f"sacc_norm_xy"] = np.sqrt(df[[f"sacc_{ax}_mean" for ax in ["x","y"]]].pow(2).sum(axis=1))
 feature_cols.append(f"sacc_norm_xy")
+for block in angles:
+    cols = [c for c in df.columns if c.startswith(f"{block}_")]
+    df[f"{block}_mean"] = df[cols].mean(axis=1)
+    df[f"{block}_std"] = df[cols].std(axis=1)
+    df[f"{block}_min"] = df[cols].min(axis=1)
+    df[f"{block}_max"] = df[cols].max(axis=1)
+
+feature_cols += (
+    [f"{block}_mean" for block in angles] +
+    [f"{block}_std" for block in angles] +
+    [f"{block}_min" for block in angles] +
+    [f"{block}_max" for block in angles]
+)
+
+
+
 
 """df[f"smag_norm_xy"] = np.sqrt(df[[f"smag_{ax}_mean" for ax in ["x","y"]]].pow(2).sum(axis=1))
 feature_cols.append(f"smag_norm_xy")"""
@@ -97,16 +104,19 @@ clf = RandomForestClassifier(
 )
 clf.fit(X_train_res, y_train_res)
 import pickle
-
+metadata = {
+    "model": clf,
+    "feature_names": list(df[feature_cols].columns)  # ou list(feature_cols)
+}
 # Sauvegarde
-with open("random_forest_model.pkl", "wb") as f:
-    pickle.dump(clf, f)
+with open("random_forest_model_angle.pkl", "wb") as f:
+    pickle.dump(metadata, f)
 # Predictions and probabilities
 """y_proba = clf.predict_proba(X_test)[:,1]
 threshold = 0.5  
 y_pred = (y_proba >= threshold).astype(int)"""
 y_proba = clf.predict_proba(X_test)[:,1]
-threshold = 0.5  # plus bas pour détecter plus de 1
+threshold = 0.4  # plus bas pour détecter plus de 1
 y_pred = (y_proba >= threshold).astype(int)
 #Evaluation
 print("📊 Confusion matrix :")

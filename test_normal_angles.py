@@ -74,7 +74,7 @@ if mmode == 'OdoAccPre':
 
 n_start = 0
 n_end=4000
-n_end=n_start +1000
+n_end=n_start +3000
 cols = np.array([0,1,2,3,10,11,12,19,20,21])
 df = data.values[n_start:n_end,cols]
 
@@ -264,8 +264,15 @@ coords = np.column_stack((x, y))-np.array([x[0],y[0]])
 
 correction_applied = np.zeros(N)
 angle_applied = np.zeros(N)
+array_t0 = np.zeros(N)
+array_t2 = np.zeros(N)
+array_t3 = np.zeros(N)
+array_t4 = np.zeros(N)
 
-
+array_et0 = np.zeros(N)
+array_et2 = np.zeros(N)
+array_et3 = np.zeros(N)
+array_et4 = np.zeros(N)
 
 fig = plt.figure()
 ax = fig.add_axes([0,0,1,1])
@@ -308,6 +315,16 @@ for i in range(0,N-1,1):
     Solv2.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], normal,std_acc_z=std_acc_z)
     correction_applied[i] = Solv2.KFilter.corrected
     angle_applied[i+1] =angle_applied[i]+Solv2.KFilter.angle
+    
+    array_t0[i+1] = Solv2.KFilter.t0
+    array_t2[i+1] = Solv2.KFilter.t2
+    array_t3[i+1] = Solv2.KFilter.t3
+    array_t4[i+1] = Solv2.KFilter.t4
+    
+    array_et0[i+1] = Solv2.KFilter.et0
+    array_et2[i+1] = Solv2.KFilter.et2
+    array_et3[i+1] = Solv2.KFilter.et3
+    array_et4[i+1] = Solv2.KFilter.et4
 
     if i%10 ==0 and i>0:
         fig = plt.figure()
@@ -523,20 +540,19 @@ rows = []
 
 window = 20
 
-for p1 in range(0,N,10):
-    p_start = max(0, p0 - window)
-    p_end   = min(len(time0), p0 + window)
-    indices = list(range(p_start, p_end))  # indices du voisinage
-    
-    
+for p1 in range(window,N,1):
     corr_indices = np.argwhere(correction_applied).flatten()
 
     candidates = corr_indices[corr_indices >= p1]
     
-    if len(candidates) > 0 and (candidates.min() - p1) <= 10:
-        p0 = candidates.min()
-    else:
-        p0 = p1
+    p0=p1
+        
+    p_start = max(0, p0 - window)
+    p_end   = min(len(time0), p0 + window)
+    indices = list(range(p_start, p0))  # indices du voisinage
+    
+    
+    
 
     row = {
         "sample": int(p0)+n_start,
@@ -544,6 +560,17 @@ for p1 in range(0,N,10):
         "correction_applied": p0 in np.argwhere(correction_applied).flatten(),
     }
 
+    for k, j in enumerate(indices):
+        row[f"t0_{k}"] = float(array_t0[j])
+        row[f"t2_{k}"] = float(array_t2[j])
+        row[f"t3_{k}"] = float(array_t3[j])
+        row[f"t4_{k}"] = float(array_t4[j])
+        
+        row[f"et0_{k}"] = float(array_et0[j])
+        row[f"et2_{k}"] = float(array_et2[j])
+        row[f"et3_{k}"] = float(array_et3[j])
+        row[f"et4_{k}"] = float(array_et4[j])
+        
     for k, j in enumerate(indices):
         row[f"acc_x_{k}"] = float(newset.acc[j,0])
     for k, j in enumerate(indices):
@@ -581,4 +608,4 @@ df = pd.DataFrame(rows)
 
 from datetime import datetime
 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-df.to_csv(f"corrections_windows_{timestamp}"+ str(n_start)+".csv", index=False)
+df.to_csv(f"corrections_windows_angles_{timestamp}"+ str(n_start)+".csv", index=False)
