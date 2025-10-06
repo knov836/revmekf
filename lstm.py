@@ -167,6 +167,6 @@ print(classification_report(y_true, y_pred))
 print(f"ROC-AUC : {roc_auc_score(y_true, y_proba):.3f}")
 
 
-torch.save(model.state_dict(), "lstm_model.pth")
-print("Model saved in lstm_model.pth")
+#torch.save(model.state_dict(), "lstm_model.pth")
+torch.save(model, "lstm_model.pth")
 
