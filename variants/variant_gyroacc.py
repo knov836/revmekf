@@ -44,6 +44,7 @@ class Filter:
         self.grav_earth = np.copy(self.gravity)
         self.mag0 = mag0
         self.heuristic=heuristic
+        self.correction = False
         self.std_acc_z = 0
         self.variant_update = None
         
@@ -101,6 +102,9 @@ class Filter:
         self.acc = Accelerometer
         if kargs["std_acc_z"]!= None:
             self.std_acc_z = kargs["std_acc_z"]
+        if kargs["correction"]!= None:
+            self.correction= kargs["correction"]
+        
         if self.variant_update !=None:
             self.variant_update(*args)
         

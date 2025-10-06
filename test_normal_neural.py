@@ -94,7 +94,7 @@ if mmode == 'OdoAccPre':
 
 n_start = 0
 n_end=4000
-n_end=n_start +600
+n_end=n_start +3000
 cols = np.array([0,1,2,3,10,11,12,19,20,21])
 df = data.values[n_start:n_end,cols]
 
@@ -401,7 +401,6 @@ for block in blocks:
             
         df[f"{block}_{axis}_deriv_mean"] = np.mean(np.diff(smoothed_cols,axis=1)[:,10:30],axis=1)
         df[f"{block}_{axis}_dderiv_mean"] = np.mean(np.diff(np.diff(smoothed_cols,axis=1),axis=1)[:,10:30],axis=1)
-        # Moyenne, std, min, max
         df[f"{block}_{axis}_mean"] = df[cols].mean(axis=1)
         df[f"{block}_{axis}_std"] = df[cols].std(axis=1)
         df[f"{block}_{axis}_min"] = df[cols].min(axis=1)
@@ -432,7 +431,8 @@ X_extra_seq = np.repeat(X_extra[:, np.newaxis, :], timesteps, axis=1)
 X = np.concatenate([X_seq.reshape(len(df), timesteps, 12), X_extra_seq], axis=2)
 X_tensor = torch.tensor(X, dtype=torch.float32)
 preds_threshold = np.zeros(N)
-threshold=0.80
+probs = np.zeros(N)
+threshold=0.23
 with torch.no_grad():
     for i in range(N-1):
         X_tensor_1 = torch.tensor(X[i,:,:], dtype=torch.float32).unsqueeze(0)
@@ -440,10 +440,14 @@ with torch.no_grad():
         
         #aa = model(X_tensor_1)
         
-        probs = torch.softmax(aa, dim=1)[:,1].numpy()  # probabilité de la classe 
-        #pred_class = torch.argmax(aa,dim=1)
-        print(probs)
-        preds_threshold[i+1] = (probs >= threshold).astype(int)
+        soft = torch.softmax(aa, dim=1).numpy().squeeze()  # ex: [p0, p1]
+
+        p_class0 = soft[0]  
+        p_class1 = soft[1]  #
+
+        probs[i+1] = p_class0 
+        #print(p_class0)
+        preds_threshold[i] = (p_class0 < threshold).astype(int)
 print(preds_threshold )
 
 
@@ -461,7 +465,7 @@ for i in range(0,N-1,1):
     newset.acc[i+1,2] = s_acc_z[i+1]
     Solv0.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], normal)
     Solv1.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], normal)
-    Solv2.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], normal,std_acc_z=std_acc_z)
+    Solv2.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], normal,correction=preds_threshold[i+1])
     correction_applied[i] = Solv2.KFilter.corrected
     angle_applied[i+1] =angle_applied[i]+Solv2.KFilter.angle
 

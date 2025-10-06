@@ -71,7 +71,7 @@ class PredictFilter(Filter):
         logrot1 = log_q(np.array(qq))
         #logrot1 = np.zeros(3)
         
-        acc1,rot1,irot1,acc2,rot2,irot2,acc3,rot3,irot3,corrected,angle_acc= acc_from_normal_imu_grav(np.array(quat_rot([0,*np.array(nAxis,dtype=mpf)],quat))[1:4],np.array([0,1,0],dtype=mpf) , np.array(quat_rot([0,*(nAccelerometer*(self.dt**2))],quat))[1:4],np.array(quat_rot([0,*(grav*(self.dt**2))],quat))[1:4], normal, self.surf_center,start = logrot1,heuristic=self.heuristic)
+        acc1,rot1,irot1,acc2,rot2,irot2,acc3,rot3,irot3,corrected,angle_acc= acc_from_normal_imu_grav(np.array(quat_rot([0,*np.array(nAxis,dtype=mpf)],quat))[1:4],np.array([0,1,0],dtype=mpf) , np.array(quat_rot([0,*(nAccelerometer*(self.dt**2))],quat))[1:4],np.array(quat_rot([0,*(grav*(self.dt**2))],quat))[1:4], normal, self.surf_center,start = logrot1,heuristic=self.heuristic,correction = self.correction)
         if corrected:
             self.corrected=True
             #print(angle_acc)
