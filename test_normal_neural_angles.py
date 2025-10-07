@@ -444,7 +444,7 @@ X_extra_seq = np.repeat(X_extra[:, np.newaxis, :], timesteps, axis=1)
 X_tensor = torch.tensor(X, dtype=torch.float32)"""
 preds_threshold = np.zeros(N)
 probs = np.zeros(N)
-threshold=0.55
+threshold=0.57
 
 angles_array = np.zeros((len(angles),window))
 angle_features = np.array([])
