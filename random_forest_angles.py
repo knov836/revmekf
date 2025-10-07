@@ -13,7 +13,9 @@ from scipy.signal import savgol_filter
 
 #files = glob.glob("corrections_windows_0.csv")
 #files = glob.glob("corrections_windows_20251005_1852230.csv")
-files = glob.glob("corrections_windows_angles_20251006_1603280.csv")
+#files = glob.glob("corrections_windows_angles_20251006_1603280.csv")
+
+files = glob.glob("corrections_windows_angles_20251007_1408550.csv")
 #files = glob.glob("corrections_windows_20251006_1029030.csv")
 
 df_list = [pd.read_csv(f) for f in files]
@@ -116,7 +118,7 @@ with open("random_forest_model_angle.pkl", "wb") as f:
 threshold = 0.5  
 y_pred = (y_proba >= threshold).astype(int)"""
 y_proba = clf.predict_proba(X_test)[:,1]
-threshold = 0.4  # plus bas pour détecter plus de 1
+threshold = 0.9  # plus bas pour détecter plus de 1
 y_pred = (y_proba >= threshold).astype(int)
 #Evaluation
 print("📊 Confusion matrix :")

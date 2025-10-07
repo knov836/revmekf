@@ -444,7 +444,7 @@ X_extra_seq = np.repeat(X_extra[:, np.newaxis, :], timesteps, axis=1)
 X_tensor = torch.tensor(X, dtype=torch.float32)"""
 preds_threshold = np.zeros(N)
 probs = np.zeros(N)
-threshold=0.3
+threshold=0.55
 
 angles_array = np.zeros((len(angles),window))
 angle_features = np.array([])
@@ -490,8 +490,8 @@ with torch.no_grad():
     
             p_class0 = soft[0]
             p_class1 = soft[1]
-            probs[i] = p_class0
-            correction = int(p_class0 < threshold)
+            probs[i] = p_class1
+            correction = int(p_class1 > threshold)
             print(p_class0,p_class1,correction)
         
         Solv0.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], normal)

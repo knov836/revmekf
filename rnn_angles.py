@@ -15,7 +15,8 @@ from scipy.signal import savgol_filter
 #files = glob.glob("corrections_windows_20251005_1852230.csv")
 
 #files = glob.glob("corrections_windows_20251005_2339290.csv")
-files = glob.glob("corrections_windows_angles_20251006_1603280.csv")
+#files = glob.glob("corrections_windows_angles_20251006_1603280.csv")
+files = glob.glob("corrections_windows_angles_20251007_1408550.csv")
 
 
 #files = glob.glob("corrections_windows_20251006_1029030.csv")
@@ -121,7 +122,7 @@ test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
 class RNNClassifier(nn.Module):
     def __init__(self, input_dim, hidden_dim, num_layers, output_dim):
         super(RNNClassifier, self).__init__()
-        self.rnn = nn.RNN(input_dim, hidden_dim, num_layers, batch_first=True, nonlinearity='tanh', dropout=0.1)
+        self.rnn = nn.RNN(input_dim, hidden_dim, num_layers, batch_first=True, nonlinearity='tanh', dropout=0.3)
         self.dropout = nn.Dropout(0.3)
         self.fc = nn.Linear(hidden_dim, output_dim)
 

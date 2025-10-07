@@ -43,18 +43,15 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)).split('/examples')[0]
 
 from scipy.spatial.transform import Rotation
 from solver_kalman import SolverFilterPlan
-
+from signal_process import compute_normals
 
 g_bias= 10**(-5)
 g_noise=10**(-10)
 a_noise=10**(-4)
 
 data_file = 'selected_data_vehicle1.csv'
-
 data=pd.read_csv(data_file)
 
-
-#mmode = 'OdoAccPre'
 mmode = 'GyroAccMag'
 
 
@@ -74,7 +71,7 @@ if mmode == 'OdoAccPre':
 
 n_start = 0
 n_end=4000
-n_end=n_start +3000
+n_end=n_start +600
 cols = np.array([0,1,2,3,10,11,12,19,20,21])
 df = data.values[n_start:n_end,cols]
 
@@ -83,18 +80,12 @@ mag = np.copy(df[:,7:10])
 
 fs = 50
 sos = butter(2, 24, fs=fs, output='sos')
-#smoothed = sosfiltfilt(sos, newset.acc)
 accs = np.copy(df[:,1:7])
 
 df[:,4:7]=df[:,4:7]*np.pi/180
 
 time= np.array(df[:,0],dtype=mpf)#/10**9
-#time = time-2*time[0]+time[1]
 df[:,0]*=10**9
-#time = time-2*time[0]+time[1]#
-#df[:,7:10] = c_mag
-
-#normal = np.mean(df[:100,7:10],axis=0)
 
 
 
@@ -111,110 +102,17 @@ acc_smooth0 = savgol_filter(df[:,1], 500, 2)
 acc_smooth1 = savgol_filter(df[:,2], 500, 2)
 acc_smooth2 = savgol_filter(df[:,3], 500, 2)
 acc_smooth = np.vstack((acc_smooth0,acc_smooth1,acc_smooth2)).T
+
+
 gravity = [0,0,np.mean(np.linalg.norm(acc_smooth[:150,:],axis=1))]
 
-
-fig = plt.figure()
-ax = fig.add_axes([0,0,1,1])
-ax.plot(acc_smooth)
-ax.set_title('Acc smoothed')
-for i in range(0,N,1):
-    ss = 500
-    if i<N-1-ss:
-        #acc_mean = np.mean(df[i:ss+i,1:4],axis=0)
-        acc_mean = np.mean(acc_smooth[i:ss+i,0:3],axis=0)
-        a = np.copy(acc_mean)
-        a=a/np.linalg.norm(a)
-        mag_mean = np.mean(df[i:ss+i,7:10],axis=0)
-        mag_mean = mag_mean /np.linalg.norm(mag_mean)
-        
-        acc_mean = acc_mean /np.linalg.norm(gravity)
-        alpha = np.sqrt(np.max(np.abs(1-acc_mean[2]**2),0))
-        
-        angle_alpha= np.arccos(alpha)
-        
-        """angle_beta = np.pi/2-angle_alpha
-        beta = np.cos(angle_beta)
-        angle_gamma = np.arccos(np.sign(mag_mean[2])*np.max(np.abs(mag_mean[2]),np.abs(beta))/beta)"""
-        
-        qq1 = quat_ntom( np.array([1,0,0]),mag_mean)
-        rotated_z = np.array(quat_rot(np.array([0,0,0,1]),(qq1)))[1:4]
-        
-        
-        axis1 = mag_mean
-        
-        pacc = np.dot(rotated_z,axis1)*axis1
-        oacc = rotated_z-pacc
-        #normalized_oacc = oacc /np.linalg.norm(oacc)
-        
-        paz = rotated_z[2] - pacc[2]
-        
-        n1 =axis1
-        n2 = zaxis
-        d1 = -np.dot(rotated_z,axis1)
-        d2 = -acc_mean[2]
-        point, direction = intersection_line_from_planes(n1, d1, n2, d2)
-        
-        oacc= oacc/np.linalg.norm(oacc)
-        direction = direction/np.linalg.norm(direction)
-        t = sp.Symbol('t', real=True)
-        P = sp.Matrix(point)
-        d = sp.Matrix(direction)
-        A = sp.Matrix(pacc)
-        
-        X_t = P + t * d
-        R = np.linalg.norm(oacc)
-        eq = sp.N((X_t - A).dot(X_t - A)-R**2,40)
-        #eq = sp.Eq((X_t - A).dot(X_t - A), R**2)
-        #solutions= sp.solve(sp.diff(eq),t)
-        sol0 = sp.nsolve(sp.diff(eq),0)
-        sol1 = -sol0
-        
-        solutions=[sol0,sol1]
-        points = [np.array(X_t.subs(t, sol)).flatten() for sol in solutions]
-        #print(np.dot(point,n1)+d1)
-        #print(np.dot(point,n2)+d2)
-        tthetas= np.zeros(len(points))
-        for k in range(len(points)):
-            p = points[k]
-            dd = p-pacc
-            dd = dd/np.linalg.norm(dd.astype(float))*np.linalg.norm(oacc.astype(float))
-            #print("oacc,dd",oacc,dd,np.dot(oacc,dd),np.linalg.norm(np.array(dd).astype(float)))
-            theta0 = np.arccos(np.sign(np.dot(oacc.astype(float),dd.astype(float)))*np.min([np.abs(np.dot(oacc.astype(float),dd.astype(float))),1]))
-            theta1 = -theta0
-            v0 = np.array(quat_rot([0,*oacc],ExpQua(theta0*axis1)))[1:4]
-            v1 = np.array(quat_rot([0,*oacc],ExpQua(theta1*axis1)))[1:4]
-            if (np.abs(np.dot(v0,np.array(dd).astype(float))))<(np.abs(np.dot(v1,np.array(dd).astype(float)))):
-                tthetas[k] = theta1
-            else:
-                tthetas[k] = theta0
-            #print("rotation",np.array(quat_rot([0,*oacc],ExpQua(theta0*axis1)))[1:4],dd)
-            #print("rotation",np.array(quat_rot([0,*oacc],ExpQua(theta1*axis1)))[1:4],dd)
-            #print("thetas")
-            
-        
-        #ge = np.cross(axis,normalized_oacc)
-        #print("vector",pacc,axis1,oacc,direction,np.dot(oacc,direction))
-        ttheta = 0
-        theta0 = tthetas[0]
-        theta1 = tthetas[1]
-        v0 = np.array(quat_rot([0,*oacc],ExpQua(theta0*axis1)))[1:4]
-        v1 = np.array(quat_rot([0,*oacc],ExpQua(theta1*axis1)))[1:4]
-        #print("cmopa",v0,v1,a)
-        if (np.abs(np.dot(v0,np.array(a).astype(float))))<(np.abs(np.dot(v1,np.array(a).astype(float)))):
-            ttheta = theta1
-        else:
-            ttheta = theta0
-            
-        #import pdb; pdb.set_trace()
-        qq2 = quat_mult(ExpQua(ttheta*axis1), qq1)
-        #print("rotation",np.array(quat_rot([0,0,0,1],qq2))[1:4],a)
-        normal = np.array(quat_rot([0,0,0,1], quat_inv(qq2)))[1:4]
-        normals[i,:] = normal/np.linalg.norm(normal)
-
-        #print("normal",normal,sol0==sol1,sol1-sol0)
-    else:
-        normals[i,:]= normals[i-1,:]
+normals = compute_normals(N,acc_smooth,gravity,df[:,7:10])
+y = normals
+y_smooth0 = savgol_filter(y[:,0], 500, 2)
+y_smooth1 = savgol_filter(y[:,1], 500, 2)
+y_smooth2 = savgol_filter(y[:,2], 500, 2)
+y_smooth = np.vstack((y_smooth0,y_smooth1,y_smooth2)).T
+normals = np.copy(y_smooth)
 
 
 acc_z = df[:,3]
@@ -246,8 +144,8 @@ gravity = newset.gravity
 proj_func = correct_proj2
 #proj_func = None
 Solv0 = SolverFilterPlan(Integration,q0,q1,r0,r1,normal,newset,start=np.array(newset.quat_calib,dtype=mpf),proj_fun=proj_func)
-Solv1 = SolverFilterPlan(MEKF,q0,q1,r0,r1,normal,newset,start=np.array(newset.quat_calib,dtype=mpf),proj_fun=proj_func,heuristic=True)#,grav=newset.grav)
-Solv2 = SolverFilterPlan(Rev,q0,q1,r0,r1,normal,newset,start=np.array(newset.quat_calib,dtype=mpf),proj_fun=proj_func,heuristic=True)#,grav=newset.grav)
+Solv1 = SolverFilterPlan(Rev,q0,q1,r0,r1,normal,newset,start=np.array(newset.quat_calib,dtype=mpf),proj_fun=proj_func,heuristic=True,neural=True)#,grav=newset.grav)
+Solv2 = SolverFilterPlan(Rev,q0,q1,r0,r1,normal,newset,start=np.array(newset.quat_calib,dtype=mpf),proj_fun=proj_func,heuristic=True,manual=True)#,grav=newset.grav)
 
 newset.orient = Solv0.quaternion[:,:]  
 nn=0
@@ -263,6 +161,8 @@ coords = np.column_stack((x, y))-np.array([x[0],y[0]])
 
 
 correction_applied = np.zeros(N)
+correction_not_applied = np.zeros(N)
+labels = np.empty(N, dtype=str)
 angle_applied = np.zeros(N)
 array_t0 = np.zeros(N)
 array_t2 = np.zeros(N)
@@ -274,30 +174,6 @@ array_et2 = np.zeros(N)
 array_et3 = np.zeros(N)
 array_et4 = np.zeros(N)
 
-fig = plt.figure()
-ax = fig.add_axes([0,0,1,1])
-ax.plot(normals)
-ax.set_title('Evolution of the normal')
-     
-
-y = normals
-
-y_smooth0 = savgol_filter(y[:,0], 500, 2)
-y_smooth1 = savgol_filter(y[:,1], 500, 2)
-y_smooth2 = savgol_filter(y[:,2], 500, 2)
-y_smooth = np.vstack((y_smooth0,y_smooth1,y_smooth2)).T
-
-
-
-fig = plt.figure()
-ax = fig.add_axes([0,0,1,1])
-ax.plot(y_smooth)
-ax.set_title('Evolution of the normal')
-normals = np.copy(y_smooth)
-
-
-
-#s_acc_z = acc_z
 for i in range(0,N-1,1):
     
     nn+=1
@@ -313,7 +189,9 @@ for i in range(0,N-1,1):
     Solv0.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], normal)
     Solv1.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], normal)
     Solv2.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], normal,std_acc_z=std_acc_z)
-    correction_applied[i] = Solv2.KFilter.corrected
+    correction_applied[i+1] = Solv2.KFilter.corrected
+    correction_not_applied[i+1] = Solv2.KFilter.not_corrected
+    labels[i+1] = Solv2.KFilter.label
     angle_applied[i+1] =angle_applied[i]+Solv2.KFilter.angle
     
     array_t0[i+1] = Solv2.KFilter.t0
@@ -333,9 +211,22 @@ for i in range(0,N-1,1):
         ax.plot([np.linalg.norm(Solv1.position[j,:]) for j in range(i+1)])
         ax.plot([np.linalg.norm(Solv2.position[j,:]) for j in range(i+1)])        
         ax.plot([np.linalg.norm(coords[j,:]) for j in range(i+1)])
-        ax.plot(np.argwhere(correction_applied).flatten(), [np.linalg.norm(Solv2.position[j,:])  for j in np.argwhere(correction_applied).flatten()],'.',**dict(markersize=10))
+        ax.plot(np.argwhere(correction_applied).flatten()-1, [np.linalg.norm(Solv2.position[j,:])  for j in np.argwhere(correction_applied).flatten()-1],'.',**dict(markersize=10))
+        ax.plot(np.argwhere(correction_not_applied).flatten()-1, [np.linalg.norm(Solv2.position[j,:])  for j in np.argwhere(correction_not_applied).flatten()-1],'.',**dict(markersize=10))
         plt.show()
-        
+
+
+compare = np.zeros((N,4),dtype=float)
+compare2 = np.zeros((N,4),dtype=float)
+quaternion0 = Solv0.quaternion[:N,:]    
+quaternion1 = Solv1.quaternion[:N,:]
+quaternion2 = Solv2.quaternion[:N,:]
+position0 = Solv0.position[:N,:]
+position1 = Solv1.position[:N,:]
+position2 = Solv2.position[:N,:]
+gravity_r = Solv2.gravity_r[:N,:]
+
+
 fig = plt.figure()
 ax = fig.add_axes([0,0,1,1])
 ax.plot(s_acc_z)
@@ -351,15 +242,7 @@ ax = fig.add_axes([0,0,1,1])
 ax.plot(normals)
 ax.set_title('Evolution of the normal')
  
-compare = np.zeros((N,4),dtype=float)
-compare2 = np.zeros((N,4),dtype=float)
-quaternion0 = Solv0.quaternion[:N,:]    
-quaternion1 = Solv1.quaternion[:N,:]
-quaternion2 = Solv2.quaternion[:N,:]
-position0 = Solv0.position[:N,:]
-position1 = Solv1.position[:N,:]
-position2 = Solv2.position[:N,:]
-gravity_r = Solv2.gravity_r[:N,:]
+
 
 
 size  =n_end-n_start
@@ -527,10 +410,10 @@ dacc_smooth = np.diff(acc_smooth,axis=0)
 fig = plt.figure()
 ax = fig.add_axes([0,0,1,1])
 ax.plot(time0[:size-1],dacc_smooth[:size-1,:2])
-ax.plot(time0[np.argwhere(correction_applied).flatten()], [dacc_smooth[j,:2] for j in np.argwhere(correction_applied).flatten()],'.',**dict(markersize=10))
+ax.plot(time0[np.argwhere(correction_applied).flatten()-1], [dacc_smooth[j,:2] for j in np.argwhere(correction_applied).flatten()-1],'.',**dict(markersize=10))
 ax.set_title('dAcc smoothed')
 
-
+#correction_applied[30]=1
 p0 = np.argwhere(correction_applied).flatten()[0]
 p_start = p0-10
 p_end = p0+10
@@ -541,69 +424,68 @@ rows = []
 window = 20
 
 for p1 in range(window,N,1):
-    corr_indices = np.argwhere(correction_applied).flatten()
-
-    candidates = corr_indices[corr_indices >= p1]
     
     p0=p1
+    if p1 in np.argwhere(correction_applied).flatten() or p1 in np.argwhere(correction_not_applied).flatten():
         
-    p_start = max(0, p0 - window)
-    p_end   = min(len(time0), p0 + window)
-    indices = list(range(p_start, p0))  # indices du voisinage
+        p_start = max(0, p0 - window)
+        p_end   = min(len(time0), p0 + window)
+        indices = list(range(p_start, p0+1))  # indices du voisinage
+        
+        
+        
+    
+        row = {
+            "sample": int(p0)+n_start,
+            "time": float(time0[p0])+time[0],
+            "correction_applied": p0 in np.argwhere(correction_applied).flatten(),
+        }
+    
+        for k, j in enumerate(indices):
+            row[f"t0_{k}"] = float(array_t0[j])
+            row[f"t2_{k}"] = float(array_t2[j])
+            row[f"t3_{k}"] = float(array_t3[j])
+            row[f"t4_{k}"] = float(array_t4[j])
+            
+            row[f"et0_{k}"] = float(array_et0[j])
+            row[f"et2_{k}"] = float(array_et2[j])
+            row[f"et3_{k}"] = float(array_et3[j])
+            row[f"et4_{k}"] = float(array_et4[j])
+        for k,j in enumerate(indices):
+            row["label"] = str(labels[j])
+        for k, j in enumerate(indices):
+            row[f"acc_x_{k}"] = float(newset.acc[j,0])
+        for k, j in enumerate(indices):
+            row[f"acc_y_{k}"] = float(newset.acc[j,1])
+        for k, j in enumerate(indices):
+            row[f"acc_z_{k}"] = float(newset.acc[j,2])
+    
+        # Gyro
+        for k, j in enumerate(indices):
+            row[f"gyro_x_{k}"] = float(newset.gyro[j,0])
+        for k, j in enumerate(indices):
+            row[f"gyro_y_{k}"] = float(newset.gyro[j,1])
+        for k, j in enumerate(indices):
+            row[f"gyro_z_{k}"] = float(newset.gyro[j,2])
+    
+        # Mag
+        for k, j in enumerate(indices):
+            row[f"mag_x_{k}"] = float(newset.mag[j,0])
+        for k, j in enumerate(indices):
+            row[f"mag_y_{k}"] = float(newset.mag[j,1])
+        for k, j in enumerate(indices):
+            row[f"mag_z_{k}"] = float(newset.mag[j,2])
+            
+            
+        for k, j in enumerate(indices):
+            row[f"normal_x_{k}"] = float(normals[j,0])
+        for k, j in enumerate(indices):
+            row[f"normal_y_{k}"] = float(normals[j,1])
+        for k, j in enumerate(indices):
+            row[f"normal_z_{k}"] = float(normals[j,2])
     
     
-    
-
-    row = {
-        "sample": int(p0)+n_start,
-        "time": float(time0[p0])+time[0],
-        "correction_applied": p0 in np.argwhere(correction_applied).flatten(),
-    }
-
-    for k, j in enumerate(indices):
-        row[f"t0_{k}"] = float(array_t0[j])
-        row[f"t2_{k}"] = float(array_t2[j])
-        row[f"t3_{k}"] = float(array_t3[j])
-        row[f"t4_{k}"] = float(array_t4[j])
-        
-        row[f"et0_{k}"] = float(array_et0[j])
-        row[f"et2_{k}"] = float(array_et2[j])
-        row[f"et3_{k}"] = float(array_et3[j])
-        row[f"et4_{k}"] = float(array_et4[j])
-        
-    for k, j in enumerate(indices):
-        row[f"acc_x_{k}"] = float(newset.acc[j,0])
-    for k, j in enumerate(indices):
-        row[f"acc_y_{k}"] = float(newset.acc[j,1])
-    for k, j in enumerate(indices):
-        row[f"acc_z_{k}"] = float(newset.acc[j,2])
-
-    # Gyro
-    for k, j in enumerate(indices):
-        row[f"gyro_x_{k}"] = float(newset.gyro[j,0])
-    for k, j in enumerate(indices):
-        row[f"gyro_y_{k}"] = float(newset.gyro[j,1])
-    for k, j in enumerate(indices):
-        row[f"gyro_z_{k}"] = float(newset.gyro[j,2])
-
-    # Mag
-    for k, j in enumerate(indices):
-        row[f"mag_x_{k}"] = float(newset.mag[j,0])
-    for k, j in enumerate(indices):
-        row[f"mag_y_{k}"] = float(newset.mag[j,1])
-    for k, j in enumerate(indices):
-        row[f"mag_z_{k}"] = float(newset.mag[j,2])
-        
-        
-    for k, j in enumerate(indices):
-        row[f"normal_x_{k}"] = float(normals[j,0])
-    for k, j in enumerate(indices):
-        row[f"normal_y_{k}"] = float(normals[j,1])
-    for k, j in enumerate(indices):
-        row[f"normal_z_{k}"] = float(normals[j,2])
-
-
-    rows.append(row)
+        rows.append(row)
 df = pd.DataFrame(rows)
 
 from datetime import datetime
