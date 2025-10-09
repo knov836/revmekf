@@ -648,9 +648,9 @@ ax.set_title('Acc smoothed')
 
 
 coords1 = np.zeros(coords.shape)
-coords1[:,0] = (coords[:,0]+coords[:,1])/np.sqrt(2)
-coords1[:,1] = (coords[:,0]-coords[:,1])/np.sqrt(2)
-
+#coords1[:,0] = (coords[:,0]+coords[:,1])/np.sqrt(2)
+#coords1[:,1] = (coords[:,0]-coords[:,1])/np.sqrt(2)
+coords1 = coords
 fig = plt.figure()
 ax = fig.add_axes([0,0,1,1])
 ax.plot(np.array(coords1))
@@ -722,3 +722,23 @@ p_start = p0-10
 p_end = p0+10
     
 
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(position0[:,:2])
+ax.plot(np.array(coords1))
+ax.legend(['pos0_x','pos0_y','gps_x,','gps_y'])
+ax.set_title('Position from Gyro Integration')
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(position1[:,:2])
+ax.plot(np.array(coords1))
+ax.legend(['pos0_x','pos0_y','gps_x,','gps_y'])
+ax.set_title('Position from MEKF')
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(position2[:,:2])
+ax.plot(np.array(coords1))
+ax.legend(['pos0_x','pos0_y','gps_x,','gps_y'])
+ax.set_title('Position from Rev-MEKF')
