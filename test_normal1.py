@@ -74,7 +74,7 @@ if mmode == 'OdoAccPre':
 
 n_start = 0
 n_end=4000
-n_end=n_start +1000
+n_end=n_start +6000
 cols = np.array([0,1,2,3,10,11,12,19,20,21])
 df = data.values[n_start:n_end,cols]
 
@@ -244,7 +244,7 @@ gravity = newset.gravity
 
 
 proj_func = correct_proj2
-#proj_func = None
+proj_func = None
 Solv0 = SolverFilterPlan(Integration,q0,q1,r0,r1,normal,newset,start=np.array(newset.quat_calib,dtype=mpf),proj_fun=proj_func)
 Solv1 = SolverFilterPlan(MEKF,q0,q1,r0,r1,normal,newset,start=np.array(newset.quat_calib,dtype=mpf),proj_fun=proj_func,heuristic=True)#,grav=newset.grav)
 Solv2 = SolverFilterPlan(Rev,q0,q1,r0,r1,normal,newset,start=np.array(newset.quat_calib,dtype=mpf),proj_fun=proj_func,heuristic=True)#,grav=newset.grav)
@@ -295,7 +295,7 @@ for i in range(0,N-1,1):
     
     nn+=1
     normal = normals[i+1,:]
-    
+    #normal = np.array([0,0,1])
     std_acc_z =0
     if i<N-1-40 and i> 40:
         std_acc_z = np.std(newset.acc[i-20:i+20,2])
@@ -582,3 +582,27 @@ df = pd.DataFrame(rows)
 from datetime import datetime
 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 df.to_csv(f"corrections_windows_{timestamp}"+ str(n_start)+".csv", index=False)
+
+coords1 = coords
+
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(position0[:,:2])
+ax.plot(np.array(coords1))
+ax.legend(['pos0_x','pos0_y','gps_x,','gps_y'])
+ax.set_title('Position from Gyro Integration')
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(position1[:,:2])
+ax.plot(np.array(coords1))
+ax.legend(['pos0_x','pos0_y','gps_x,','gps_y'])
+ax.set_title('Position from MEKF')
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(position2[:,:2])
+ax.plot(np.array(coords1))
+ax.legend(['pos0_x','pos0_y','gps_x,','gps_y'])
+ax.set_title('Position from Old Rev-MEKF')

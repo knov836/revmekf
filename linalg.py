@@ -1105,7 +1105,7 @@ def acc_from_normal_imu_grav(norm0,norm,acc,grav,normal,center,start=[0,0,1],s_r
         t1t0=-t1t0"""
         
         
-        gamma = 1.0
+        gamma = 3.0
         
         prob = np.random.random(1)
         prob = 0
@@ -1122,6 +1122,38 @@ def acc_from_normal_imu_grav(norm0,norm,acc,grav,normal,center,start=[0,0,1],s_r
         rt4 = t4t0-t_v0
         ert0 = HH.evalf(subs={v: float(t4t0)})
         
+        
+        x_pts = [float(t_v0_acc - t_v0),float(t4t0 - t_v0), float(t2t0 - t_v0)]
+        y_pts = np.array([l_HH.evalf(subs={v: float(t_v0_acc - t_v0)}),
+         l_HH.evalf(subs={v: float(t4t0 - t_v0)}),
+         l_HH.evalf(subs={v: float(t2t0 - t_v0)})]).astype(float)
+        
+        labels = ["MEKF", "Theta 1", "Theta 2"]
+        tt = np.max([np.abs(float(t4t0)),np.abs(float(t2t0))])
+        f = sym.lambdify(v, l_HH, 'numpy')
+        vv = np.linspace(-tt, tt, 1000)
+        fig, ax = plt.subplots(figsize=(6,4))
+        ax.plot(vv, f(vv), label='h_k(Theta)', color='blue')
+        ax.scatter(x_pts, y_pts, color='red', marker='o', s=60,label='Intersection points')
+        
+        for x, y, label in zip(x_pts, y_pts, labels):
+            ax.annotate(label,
+                xy=(x, y),                # position du point
+                xytext=(0, 8),            # décalage texte en points
+                textcoords='offset points',
+                ha='center',
+                color='green',
+                fontsize=12)
+        # Axes, grille, labels
+        ax.axhline(0, color='black', linewidth=0.8)
+        ax.axvline(0, color='black', linewidth=0.8)
+        ax.grid(True, linestyle='--', alpha=0.6)
+        ax.set_xlabel("Theta")
+        ax.set_ylabel("meters")
+        ax.set_title("h_k")
+        ax.legend()
+        print("angles",t4t0,t_v0_acc,t0)
+            
         if (t4t0 == t2t0 and sign*(teGG-C).dot(normal).evalf(subs={v:(t4t0+t2t0)/2})<0) or sign*(teGG-C).dot(normal).evalf(subs={v:(t4t0+t2t0)/2})<0  or np.abs(t_v0-t3t0)>np.abs(t4t0 -t2t0)*1.5:
             t1t0 = t_v0
             t1t0 = t_v0_acc
@@ -1130,7 +1162,8 @@ def acc_from_normal_imu_grav(norm0,norm,acc,grav,normal,center,start=[0,0,1],s_r
             t1t0=-t1t0
             
             t0 = t3t0
-        elif (((np.abs(t_v0-t4t0)<np.abs(t_v0-t1t0)*gamma and np.abs((teGG-C).dot(normal).evalf(subs={v:t_v0})-(teGG-C).dot(normal).evalf(subs={v:t4t0}))<np.abs((teGG-C).dot(normal).evalf(subs={v:t_v0})-(teGG-C).dot(normal).evalf(subs={v:t1t0}))*gamma)) and sign*(teGG-C).dot(normal).evalf(subs={v:(t4t0+t2t0)/2})>=0):
+        #elif (((np.abs(t_v0-t4t0)<np.abs(t_v0-t1t0)*gamma and np.abs((teGG-C).dot(normal).evalf(subs={v:t_v0})-(teGG-C).dot(normal).evalf(subs={v:t4t0}))<np.abs((teGG-C).dot(normal).evalf(subs={v:t_v0})-(teGG-C).dot(normal).evalf(subs={v:t1t0})))) and sign*(teGG-C).dot(normal).evalf(subs={v:(t4t0+t2t0)/2})>=0):
+        elif (np.abs(t_v0-t4t0)<np.abs(t_v0-t1t0)*gamma and sign*(teGG-C).dot(normal).evalf(subs={v:(t4t0+t2t0)/2})>=0):
             t1t0=t4t0
             plot(((teGG-C).dot(normal).subs(v,v+sym.Rational(float(t_v0)))),(v,-0.1,0.1),title="t_v0 "+str(t_v0))
 
@@ -1152,9 +1185,9 @@ def acc_from_normal_imu_grav(norm0,norm,acc,grav,normal,center,start=[0,0,1],s_r
                 vv = np.linspace(-tt, tt, 1000)
                 if (np.abs(t4t0-t_v0)>np.pi/10 and np.abs(t4t0-t_v0)<np.pi/2 and np.abs(t_v0-(t4t0+t2t0)/2)>np.pi/20) or (np.abs(t2t0-t_v0)>2*np.abs(t4t0-t_v0) and 3*np.abs(t_v0_acc-t_v0)>np.abs(t4t0-t_v0) and np.abs(t4t0-t2t0)>0.4):
                     print(np.abs(t_v0_acc-t_v0),np.abs(t4t0-t_v0))
-                    t1t0 = np.sign(float(t4t0-t_v0))*np.log(float(1+np.abs(t4t0-t_v0)))+t_v0
-                    t1t0 = np.sign(float(t4t0-t_v0))*np.abs(float(np.abs(t4t0-t_v0)))/2+t_v0
-                    corrected = True
+                    #t1t0 = np.sign(float(t4t0-t_v0))*np.log(float(1+np.abs(t4t0-t_v0)))+t_v0
+                    #t1t0 = np.sign(float(t4t0-t_v0))*np.abs(float(np.abs(t4t0-t_v0)))/2+t_v0
+                    #corrected = True
                     fig, ax = plt.subplots(figsize=(6,4))
                     ax.plot(vv, f(vv), label='l_HH(v)', color='blue')
                     ax.scatter(x_pts, y_pts, color='red', marker='o', s=60,label='interesting points')
