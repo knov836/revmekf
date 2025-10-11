@@ -62,10 +62,12 @@ class Filter:
         
     def predict_speed(self,acc):
         self.speed = self.speed +acc*self.dt
-    def predict_sspeed(self,acc):
-        self.s_speed = self.s_speed +acc*self.dt
+    def predict_sspeed(self):
+        return self.speed
     def predict_position(self):
         self.position = self.position +self.speed*self.dt
+    def predict_position_speed(self,speed):
+        self.position = self.position +speed*self.dt
     def predict_position_acc(self,acc):
         self.position = self.position +acc*(self.dt)**2
     #def test_predict_position_acc(self,acc):
@@ -106,9 +108,11 @@ class Filter:
         
         normal0 = np.array([0,0,1],dtype=mpf)
         self.rotsurf = quat_ntom(normal0,normal)
+        speed = self.predict_sspeed()
+        self.predict_position_speed(speed)
         Surface[0] =  np.dot(self.position,normal)
         self.predict_speed(-self.gravity)
-        self.predict_position()
+        self.predict_position_acc(-self.gravity)
         self.compute_center(Surface)
         self.acc = Accelerometer
         if kargs["std_acc_z"]!= None:

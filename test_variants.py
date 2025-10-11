@@ -62,7 +62,7 @@ if mmode == 'OdoAccPre':
     MEKF = MEKFOdoAccPre
     Rev = RevOdoAccPre
 delt = 60
-newset = KFilterData(100,mpf(100.)/mpf(1.),mode=mmode,traj='Rand',lw_noise=0.1*0,rw_noise=0.1*0,g_bias= 10**(-3)*0,g_noise=10**(-10)*0,a_noise=10**(-4)*0,params_test={'alpha':angle},surf=np.array([0,1,-1],dtype=mpf),delta = 10**(-delt*0.1)) 
+newset = KFilterData(100,mpf(100.)/mpf(1.),mode=mmode,traj='Rand',lw_noise=0.1*0,rw_noise=0.1*0,g_bias= 10**(-3)*0,g_noise=10**(-10),a_noise=10**(-4)*0,params_test={'alpha':angle},surf=np.array([0,1,-1],dtype=mpf),delta = 10**(-delt*0.1)) 
 orient = newset.orient
 pos_earth = newset.pos_earth
 
@@ -92,11 +92,16 @@ N=newset.size
 nn=0
 neworient = newset.new_orient()
 #N=2
+time = newset.time
 for i in range(0,N-1,1):
     nn+=1
-    Solv0.update_noarg()
+    normal = newset.normal
+    """Solv0.update_noarg()
     Solv1.update_noarg()
-    Solv2.update_noarg()
+    Solv2.update_noarg()"""
+    Solv0.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], normal)
+    Solv1.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], normal)
+    Solv2.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], normal)
     
     '''if i%10 ==0 and i>0:
         """fig = plt.figure()
