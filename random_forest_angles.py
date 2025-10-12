@@ -15,10 +15,14 @@ from scipy.signal import savgol_filter
 #files = glob.glob("corrections_windows_20251005_1852230.csv")
 #files = glob.glob("corrections_windows_angles_20251006_1603280.csv")
 
-files = glob.glob("corrections_windows_angles_20251007_1408550.csv")
+#files = glob.glob("corrections_windows_angles_20251007_1408550.csv")
+#files = glob.glob("corrections_windows_angles_20251011_1456080.csv")
+#files = glob.glob("corrections_windows_angles_20251012_1051310.csv")
+files = glob.glob("corrections_windows_angles_20251012_1357260.csv")
+
 #files = glob.glob("corrections_windows_20251006_1029030.csv")
 
-df_list = [pd.read_csv(f) for f in files]
+df_list = [pd.read_csv(f,) for f in files]
 df = pd.concat(df_list, ignore_index=True)
 
 df.interpolate(method='linear', axis=0, inplace=True)
@@ -72,12 +76,14 @@ for block in angles:
     df[f"{block}_std"] = df[cols].std(axis=1)
     df[f"{block}_min"] = df[cols].min(axis=1)
     df[f"{block}_max"] = df[cols].max(axis=1)
+    df[f"{block}_last"] = np.array(df[cols])[:,-1]
 
 feature_cols += (
     [f"{block}_mean" for block in angles] +
     [f"{block}_std" for block in angles] +
     [f"{block}_min" for block in angles] +
-    [f"{block}_max" for block in angles]
+    [f"{block}_max" for block in angles]+
+    [f"{block}_last" for block in angles]
 )
 
 
@@ -89,7 +95,7 @@ feature_cols.append(f"smag_norm_xy")"""
 X = df[feature_cols]
 y = df["correction_applied"]
 X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.3, random_state=42, stratify=y
+    X, y, test_size=0.15, random_state=42, stratify=y
 )
 
 #Oversampling 
@@ -99,8 +105,8 @@ X_train_res, y_train_res = ros.fit_resample(X_train, y_train)
 #global RandomForest training
 clf = RandomForestClassifier(
     n_estimators=200,
-    max_depth=None,
-    random_state=42,
+    #max_depth=None,
+    #random_state=42,
     class_weight="balanced",
     n_jobs=-1
 )
@@ -111,14 +117,17 @@ metadata = {
     "feature_names": list(df[feature_cols].columns)  # ou list(feature_cols)
 }
 # Sauvegarde
-with open("random_forest_model_angle.pkl", "wb") as f:
+from datetime import datetime
+
+timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+with open(f"random_forest_model_angle_{timestamp}.pkl", "wb") as f:
     pickle.dump(metadata, f)
 # Predictions and probabilities
 """y_proba = clf.predict_proba(X_test)[:,1]
 threshold = 0.5  
 y_pred = (y_proba >= threshold).astype(int)"""
 y_proba = clf.predict_proba(X_test)[:,1]
-threshold = 0.9  # plus bas pour détecter plus de 1
+threshold = 0.5  # plus bas pour détecter plus de 1
 y_pred = (y_proba >= threshold).astype(int)
 #Evaluation
 print("📊 Confusion matrix :")
@@ -138,16 +147,16 @@ print("\nTop 20 features :")
 print(feat_imp.head(20))
 
 plt.figure(figsize=(10,6))
-plt.barh(feat_imp['feature'].head(20), feat_imp['importance'].head(20))
+plt.barh(feat_imp['feature'].head(30), feat_imp['importance'].head(30))
 plt.gca().invert_yaxis()
 plt.xlabel("Importance")
-plt.title("Top 20 features to predict correction_applied")
+plt.title("Top 30 features to predict correction_applied")
 plt.show()
 
 
 sample = df[df["correction_applied"] == 1].iloc[10]
 
-top_features = feat_imp.head(10)['feature'].tolist()  # top 10 features
+top_features = feat_imp.head(20)['feature'].tolist()  # top 10 features
 print("Top features for this sample :")
 for f in top_features:
     print(f"{f}: {sample[f]}")

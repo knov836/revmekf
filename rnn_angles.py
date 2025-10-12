@@ -16,9 +16,12 @@ from scipy.signal import savgol_filter
 
 #files = glob.glob("corrections_windows_20251005_2339290.csv")
 #files = glob.glob("corrections_windows_angles_20251006_1603280.csv")
-files = glob.glob("corrections_windows_angles_20251007_1408550.csv")
+#files = glob.glob("corrections_windows_angles_20251007_1408550.csv")
+#files = glob.glob("corrections_windows_angles_20251011_1456080.csv")
+#files = glob.glob("corrections_windows_angles_20251011_1456081.csv")
 
-
+#files = glob.glob("corrections_windows_angles_20251012_1051310.csv")
+files = glob.glob("corrections_windows_angles_20251012_1357260.csv")
 #files = glob.glob("corrections_windows_20251006_1029030.csv")
 df_list = [pd.read_csv(f) for f in files]
 df = pd.concat(df_list, ignore_index=True)
@@ -77,9 +80,14 @@ for block in angles:
     df[f"{block}_std"] = df[cols].std(axis=1)
     df[f"{block}_min"] = df[cols].min(axis=1)
     df[f"{block}_max"] = df[cols].max(axis=1)
-    extra_features += [f"{block}_mean", f"{block}_std",
-                     f"{block}_min", f"{block}_max"]
 
+angle_features= (
+    [f"{block}_mean" for block in angles] +
+    [f"{block}_std" for block in angles] +
+    [f"{block}_min" for block in angles] +
+    [f"{block}_max" for block in angles]
+)
+extra_features+=angle_features
 #seq_features += [f"normal_{a}" for a in {"z"} for i in range(timesteps)]
 seq_features = seq_features+extra_features
 input_dim = 12+8+len(extra_features)
@@ -145,10 +153,13 @@ model = RNNClassifier(input_dim, hidden_dim, num_layers, output_dim)
 class_counts = np.bincount(y)
 weights = 1.0 / torch.tensor(class_counts, dtype=torch.float32)  
 weights = weights / weights.sum()   # normalisation
+#class_counts = [3, 2]
+#weights = 1.0 / torch.tensor([3, 10/6])  # => [0.333, 0.5]
 criterion = nn.CrossEntropyLoss(weight=weights)
+#criterion = nn.CrossEntropyLoss(weight={0: 1, 1: 3})
 #optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
-optimizer = torch.optim.Adam(model.parameters(), lr=5*1e-5)  # plus petit
-n_epochs = 20
+optimizer = torch.optim.Adam(model.parameters(), lr=5*1e-6)  # plus petit
+n_epochs = 25
 for epoch in range(n_epochs):
     model.train()
     total_loss = 0
@@ -182,11 +193,12 @@ print(confusion_matrix(y_true, y_pred))
 print("\nClassification report :")
 print(classification_report(y_true, y_pred))
 print(f"ROC-AUC : {roc_auc_score(y_true, y_proba):.3f}")
+from datetime import datetime
 
-
+timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 #torch.save(model.state_dict(), "lstm_model.pth")
-torch.save(model, "rnn_model.pth")
-model = torch.load("rnn_model.pth",weights_only=False)
+torch.save(model, f"rnn_model_{timestamp}.pth")
+model = torch.load(f"rnn_model_{timestamp}.pth",weights_only=False)
 model.eval()
 
 with torch.no_grad():

@@ -130,7 +130,7 @@ class KFilterDataFile:
             if mp.norm(m)!=0:
                 m=m/mp.norm(m)
             cmag[i,:] = m
-            #continue
+            continue
             if mp.norm(m)!=0:
                 m=m/mp.norm(m)
                 adm = skewSymmetric(a)@m
@@ -219,7 +219,8 @@ class KFilterDataFile:
             adm = adm/mp.norm(adm)
             new_m = skewSymmetric(adm)@a
             
-            M = np.array([-adm,new_m,a]).T
+            #M = np.array([-adm,new_m,a]).T
+            M = np.array([new_m,adm,a]).T
             new_orient[i,:] = normalize(quat_inv(RotToQuat(M)))
         return new_orient
     

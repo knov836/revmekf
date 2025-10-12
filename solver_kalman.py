@@ -178,12 +178,18 @@ class SolverFilterPlan:
                 gyro, acc, mag,normal= args[:4]
                 std_acc_z = 0
                 correction = 0
+                xtensor = []
+                model = None
                 if "std_acc_z" in kargs.keys():
                     std_acc_z = kargs["std_acc_z"]
                 if "correction" in kargs.keys():
                     correction = kargs["correction"]
+                if "xtensor" in kargs.keys():
+                    xtensor = kargs["xtensor"]
+                if "model" in kargs.keys():
+                    model = kargs["model"]        
                 Surface = np.array(np.concatenate(([0,],normal.astype(mpf),np.zeros(6))),dtype=mpf)
-                KFilter.UpdateSensor(time,Surface, acc,gyro,mag,newset.orient[i,:],std_acc_z = std_acc_z,correction = correction)
+                KFilter.UpdateSensor(time,Surface, acc,gyro,mag,newset.orient[i,:],std_acc_z = std_acc_z,correction = correction,xtensor = xtensor,model=model)
             elif self.mode == 'GyroAcc':
                 gyro, acc, normal= args[:3]
                 Surface = np.array(np.concatenate(([0,],normal.astype(mpf),np.zeros(6))),dtype=mpf)

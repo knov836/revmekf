@@ -12,7 +12,7 @@ import numdifftools as nd
 from sympy.plotting import plot
 
 import sympy as sym
-
+import torch
 
 from sympy import symbols, cos, sin
 from sympy import Rational
@@ -73,7 +73,8 @@ class PredictFilter(Filter):
         logrot1 = log_q(np.array(qq))
         #logrot1 = np.zeros(3)
         if self.neural:
-            acc1,rot1,irot1,acc2,rot2,irot2,acc3,rot3,irot3,corrected,not_corrected,angle_acc,t0,t2,t3,t4,et0,et2,et3,et4= acc_from_normal_imu_grav_neural(np.array(quat_rot([0,*np.array(nAxis,dtype=mpf)],quat))[1:4],np.array([0,1,0],dtype=mpf) , np.array(quat_rot([0,*(nAccelerometer*(self.dt**2))],quat))[1:4],np.array(quat_rot([0,*(grav*(self.dt**2))],quat))[1:4], normal, self.surf_center,start = logrot1,heuristic=self.heuristic,correction = self.correction)
+            
+            acc1,rot1,irot1,acc2,rot2,irot2,acc3,rot3,irot3,corrected,not_corrected,angle_acc,t0,t2,t3,t4,et0,et2,et3,et4= acc_from_normal_imu_grav_neural(np.array(quat_rot([0,*np.array(nAxis,dtype=mpf)],quat))[1:4],np.array([0,1,0],dtype=mpf) , np.array(quat_rot([0,*(nAccelerometer*(self.dt**2))],quat))[1:4],np.array(quat_rot([0,*(grav*(self.dt**2))],quat))[1:4], normal, self.surf_center,start = logrot1,heuristic=self.heuristic,correction = False)
             self.t0 = t0
             self.t2 = t2
             self.t3 = t3
@@ -83,6 +84,45 @@ class PredictFilter(Filter):
             self.et3 = et3
             self.et4 = et4
             
+            angles_last = np.array([t0,t2,t3,t4,et0,et2,et3,et4],dtype=np.float32)
+            if len(self.xtensor)>0:
+                if len(self.xtensor.shape)!=2:
+                    angles_last_extra = angles_last[np.newaxis, :]
+                    angles_last_extra_3D = np.repeat(angles_last_extra[:, np.newaxis, :], 20, axis=1)
+                    X_input = np.concatenate([self.xtensor,angles_last_extra_3D], axis=2)
+                    X_tensor_1 = torch.tensor(X_input, dtype=torch.float32)
+                    outputs = self.model(X_tensor_1)
+                    soft = torch.softmax(outputs, dim=1).numpy().squeeze()
+                
+                    p_class0 = soft[0]
+                    p_class1 = soft[1]
+                    #probs[i] = p_class1
+                    correction = int(p_class1 > 0.8)
+                    print("probas",p_class0,p_class1)
+                    acc1,rot1,irot1,acc2,rot2,irot2,acc3,rot3,irot3,corrected,not_corrected,angle_acc,t0,t2,t3,t4,et0,et2,et3,et4= acc_from_normal_imu_grav_neural(np.array(quat_rot([0,*np.array(nAxis,dtype=mpf)],quat))[1:4],np.array([0,1,0],dtype=mpf) , np.array(quat_rot([0,*(nAccelerometer*(self.dt**2))],quat))[1:4],np.array(quat_rot([0,*(grav*(self.dt**2))],quat))[1:4], normal, self.surf_center,start = logrot1,heuristic=self.heuristic,correction = correction)
+                    self.t0 = t0
+                    self.t2 = t2
+                    self.t3 = t3
+                    self.t4 = t4
+                    self.et0 = et0
+                    self.et2 = et2
+                    self.et3 = et3
+                    self.et4 = et4
+                else:
+                    X_input = np.concatenate([self.xtensor.flatten(),angles_last]).flatten().reshape(1, -1)
+                    probs_loaded  = self.model(X_input)
+                    
+                    print("probas",probs_loaded)
+                    correction= (probs_loaded[0,1] > 0.9).astype(int)
+                    acc1,rot1,irot1,acc2,rot2,irot2,acc3,rot3,irot3,corrected,not_corrected,angle_acc,t0,t2,t3,t4,et0,et2,et3,et4= acc_from_normal_imu_grav_neural(np.array(quat_rot([0,*np.array(nAxis,dtype=mpf)],quat))[1:4],np.array([0,1,0],dtype=mpf) , np.array(quat_rot([0,*(nAccelerometer*(self.dt**2))],quat))[1:4],np.array(quat_rot([0,*(grav*(self.dt**2))],quat))[1:4], normal, self.surf_center,start = logrot1,heuristic=self.heuristic,correction = correction)
+                    self.t0 = t0
+                    self.t2 = t2
+                    self.t3 = t3
+                    self.t4 = t4
+                    self.et0 = et0
+                    self.et2 = et2
+                    self.et3 = et3
+                    self.et4 = et4
         else:
             if self.manual:
                 acc1,rot1,irot1,acc2,rot2,irot2,acc3,rot3,irot3,corrected,not_corrected,label,angle_acc,t0,t2,t3,t4,et0,et2,et3,et4= acc_from_normal_imu_grav_manual(np.array(quat_rot([0,*np.array(nAxis,dtype=mpf)],quat))[1:4],np.array([0,1,0],dtype=mpf) , np.array(quat_rot([0,*(nAccelerometer*(self.dt**2))],quat))[1:4],np.array(quat_rot([0,*(grav*(self.dt**2))],quat))[1:4], normal, self.surf_center,start = logrot1,heuristic=self.heuristic,correction = self.correction)

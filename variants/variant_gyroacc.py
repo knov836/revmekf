@@ -48,6 +48,8 @@ class Filter:
         self.neural=neural
         self.correction = False
         self.std_acc_z = 0
+        self.model = None
+        self.xtensor = np.array([])
         self.variant_update = None
         self.t0 = 0
         self.t4 = 0
@@ -62,6 +64,9 @@ class Filter:
         
     def predict_speed(self,acc):
         self.speed = self.speed +acc*self.dt
+        
+    def normalize_speed(self,normal):
+        return self.speed -np.dot(self.speed,normal)*normal
     def predict_sspeed(self):
         return self.speed
     def predict_position(self):
@@ -94,6 +99,7 @@ class Filter:
         cst = Surface[0]
         normal = Surface[1:4]
         normal = normal/mp.norm(normal)
+        
         self.center= self.position-np.dot(normal,self.position)*normal+cst*normal #+/- cst ???
         self.surf_center= -np.dot(normal,self.position)*normal+cst*normal
 
@@ -101,6 +107,7 @@ class Filter:
         Time, Surface, Accelerometer = args[:3]
         self.dt = mpf(Time) - self.time
         self.time = mpf(Time)
+        self.xtensor = np.array([])
         
         normal = Surface[1:4]
         normal = normal/mp.norm(normal)
@@ -108,18 +115,27 @@ class Filter:
         
         normal0 = np.array([0,0,1],dtype=mpf)
         self.rotsurf = quat_ntom(normal0,normal)
+        #speed = self.predict_sspeed()
+        #self.predict_position_speed(speed)
+        #self.normalize_speed(normal)
         speed = self.predict_sspeed()
-        self.predict_position_speed(speed)
-        Surface[0] =  np.dot(self.position,normal)
+        p0 = self.position
+        p1  = self.position +speed*self.dt
+        Surface[0] =  np.dot(p1,normal)
         self.predict_speed(-self.gravity)
-        self.predict_position_acc(-self.gravity)
+        #self.predict_position_acc(-self.gravity)
+        self.predict_position()
         self.compute_center(Surface)
         self.acc = Accelerometer
         if kargs["std_acc_z"]!= None:
             self.std_acc_z = kargs["std_acc_z"]
         if kargs["correction"]!= None:
             self.correction= kargs["correction"]
-        
+        if len(kargs["xtensor"]) != 0:
+            self.xtensor = kargs["xtensor"]
+        if kargs["model"] != None:
+            self.model = kargs["model"]
+                
         if self.variant_update !=None:
             self.variant_update(*args)
         

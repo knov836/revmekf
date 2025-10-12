@@ -785,20 +785,21 @@ def acc_from_normal_imu_grav_neural(norm0,norm,acc,grav,normal,center,start=[0,0
         ert0 = HH.evalf(subs={v: float(t_v0)})
         
         rt2 = t2t0-t_v0
-        ert0 = HH.evalf(subs={v: float(t2t0)})
+        ert2 = HH.evalf(subs={v: float(t2t0)})
         
         rt3 = t1t0-t_v0
-        ert0 = HH.evalf(subs={v: float(t1t0)})
+        ert3 = HH.evalf(subs={v: float(t1t0)})
         
         rt4 = t4t0-t_v0
-        ert0 = HH.evalf(subs={v: float(t4t0)})
+        ert4 = HH.evalf(subs={v: float(t4t0)})
+
         #print("prob",prob,sign*(teGG-C).dot(normal).evalf(subs={v:(t1t0+t2t0)/2})<0,np.abs(t_v0-t3t0)>np.abs(t1t0 -t2t0)*1.5,(t1t0 == t2t0 and sign*(teGG-C).dot(normal).evalf(subs={v:t1t0})<0))
         #print("norms",(np.abs((teGG).dot(normal).evalf(subs={v:t_v0}))),(np.abs((C).dot(normal))))
         #print("racc",np.abs(np.linalg.norm(np.array([racc[0],racc[2]]).astype(float))/np.linalg.norm(center.astype(float)))>20,np.linalg.norm(np.array([racc[0],racc[2]]).astype(float)), np.linalg.norm(center.astype(float)))
         
         if correction:
-            t1t0 = np.sign(float(t4t0-t_v0))*np.abs(float(np.abs(t4t0-t_v0)))/2+t_v0
-            corrected=True
+            t1t0 = t4t0#np.sign(float(t4t0-t_v0))*np.abs(float(np.abs(t4t0-t_v0)))/2+t_v0
+            corrected=True 
             l_HH = (teGG-C).dot(normal).subs(v,v+sym.Rational(float(t_v0)))
             x_pts = [float(t_v0_acc - t_v0),float(t4t0 - t_v0), float(t2t0 - t_v0)]
             y_pts = np.array([l_HH.evalf(subs={v: float(t_v0_acc - t_v0)}),
@@ -809,30 +810,26 @@ def acc_from_normal_imu_grav_neural(norm0,norm,acc,grav,normal,center,start=[0,0
             tt = np.max([np.abs(float(t4t0)),np.abs(float(t2t0))])
             f = sym.lambdify(v, l_HH, 'numpy')
             vv = np.linspace(-tt, tt, 1000)
-            if correction:
-                t1t0 = np.sign(float(t4t0-t_v0))*np.abs(float(np.abs(t4t0-t_v0)))/2+t_v0
-                corrected=True 
-
-                fig, ax = plt.subplots(figsize=(6,4))
-                ax.plot(vv, f(vv), label='l_HH(v)', color='blue')
-                ax.scatter(x_pts, y_pts, color='red', marker='o', s=60,label='interesting points')
-                
-                for x, y, label in zip(x_pts, y_pts, labels):
-                    ax.annotate(label,
-                        xy=(x, y),                # position du point
-                        xytext=(0, 8),            # décalage texte en points
-                        textcoords='offset points',
-                        ha='center',
-                        color='green',
-                        fontsize=12)
-                # Axes, grille, labels
-                ax.axhline(0, color='black', linewidth=0.8)
-                ax.axvline(0, color='black', linewidth=0.8)
-                ax.grid(True, linestyle='--', alpha=0.6)
-                ax.set_xlabel("v")
-                ax.set_ylabel("l_HH(v)")
-                ax.set_title("l_HH")
-                ax.legend()
+            fig, ax = plt.subplots(figsize=(6,4))
+            ax.plot(vv, f(vv), label='l_HH(v)', color='blue')
+            ax.scatter(x_pts, y_pts, color='red', marker='o', s=60,label='interesting points')
+            
+            for x, y, label in zip(x_pts, y_pts, labels):
+                ax.annotate(label,
+                    xy=(x, y),                # position du point
+                    xytext=(0, 8),            # décalage texte en points
+                    textcoords='offset points',
+                    ha='center',
+                    color='green',
+                    fontsize=12)
+            # Axes, grille, labels
+            ax.axhline(0, color='black', linewidth=0.8)
+            ax.axvline(0, color='black', linewidth=0.8)
+            ax.grid(True, linestyle='--', alpha=0.6)
+            ax.set_xlabel("v")
+            ax.set_ylabel("l_HH(v)")
+            ax.set_title("l_HH")
+            ax.legend()
         else:
             t1t0 = t_v0
             t1t0 = t_v0_acc
@@ -1114,16 +1111,16 @@ def acc_from_normal_imu_grav(norm0,norm,acc,grav,normal,center,start=[0,0,1],s_r
         ert0 = HH.evalf(subs={v: float(t_v0)})
         
         rt2 = t2t0-t_v0
-        ert0 = HH.evalf(subs={v: float(t2t0)})
+        ert2 = HH.evalf(subs={v: float(t2t0)})
         
         rt3 = t1t0-t_v0
-        ert0 = HH.evalf(subs={v: float(t1t0)})
+        ert3 = HH.evalf(subs={v: float(t1t0)})
         
         rt4 = t4t0-t_v0
-        ert0 = HH.evalf(subs={v: float(t4t0)})
+        ert4 = HH.evalf(subs={v: float(t4t0)})
         
         
-        x_pts = [float(t_v0_acc - t_v0),float(t4t0 - t_v0), float(t2t0 - t_v0)]
+        """x_pts = [float(t_v0_acc - t_v0),float(t4t0 - t_v0), float(t2t0 - t_v0)]
         y_pts = np.array([l_HH.evalf(subs={v: float(t_v0_acc - t_v0)}),
          l_HH.evalf(subs={v: float(t4t0 - t_v0)}),
          l_HH.evalf(subs={v: float(t2t0 - t_v0)})]).astype(float)
@@ -1152,7 +1149,7 @@ def acc_from_normal_imu_grav(norm0,norm,acc,grav,normal,center,start=[0,0,1],s_r
         ax.set_ylabel("meters")
         ax.set_title("h_k")
         ax.legend()
-        plt.show()
+        plt.show()"""
         print("angles",t4t0,t_v0_acc,t0)
             
         if (t4t0 == t2t0 and sign*(teGG-C).dot(normal).evalf(subs={v:(t4t0+t2t0)/2})<0) or sign*(teGG-C).dot(normal).evalf(subs={v:(t4t0+t2t0)/2})<0  or np.abs(t_v0-t3t0)>np.abs(t4t0 -t2t0)*1.5:
@@ -1221,7 +1218,7 @@ def acc_from_normal_imu_grav(norm0,norm,acc,grav,normal,center,start=[0,0,1],s_r
     
     return np.array(irot1,dtype=mpf)@np.array([0,0,1],dtype=mpf),irot1,rot1,np.array(irot2,dtype=mpf)@np.array([0,0,1],dtype=mpf),irot2,rot2,np.array(irot3,dtype=mpf)@np.array([0,0,1],dtype=mpf),irot3,rot3,corrected,not_corrected,np.abs(t_v0_acc-t1t0),rt0,rt2,rt3,rt4,ert0,ert2,ert3,ert4
 
-
+debug=True
 
 def acc_from_normal_imu_grav_manual(norm0,norm,acc,grav,normal,center,start=[0,0,1],s_rot=np.array([0,0,0]),heuristic=False,correction=False):
     X = sym.Symbol('X')
@@ -1478,7 +1475,7 @@ def acc_from_normal_imu_grav_manual(norm0,norm,acc,grav,normal,center,start=[0,0
         t1t0=-t1t0"""
         
         
-        gamma = 1.0
+        gamma = 0.5
         
         prob = np.random.random(1)
         prob = 0
@@ -1487,53 +1484,13 @@ def acc_from_normal_imu_grav_manual(norm0,norm,acc,grav,normal,center,start=[0,0
         ert0 = HH.evalf(subs={v: float(t_v0)})
         
         rt2 = t2t0-t_v0
-        ert0 = HH.evalf(subs={v: float(t2t0)})
+        ert2 = HH.evalf(subs={v: float(t2t0)})
         
         rt3 = t1t0-t_v0
-        ert0 = HH.evalf(subs={v: float(t1t0)})
+        ert3 = HH.evalf(subs={v: float(t1t0)})
         
         rt4 = t4t0-t_v0
-        ert0 = HH.evalf(subs={v: float(t4t0)})
-        
-        
-        x_pts = [float(t_v0_acc - t_v0),float(t4t0 - t_v0), float(t2t0 - t_v0)]
-        y_pts = np.array([l_HH.evalf(subs={v: float(t_v0_acc - t_v0)}),
-         l_HH.evalf(subs={v: float(t4t0 - t_v0)}),
-         l_HH.evalf(subs={v: float(t2t0 - t_v0)})]).astype(float)
-        
-        labels = ["t_v0_acc", "t4", "t2"]
-        tt = np.max([np.abs(float(t4t0)),np.abs(float(t2t0))])
-        f = sym.lambdify(v, l_HH, 'numpy')
-        vv = np.linspace(-tt, tt, 1000)
-        fig, ax = plt.subplots(figsize=(6,4))
-        ax.plot(vv, f(vv), label='l_HH(v)', color='blue')
-        ax.scatter(x_pts, y_pts, color='red', marker='o', s=60,label='interesting points')
-        
-        for x, y, lab in zip(x_pts, y_pts, labels):
-            ax.annotate(lab,
-                xy=(x, y),                # position du point
-                xytext=(0, 8),            # décalage texte en points
-                textcoords='offset points',
-                ha='center',
-                color='green',
-                fontsize=12)
-        # Axes, grille, labels
-        ax.axhline(0, color='black', linewidth=0.8)
-        ax.axvline(0, color='black', linewidth=0.8)
-        ax.grid(True, linestyle='--', alpha=0.6)
-        ax.set_xlabel("v")
-        ax.set_ylabel("l_HH(v)")
-        ax.set_title("l_HH")
-        ax.legend()
-        plt.show()
-        print("norm",mp.norm(racc)*10000)
-        print("angles",rt0,rt2,rt3,rt4,ert0,ert2,ert3,ert4)
-        pdb.set_trace()
-        """
-        corrected,not_corrected,label= False,False,""
-        corrected,not_corrected,label= True,False,""
-        corrected,not_corrected,label= False,True,""
-        """
+        ert4 = HH.evalf(subs={v: float(t4t0)})
         
         if (t4t0 == t2t0 and sign*(teGG-C).dot(normal).evalf(subs={v:(t4t0+t2t0)/2})<0) or sign*(teGG-C).dot(normal).evalf(subs={v:(t4t0+t2t0)/2})<0  or np.abs(t_v0-t3t0)>np.abs(t4t0 -t2t0)*1.5:
             t1t0 = t_v0
@@ -1541,17 +1498,83 @@ def acc_from_normal_imu_grav_manual(norm0,norm,acc,grav,normal,center,start=[0,0
             t1t0 = np.linalg.norm(FF_acc)
             FF = FF_acc/t1t0
             t1t0=-t1t0
-            #not_corrected = True
-        else:
-            if (corrected):
-                print(np.abs(t_v0_acc-t_v0),np.abs(t4t0-t_v0))
-                t1t0 = np.sign(float(t4t0-t_v0))*np.abs(float(np.abs(t4t0-t_v0)))/2+t_v0
+        elif (np.abs(t_v0-t4t0)<np.abs(t_v0-t1t0)*gamma and sign*(teGG-C).dot(normal).evalf(subs={v:(t4t0+t2t0)/2})>=0):
+            plot(((teGG-C).dot(normal).subs(v,v+sym.Rational(float(t_v0)))),(v,-0.1,0.1),title="t_v0 "+str(t_v0))
+
+        x_pts = [float(t_v0_acc - t_v0),float(t4t0 - t_v0), float(t2t0 - t_v0)]
+        y_pts = np.array([l_HH.evalf(subs={v: float(t_v0_acc - t_v0)}),
+         l_HH.evalf(subs={v: float(t4t0 - t_v0)}),
+         l_HH.evalf(subs={v: float(t2t0 - t_v0)})]).astype(float)
+        
+        if debug:
+            labels = ["MEKF", "Theta 1", "Theta 2"]
+            
+            tt = np.pi
+            f = sym.lambdify(v, l_HH, 'numpy')
+            vv = np.linspace(-tt, tt, 1000)
+            fig, ax = plt.subplots(figsize=(6,4))
+            ax.plot(vv, f(vv), label='h_k(Theta)', color='blue')
+            ax.scatter(x_pts, y_pts, color='red', marker='o', s=60,label='Intersection points')
+            
+            for x, y, label in zip(x_pts, y_pts, labels):
+                ax.annotate(label,
+                    xy=(x, y),                # position du point
+                    xytext=(0, 8),            # décalage texte en points
+                    textcoords='offset points',
+                    ha='center',
+                    color='green',
+                    fontsize=12)
+            # Axes, grille, labels
+            ax.axhline(0, color='black', linewidth=0.8)
+            ax.axvline(0, color='black', linewidth=0.8)
+            ax.grid(True, linestyle='--', alpha=0.6)
+            ax.set_xlabel("Theta")
+            ax.set_ylabel("meters")
+            ax.set_title("h_k")
+            ax.legend()
+            plt.show()
+            
+            tt = np.max([np.abs(float(t4t0)),np.abs(float(t2t0))])
+            f = sym.lambdify(v, l_HH, 'numpy')
+            vv = np.linspace(-tt, tt, 1000)
+            fig, ax = plt.subplots(figsize=(6,4))
+            ax.plot(vv, f(vv), label='h_k(Theta)', color='blue')
+            ax.scatter(x_pts, y_pts, color='red', marker='o', s=60,label='Intersection points')
+            
+            for x, y, label in zip(x_pts, y_pts, labels):
+                ax.annotate(label,
+                    xy=(x, y),                # position du point
+                    xytext=(0, 8),            # décalage texte en points
+                    textcoords='offset points',
+                    ha='center',
+                    color='green',
+                    fontsize=12)
+            # Axes, grille, labels
+            ax.axhline(0, color='black', linewidth=0.8)
+            ax.axvline(0, color='black', linewidth=0.8)
+            ax.grid(True, linestyle='--', alpha=0.6)
+            ax.set_xlabel("Theta")
+            ax.set_ylabel("meters")
+            ax.set_title("h_k")
+            ax.legend()
+            plt.show()
+            print("norm",mp.norm(racc)*10000)
+            print("angles",rt0,rt2,rt3,rt4,ert0,ert2,ert3,ert4)
+            
+            pdb.set_trace()
+        """
+        corrected,not_corrected,label= False,False,""
+        corrected,not_corrected,label= True,False,""
+        corrected,not_corrected,label= False,True,""
+        """
+        
+        if (corrected):
+            print(np.abs(t_v0_acc-t_v0),np.abs(t4t0-t_v0))
+            t1t0 = t4t0#np.sign(float(t4t0-t_v0))*np.abs(float(np.abs(t4t0-t_v0)))/2+t_v0
         
 
     rot1= (SymExpRot2(FF,t1t0))
     irot1= (SymExpRot2(FF,-t1t0))
-    
-
     
     rot= (SymExpRot2(FF,t0))
     irot= (SymExpRot2(FF,-t0))
