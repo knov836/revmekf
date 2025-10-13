@@ -51,7 +51,7 @@ for block in blocks:
     #print([c for ax in axes for c in df.columns if c.startswith(f"normal_{ax}_") ])
     
     for axis in axes:
-        cols = [c for c in df.columns if c.startswith(f"{block}_{axis}_")]
+        cols = [c for c in df.columns if c.startswith(f"{block}_{axis}_") and not(str(timesteps) in c)]
         smoothed_cols = savgol_filter(np.array(df[cols]), 5, 2)
         df[f"s{block}_{axis}_mean"] = np.mean(savgol_filter(np.array(df[cols]), 20, 2),axis=1)
 
@@ -102,7 +102,8 @@ X_extra_seq = np.repeat(X_extra[:, np.newaxis, :], timesteps, axis=1)
 
 X = np.concatenate([X_seq.reshape(len(df), timesteps, 12+8), X_extra_seq], axis=2)
 
-y = df["correction_applied"].values
+#y = df["correction_applied"].values
+y = np.array(df["correction_applied"].values) & np.array(df["et3_last"]>=0)
 
 X_tensor = torch.tensor(X, dtype=torch.float32)
 y_tensor = torch.tensor(y, dtype=torch.long)
@@ -160,7 +161,7 @@ weights = weights / weights.sum()   # normalisation
 criterion = nn.CrossEntropyLoss(weight=weights)
 #criterion = nn.CrossEntropyLoss(weight={0: 1, 1: 3})
 #optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
-optimizer = torch.optim.Adam(model.parameters(), lr=100 * 1e-5)  # plus petit
+optimizer = torch.optim.Adam(model.parameters(), lr=10*1e-5)  # plus petit
 n_epochs = 25
 for epoch in range(n_epochs):
     model.train()
@@ -187,7 +188,7 @@ with torch.no_grad():
         y_pred.extend(preds.numpy())
         y_proba.extend(probs.numpy())
 
-threshold = 0.5
+threshold = 0.45
 y_pred = (np.array(y_proba) >= threshold).astype(int)
 
 print("Confusion matrix :")
@@ -206,12 +207,9 @@ model.eval()
 with torch.no_grad():
     outputs = model(X_tensor)  
     probs = torch.softmax(outputs, dim=1)[:, 1].numpy()  
-    print(torch.softmax(outputs, dim=1)[:, :])
     preds_threshold = (probs >= threshold).astype(int)
-    print(preds_threshold)
 
 # Ajouter les résultats au DataFrame pour inspection
 df["predicted_class_threshold"] = preds_threshold
 df["predicted_proba_class1"] = probs
-print(df[["sample", "time", "predicted_class_threshold", "predicted_proba_class1"]][20:40])
 df.to_csv("predictions_results.csv", index=False)

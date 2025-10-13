@@ -95,7 +95,7 @@ feature_cols.append(f"smag_norm_xy")"""
 X = df[feature_cols]
 y = df["correction_applied"]
 X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.15, random_state=42, stratify=y
+    X, y, test_size=0.20, random_state=42, stratify=y
 )
 
 #Oversampling 
@@ -147,10 +147,10 @@ print("\nTop 20 features :")
 print(feat_imp.head(20))
 
 plt.figure(figsize=(10,6))
-plt.barh(feat_imp['feature'].head(30), feat_imp['importance'].head(30))
+plt.barh(feat_imp['feature'].head(10), feat_imp['importance'].head(10))
 plt.gca().invert_yaxis()
 plt.xlabel("Importance")
-plt.title("Top 30 features to predict correction_applied")
+plt.title("Top 10 features used in Random Forest")
 plt.show()
 
 

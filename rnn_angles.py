@@ -50,8 +50,6 @@ for block in blocks:
     
     for axis in axes:
         cols = [c for c in df.columns if c.startswith(f"{block}_{axis}_")]
-        print(df[cols])
-        print(cols)
         smoothed_cols = savgol_filter(np.array(df[cols]), 5, 2)
         df[f"s{block}_{axis}_mean"] = np.mean(savgol_filter(np.array(df[cols]), 20, 2),axis=1)
 
@@ -76,31 +74,35 @@ for block in blocks:
 
 for block in angles:
     cols = [c for c in df.columns if c.startswith(f"{block}_")]
-    df[f"{block}_mean"] = df[cols].mean(axis=1)
-    df[f"{block}_std"] = df[cols].std(axis=1)
-    df[f"{block}_min"] = df[cols].min(axis=1)
-    df[f"{block}_max"] = df[cols].max(axis=1)
+    df[f"{block}_mean"] = np.array(df[cols])[:,:-1].mean(axis=1)
+    df[f"{block}_std"] = np.array(df[cols])[:,:-1].std(axis=1)
+    df[f"{block}_min"] = np.array(df[cols])[:,:-1].min(axis=1)
+    df[f"{block}_max"] = np.array(df[cols])[:,:-1].max(axis=1)
+    df[f"{block}_last"] = np.array(df[cols])[:,-1]
 
 angle_features= (
     [f"{block}_mean" for block in angles] +
     [f"{block}_std" for block in angles] +
     [f"{block}_min" for block in angles] +
-    [f"{block}_max" for block in angles]
+    [f"{block}_max" for block in angles] +
+    [f"{block}_last" for block in angles]
 )
 extra_features+=angle_features
+#extra_features+=["correction_applied_p"]
 #seq_features += [f"normal_{a}" for a in {"z"} for i in range(timesteps)]
 seq_features = seq_features+extra_features
-input_dim = 12+8+len(extra_features)
+input_dim = 8+12+len(extra_features)
 #X = df[seq_features].values.reshape(len(df), timesteps, input_dim)
-
+df["correction_applied_p"] = np.array(df["correction_applied"].shift(1)).astype(float)
+df["correction_applied_p"][0] = float(0)
 X_seq = df[[f for f in seq_features if f not in extra_features]].values
 X_extra = df[extra_features].values  # shape = (n_samples, n_extra)
 
 X_extra_seq = np.repeat(X_extra[:, np.newaxis, :], timesteps, axis=1)
 
-X = np.concatenate([X_seq.reshape(len(df), timesteps, 12+8), X_extra_seq], axis=2)
+X = np.concatenate([X_seq.reshape(len(df), timesteps, 8+12), X_extra_seq], axis=2)
 
-y = df["correction_applied"].values
+y = np.array(df["correction_applied"].values) & np.array(df["et3_last"]>=0)
 
 X_tensor = torch.tensor(X, dtype=torch.float32)
 y_tensor = torch.tensor(y, dtype=torch.long)
@@ -143,7 +145,7 @@ class RNNClassifier(nn.Module):
 
 #input_dim = 9       # acc/gyro/mag (x,y,z)
 hidden_dim = 128
-num_layers = 3
+num_layers = 2
 output_dim = 2      # binary: correction_applied yes/no
 
 model = RNNClassifier(input_dim, hidden_dim, num_layers, output_dim)
@@ -153,13 +155,19 @@ model = RNNClassifier(input_dim, hidden_dim, num_layers, output_dim)
 class_counts = np.bincount(y)
 weights = 1.0 / torch.tensor(class_counts, dtype=torch.float32)  
 weights = weights / weights.sum()   # normalisation
+
+"""class_counts = torch.tensor([163, 33], dtype=torch.float32)
+weights = 1.0 / class_counts
+weights = weights / weights.sum()"""
 #class_counts = [3, 2]
 #weights = 1.0 / torch.tensor([3, 10/6])  # => [0.333, 0.5]
 criterion = nn.CrossEntropyLoss(weight=weights)
 #criterion = nn.CrossEntropyLoss(weight={0: 1, 1: 3})
 #optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
-optimizer = torch.optim.Adam(model.parameters(), lr=5*1e-6)  # plus petit
+import torch.optim.lr_scheduler as lr_scheduler
+optimizer = torch.optim.Adam(model.parameters(), lr=15*1e-5)  # plus petit
 n_epochs = 25
+scheduler = lr_scheduler.CosineAnnealingLR(optimizer, T_max=n_epochs, eta_min=1e-5)
 for epoch in range(n_epochs):
     model.train()
     total_loss = 0
@@ -170,6 +178,9 @@ for epoch in range(n_epochs):
         loss.backward()
         optimizer.step()
         total_loss += loss.item()
+
+    # mettre à jour le scheduler après chaque epoch
+    scheduler.step()
     print(f"Epoch {epoch+1}/{n_epochs}, Loss={total_loss/len(train_loader):.4f}")
 
 
@@ -204,12 +215,9 @@ model.eval()
 with torch.no_grad():
     outputs = model(X_tensor)  
     probs = torch.softmax(outputs, dim=1)[:, 1].numpy()  
-    print(torch.softmax(outputs, dim=1)[:, :])
     preds_threshold = (probs >= threshold).astype(int)
-    print(preds_threshold)
 
 # Ajouter les résultats au DataFrame pour inspection
 df["predicted_class_threshold"] = preds_threshold
 df["predicted_proba_class1"] = probs
-print(df[["sample", "time", "predicted_class_threshold", "predicted_proba_class1"]][20:40])
 df.to_csv("predictions_results.csv", index=False)

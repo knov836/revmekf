@@ -76,8 +76,10 @@ class LSTMClassifier(nn.Module):
         return out
 
 #model = torch.load("lstm_model_20251012_105842.pth",weights_only=False)
+#good model
+#model = torch.load("lstm_model_20251012_173153.pth",weights_only=False)
 
-model = torch.load("lstm_model_20251012_145135.pth",weights_only=False)
+model = torch.load("lstm_model_20251012_173153.pth",weights_only=False)
 #model = torch.load("rnn_model.pth",weights_only=False)
 model.eval()
 g_bias= 10**(-5)
@@ -109,7 +111,7 @@ if mmode == 'OdoAccPre':
 
 n_start = 0
 n_end=4000
-n_end=n_start +1000
+n_end=n_start +3000
 cols = np.array([0,1,2,3,10,11,12,19,20,21])
 df = data.values[n_start:n_end,cols]
 

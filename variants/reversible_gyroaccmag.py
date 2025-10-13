@@ -97,7 +97,8 @@ class PredictFilter(Filter):
                     p_class0 = soft[0]
                     p_class1 = soft[1]
                     #probs[i] = p_class1
-                    correction = int(p_class1 > 0.8)
+                    correction = (p_class1 > 0.4) and (et3>=0) 
+                    #correction = (p_class1 > 0.75) and (et3>=0) 
                     print("probas",p_class0,p_class1)
                     acc1,rot1,irot1,acc2,rot2,irot2,acc3,rot3,irot3,corrected,not_corrected,angle_acc,t0,t2,t3,t4,et0,et2,et3,et4= acc_from_normal_imu_grav_neural(np.array(quat_rot([0,*np.array(nAxis,dtype=mpf)],quat))[1:4],np.array([0,1,0],dtype=mpf) , np.array(quat_rot([0,*(nAccelerometer*(self.dt**2))],quat))[1:4],np.array(quat_rot([0,*(grav*(self.dt**2))],quat))[1:4], normal, self.surf_center,start = logrot1,heuristic=self.heuristic,correction = correction)
                     self.t0 = t0
@@ -113,7 +114,7 @@ class PredictFilter(Filter):
                     probs_loaded  = self.model(X_input)
                     
                     print("probas",probs_loaded)
-                    correction= (probs_loaded[0,1] > 0.9).astype(int)
+                    correction= (probs_loaded[0,1] > 0.5).astype(int)  and et3>=0
                     acc1,rot1,irot1,acc2,rot2,irot2,acc3,rot3,irot3,corrected,not_corrected,angle_acc,t0,t2,t3,t4,et0,et2,et3,et4= acc_from_normal_imu_grav_neural(np.array(quat_rot([0,*np.array(nAxis,dtype=mpf)],quat))[1:4],np.array([0,1,0],dtype=mpf) , np.array(quat_rot([0,*(nAccelerometer*(self.dt**2))],quat))[1:4],np.array(quat_rot([0,*(grav*(self.dt**2))],quat))[1:4], normal, self.surf_center,start = logrot1,heuristic=self.heuristic,correction = correction)
                     self.t0 = t0
                     self.t2 = t2

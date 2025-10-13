@@ -80,7 +80,7 @@ if mmode == 'OdoAccPre':
 
 n_start = 0
 n_end=4000
-n_end=n_start +600
+n_end=n_start +3000
 cols = np.array([0,1,2,3,10,11,12,19,20,21])
 df = data.values[n_start:n_end,cols]
 
@@ -387,10 +387,10 @@ for i in range(0,N-1,1):
     angles_array = np.roll(angles_array, shift=-1, axis=1)
     angles_array[:, -1] = current_angles  
 
-    angle_means = np.mean(angles_array, axis=1)  # (len(angles),)
-    angle_stds  = np.std(angles_array, axis=1)
-    angle_mins  = np.min(angles_array, axis=1)
-    angle_maxs  = np.max(angles_array, axis=1)
+    angle_means = np.mean(angles_array[:,1:], axis=1)  # (len(angles),)
+    angle_stds  = np.std(angles_array[:,1:], axis=1)
+    angle_mins  = np.min(angles_array[:,1:], axis=1)
+    angle_maxs  = np.max(angles_array[:,1:], axis=1)
     angle_features = np.concatenate([angle_means, angle_stds, angle_mins, angle_maxs])
     correction_applied[i] = Solv2.KFilter.corrected
     angle_applied[i+1] =angle_applied[i]+Solv2.KFilter.angle

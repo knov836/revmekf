@@ -771,7 +771,7 @@ def acc_from_normal_imu_grav_neural(norm0,norm,acc,grav,normal,center,start=[0,0
         
         
         #print("ff acc",-FF_acc)
-        gamma = 1.0
+        gamma = 0.5
         
         #plot(HH,(v,-1.5,1.5))
         
