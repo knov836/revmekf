@@ -169,7 +169,7 @@ class PredictFilter(Filter):
             mag0[2] = 0
             mag0 = mag0/np.linalg.norm(mag0)
             mag = np.array(quat_rot([0,*mag0], quat_inv(self.Quaternion)))[1:4]
-            mag=Magnetometer
+            #mag=Magnetometer
         grav_earth = self.linalg_correct(Gyroscope, acc, mag, Orient,normal=self.normal)
         
         self.gravity_r = grav_earth
