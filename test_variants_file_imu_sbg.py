@@ -65,7 +65,7 @@ data_file = 'imu_data_sbg_250624_2055.csv'
 data_file= 'imu_data_sbg_250701_1120.csv'
 #data_file = 'imu_data_sbg_static_120925.csv'
 #moving
-data_file= 'imu_data_sbg_250701_1344.csv'
+#data_file= 'imu_data_sbg_250701_1344.csv'
 #data_file= 'imu_data_sbg_250701_1628.csv'
 #data_file = 'imu_data_sbg_plane_09121118.csv'
 #data_file = 'imu_data_sbg_plane_09121136.csv'
@@ -124,7 +124,7 @@ if mmode == 'OdoAccPre':
 #print(data.head())
 n_start = 0
 n_end=4000
-n_end=n_start +1000
+n_end=n_start +600
 cols = np.array([0,1,2,3,10,11,12,19,20,21])
 df = data.values[n_start:n_end,:]
 
@@ -246,7 +246,7 @@ for i in range(0,N-1,1):
     #Solv2.update_noarg(time=time[i+1])
     Solv0.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], newset.normal)
     Solv1.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], newset.normal)
-    #Solv2.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], newset.normal)
+    Solv2.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], newset.normal)
     #print(Solv0.KFilter.speed,Solv1.KFilter.speed)
     
     if i%10 ==0 and i>0:
@@ -483,12 +483,35 @@ ax.set_title('Position with Integration of gyroscope')
 fig = plt.figure()
 ax = fig.add_axes([0,0,1,1])
 ax.plot(position1[:,0],position1[:,1])
+ax.legend(['x axis','y axis','z axis'])
+plt.xlabel('Samples')
+plt.ylabel('meters')
 ax.set_title('Position with MEKF')
 
 fig = plt.figure()
 ax = fig.add_axes([0,0,1,1])
 ax.plot(position2[:,0],position2[:,1])
+ax.legend(['x axis','y axis','z axis'])
+plt.xlabel('Samples')
+plt.ylabel('meters')
 ax.set_title('Position with Reversible MEKF')
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(position1)
+ax.legend(['x axis','y axis','z axis'])
+plt.xlabel('Samples')
+plt.ylabel('meters')
+ax.set_title('Position from MEKF')
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(position2)
+ax.legend(['x axis','y axis','z axis'])
+plt.xlabel('Samples')
+plt.ylabel('meters')
+ax.set_title('Position from Rev-MEKF')
+
+
 
 fig = plt.figure()
 ax = fig.add_axes([0,0,1,1])
@@ -528,4 +551,23 @@ ax.set_title('leica vs odo')
 fig = plt.figure()
 ax = fig.add_axes([0,0,1,1])
 ax.plot(newset.pressure)'''
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(position1)
+ax.legend(['x axis','y axis','z axis'])
+plt.xlabel('Samples')
+plt.ylabel('meters')
+ax.set_title('Position from MEKF')
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot([np.linalg.norm(p) for p in position1])
+ax.plot([np.linalg.norm(p) for p in position2])
+ax.legend(['Norm of position with MEKF','Norm of position with Heuristic Rev-MEKF'])
+plt.yscale("log")
+plt.xlabel('Samples')
+plt.ylabel('meters')
+ax.set_title('Norm of the computed position with different filters')
+
+
 

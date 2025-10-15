@@ -71,7 +71,7 @@ def visualize_rotations_about_x_centered(A=np.array([0, 0, 1]),
     ax.set_ylabel('Y')
     ax.set_zlabel('Z')
     ax.legend(loc='upper left')
-    ax.set_title("Rotations of A (anchored at C - A + g*dt) around X-axis and intersection with plane")
+    ax.set_title("Rotations of A (anchored at C + A - g*dt) around X-axis and intersection with plane")
     ax.view_init(elev=25, azim=45)
 
     plt.show()

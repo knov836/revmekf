@@ -72,18 +72,20 @@ df[f"sacc_norm_xy"] = np.sqrt(df[[f"sacc_{ax}_mean" for ax in ["x","y"]]].pow(2)
 feature_cols.append(f"sacc_norm_xy")
 for block in angles:
     cols = [c for c in df.columns if c.startswith(f"{block}_")]
-    df[f"{block}_mean"] = df[cols].mean(axis=1)
-    df[f"{block}_std"] = df[cols].std(axis=1)
-    df[f"{block}_min"] = df[cols].min(axis=1)
-    df[f"{block}_max"] = df[cols].max(axis=1)
-    df[f"{block}_last"] = np.array(df[cols])[:,-1]
+    if "e" in block:
+        block.replace('e', 'eval_')
+    df[f"{block.replace('e', 'eval_').replace('3', 'MEKF').replace('4', '1')}_mean"] = df[cols].mean(axis=1)
+    df[f"{block.replace('e', 'eval_').replace('3', 'MEKF').replace('4', '1')}_std"] = df[cols].std(axis=1)
+    df[f"{block.replace('e', 'eval_').replace('3', 'MEKF').replace('4', '1')}_min"] = df[cols].min(axis=1)
+    df[f"{block.replace('e', 'eval_').replace('3', 'MEKF').replace('4', '1')}_max"] = df[cols].max(axis=1)
+    df[f"{block.replace('e', 'eval_').replace('3', 'MEKF').replace('4', '1')}_last"] = np.array(df[cols])[:,-1]
 
 feature_cols += (
-    [f"{block}_mean" for block in angles] +
-    [f"{block}_std" for block in angles] +
-    [f"{block}_min" for block in angles] +
-    [f"{block}_max" for block in angles]+
-    [f"{block}_last" for block in angles]
+    [f"{block.replace('e', 'eval_').replace('3', 'MEKF').replace('4', '1')}_mean" for block in angles] +
+    [f"{block.replace('e', 'eval_').replace('3', 'MEKF').replace('4', '1')}_std" for block in angles] +
+    [f"{block.replace('e', 'eval_').replace('3', 'MEKF').replace('4', '1')}_min" for block in angles] +
+    [f"{block.replace('e', 'eval_').replace('3', 'MEKF').replace('4', '1')}_max" for block in angles]+
+    [f"{block.replace('e', 'eval_').replace('3', 'MEKF').replace('4', '1')}_last" for block in angles]
 )
 
 
@@ -133,7 +135,8 @@ y_pred = (y_proba >= threshold).astype(int)
 print("📊 Confusion matrix :")
 print(confusion_matrix(y_test, y_pred))
 print("\n📊 Classification report :")
-print(classification_report(y_test, y_pred))
+#print(classification_report(y_test, y_pred))
+print(classification_report(y_test, y_pred, labels=[1], target_names=['Positive']))
 roc_auc = roc_auc_score(y_test, y_proba)
 print(f"\n📊 ROC-AUC : {roc_auc:.3f}")
 

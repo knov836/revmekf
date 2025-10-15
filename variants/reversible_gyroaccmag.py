@@ -129,6 +129,7 @@ class PredictFilter(Filter):
                 acc1,rot1,irot1,acc2,rot2,irot2,acc3,rot3,irot3,corrected,not_corrected,label,angle_acc,t0,t2,t3,t4,et0,et2,et3,et4= acc_from_normal_imu_grav_manual(np.array(quat_rot([0,*np.array(nAxis,dtype=mpf)],quat))[1:4],np.array([0,1,0],dtype=mpf) , np.array(quat_rot([0,*(nAccelerometer*(self.dt**2))],quat))[1:4],np.array(quat_rot([0,*(grav*(self.dt**2))],quat))[1:4], normal, self.surf_center,start = logrot1,heuristic=self.heuristic,correction = self.correction)
                 self.label=label
             else:
+                
                 acc1,rot1,irot1,acc2,rot2,irot2,acc3,rot3,irot3,corrected,not_corrected,angle_acc,t0,t2,t3,t4,et0,et2,et3,et4= acc_from_normal_imu_grav(np.array(quat_rot([0,*np.array(nAxis,dtype=mpf)],quat))[1:4],np.array([0,1,0],dtype=mpf) , np.array(quat_rot([0,*(nAccelerometer*(self.dt**2))],quat))[1:4],np.array(quat_rot([0,*(grav*(self.dt**2))],quat))[1:4], normal, self.surf_center,start = logrot1,heuristic=self.heuristic,correction = self.correction)
             self.t0 = t0
             self.t2 = t2
@@ -168,6 +169,7 @@ class PredictFilter(Filter):
             mag0[2] = 0
             mag0 = mag0/np.linalg.norm(mag0)
             mag = np.array(quat_rot([0,*mag0], quat_inv(self.Quaternion)))[1:4]
+            mag=Magnetometer
         grav_earth = self.linalg_correct(Gyroscope, acc, mag, Orient,normal=self.normal)
         
         self.gravity_r = grav_earth

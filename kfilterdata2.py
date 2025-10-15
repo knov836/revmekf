@@ -119,7 +119,7 @@ class KFilterDataFile:
         
         self.mag0 = np.array(quat_rot([0,*np.mean(self.mag[:300,:].astype(float),axis=0)], self.quat_calib))[1:4]
         
-        #self.mag0 = np.array([1,0,0],dtype=mpf)
+        self.mag0 = np.array([0,1,0],dtype=mpf)
         
     def cmag(self,normal=None):
         cmag= np.zeros((self.c_size,3),dtype=mpf)
@@ -130,7 +130,7 @@ class KFilterDataFile:
             if mp.norm(m)!=0:
                 m=m/mp.norm(m)
             cmag[i,:] = m
-            continue
+            #continue
             if mp.norm(m)!=0:
                 m=m/mp.norm(m)
                 adm = skewSymmetric(a)@m
@@ -148,7 +148,7 @@ class KFilterDataFile:
             if mp.norm(m)!=0:
                 m=m/mp.norm(m)
             omag[i,:] = m
-            continue
+            #continue
             if mp.norm(m)!=0:
                 a=self.acc[i,:]
                 a = a/np.linalg.norm(a)
@@ -202,7 +202,7 @@ class KFilterDataFile:
             #new_m = m
             M = np.array([-adm,new_m,a]).T
             #print("new_m",new_m,m)
-            M = np.array([new_m,adm,a]).T
+            #M = np.array([new_m,adm,a]).T
             new_orient[i,:] = normalize(quat_inv(RotToQuat(M)))
         return new_orient
     def new_orient(self):
@@ -219,8 +219,8 @@ class KFilterDataFile:
             adm = adm/mp.norm(adm)
             new_m = skewSymmetric(adm)@a
             
-            #M = np.array([-adm,new_m,a]).T
-            M = np.array([new_m,adm,a]).T
+            M = np.array([-adm,new_m,a]).T
+            #M = np.array([new_m,adm,a]).T
             new_orient[i,:] = normalize(quat_inv(RotToQuat(M)))
         return new_orient
     

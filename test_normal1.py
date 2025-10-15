@@ -28,7 +28,7 @@ from scipy.signal import butter, sosfiltfilt
 
 from proj_func import correct_proj2
 from function_quat import *
-
+from signal_process import *
 from kfilterdata2 import KFilterDataFile
 
 
@@ -74,7 +74,7 @@ if mmode == 'OdoAccPre':
 
 n_start = 0
 n_end=4000
-n_end=n_start +3000
+n_end=n_start +6000
 cols = np.array([0,1,2,3,10,11,12,19,20,21])
 df = data.values[n_start:n_end,cols]
 
@@ -496,3 +496,85 @@ ax.plot(position2[:,:2])
 ax.plot(np.array(coords1))
 ax.legend(['pos0_x','pos0_y','gps_x,','gps_y'])
 ax.set_title('Position from Old Rev-MEKF')
+
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(position1[:,0],position1[:,1])
+ax.set_title('Position with MEKF')
+
+
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(np.array(coords1[:,1]),np.array(coords1[:,0]))
+ax.plot(position0[:,0],position0[:,1])
+ax.plot(position2[:,0],position2[:,1])
+ax.legend(['GPS','Position from Gyro integration','Position from MEKF'])
+plt.xlabel('X axis in meters')
+plt.ylabel('Y axis in meters')
+ax.set_title('Projected position in 2D of GPS/Gyro Integration/Rev-MEKF')
+
+alpha=np.pi/2+np.pi/8
+coords1 = np.zeros(coords.shape)
+coords1[:,0] = (np.cos(alpha)*coords[:,0]+np.sin(alpha)*coords[:,1])
+coords1[:,1] = (np.sin(alpha)*coords[:,0]-np.cos(alpha)*coords[:,1])
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+#ax.plot(newset.acc)
+
+ax.plot(np.array(coords1[:,1]),np.array(coords1[:,0]))
+ax.plot(position0[:,0],position0[:,1])
+ax.plot(position1[:,0],position1[:,1])
+ax.plot(position2[:,0],position2[:,1])
+ax.legend(['GPS','Position from Gyro integration','Position from MEKF','Position from Rev-MEKF'])
+plt.xlabel('X axis in meters')
+plt.ylabel('Y axis in meters')
+ax.set_title('Projected position in 2D of GPS/Gyro Integration/MEKF')
+
+
+def rotation_2d_from_a_to_b(a, b, eps=1e-12):
+    """
+    Return 2x2 rotation matrix R such that R @ a = b (for 2D vectors).
+    a, b: array-like of shape (2,)
+    eps: tolerance for zero-length vectors
+    """
+    a = np.asarray(a, dtype=float)
+    b = np.asarray(b, dtype=float)
+
+    if np.linalg.norm(a) < eps or np.linalg.norm(b) < eps:
+        raise ValueError("a and b must be non-zero 2D vectors")
+
+    # normalize (ensures purely rotational map)
+    a /= np.linalg.norm(a)
+    b /= np.linalg.norm(b)
+
+    dot = a.dot(b)
+    det = a[0]*b[1] - a[1]*b[0]   # scalar "2D cross product"
+
+    theta = np.arctan2(det, dot)
+
+    c = np.cos(theta)
+    s = np.sin(theta)
+    R = np.array([[c, -s],
+                  [s,  c]])
+    return R
+p0=  coords1[-1,:2]/np.linalg.norm(coords1[-1,:2])
+p1=  position0[-1,:2]/np.linalg.norm(position0[-1,:2])
+p2=  position1[-1,:2]/np.linalg.norm(position1[-1,:2])
+R0 = rotation_2d_from_a_to_b(p1,p0)
+R1 = rotation_2d_from_a_to_b(p2,p0)
+
+rposition0 = position0[:,:2]@R0.T
+rposition1 = position1[:,:2]@R1.T
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(np.array(coords1[:,0]),np.array(coords1[:,1]))
+ax.plot(rposition0[:,0],rposition0[:,1])
+ax.plot(rposition1[:,0],rposition1[:,1])
+ax.legend(['GPS','Position from Gyro integration','Position from MEKF'])
+plt.xlabel('X axis in meters')
+plt.ylabel('Y axis in meters')
+ax.set_title('Projected position in 2D of GPS/Gyro Integration/MEKF')
