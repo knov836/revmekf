@@ -1187,7 +1187,7 @@ def acc_from_normal_imu_grav(norm0,norm,acc,grav,normal,center,start=[0,0,1],s_r
         ert4 = HH.evalf(subs={v: float(t4t0)})
         
         
-        x_pts = [float(t_v0_acc - t_v0),float(t4t0 - t_v0), float(t2t0 - t_v0)]
+        """x_pts = [float(t_v0_acc - t_v0),float(t4t0 - t_v0), float(t2t0 - t_v0)]
         y_pts = np.array([l_HH.evalf(subs={v: float(t_v0_acc - t_v0)}),
          l_HH.evalf(subs={v: float(t4t0 - t_v0)}),
          l_HH.evalf(subs={v: float(t2t0 - t_v0)})]).astype(float)
@@ -1217,7 +1217,7 @@ def acc_from_normal_imu_grav(norm0,norm,acc,grav,normal,center,start=[0,0,1],s_r
         ax.set_title("h_k")
         ax.legend()
         plt.show()
-        print("angles",t4t0,t_v0_acc,t0)
+        print("angles",t4t0,t_v0_acc,t0)"""
             
         if (t4t0 == t2t0 and sign*(teGG-C).dot(normal).evalf(subs={v:(t4t0+t2t0)/2})<0) or sign*(teGG-C).dot(normal).evalf(subs={v:(t4t0+t2t0)/2})<0  or np.abs(t_v0-t3t0)>np.abs(t4t0 -t2t0)*1.5:
             t1t0 = t_v0
