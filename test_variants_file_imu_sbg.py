@@ -561,13 +561,13 @@ ax.set_title('Position from MEKF')
 
 fig = plt.figure()
 ax = fig.add_axes([0,0,1,1])
-ax.plot([np.linalg.norm(p) for p in position1])
-ax.plot([np.linalg.norm(p) for p in position2])
-ax.legend(['Norm of position with MEKF','Norm of position with Heuristic Rev-MEKF'])
+#ax.plot([np.linalg.norm(p) for p in position1])
+ax.plot([np.linalg.norm(p) for p in position2-position1])
+ax.legend(['Difference between MEKF and Heuristical Rev-MEKF'])#,'Norm of position with Heuristic Rev-MEKF'])
 plt.yscale("log")
 plt.xlabel('Samples')
 plt.ylabel('meters')
-ax.set_title('Norm of the computed position with different filters')
+ax.set_title('Norm of difference of position computed by MEKF and Heuristical Rev-MEKF')
 
 
 
