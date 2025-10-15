@@ -195,7 +195,7 @@ for i in range(0,N-1,1):
     newset.acc[i+1,2] = s_acc_z[i+1]
     Solv0.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], normal)
     Solv1.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], normal)
-    Solv2.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], normal,std_acc_z=std_acc_z)
+    #Solv2.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], normal,std_acc_z=std_acc_z)
     correction_applied[i] = Solv2.KFilter.corrected
     angle_applied[i+1] =angle_applied[i]+Solv2.KFilter.angle
 
@@ -330,8 +330,11 @@ plt.show()
 fig = plt.figure()
 ax = fig.add_axes([0,0,1,1])
 ax.plot(time0[:size-1],acc_smooth[:size-1,:2])
-ax.plot(time0[np.argwhere(correction_applied).flatten()], [acc_smooth[j,:2] for j in np.argwhere(correction_applied).flatten()],'.',**dict(markersize=10))
-ax.set_title('Acc smoothed')
+ax.plot(time0[np.argwhere(correction_applied).flatten()], [acc_smooth[j,:2] for j in np.argwhere(correction_applied).flatten()],'.',**dict(markersize=10),color='red')
+ax.legend(['X axis','Y axis','Corrections applied'])
+plt.xlabel('seconds')
+plt.ylabel('meters per seconds^2')
+ax.set_title('Acceleration smoothed')
 
 
 coords1 = np.zeros(coords.shape)
@@ -575,6 +578,50 @@ ax.plot(np.array(coords1[:,0]),np.array(coords1[:,1]))
 ax.plot(rposition0[:,0],rposition0[:,1])
 ax.plot(rposition1[:,0],rposition1[:,1])
 ax.legend(['GPS','Position from Gyro integration','Position from MEKF'])
+plt.xlabel('X axis in meters')
+plt.ylabel('Y axis in meters')
+ax.set_title('Projected position in 2D of GPS/Gyro Integration/MEKF')
+
+
+import pandas as pd
+from datetime import datetime
+
+timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+data = np.hstack((position2, quaternion2))
+columns = ['px', 'py', 'pz', 'qw', 'qx', 'qy', 'qz']
+
+df = pd.DataFrame(data, columns=columns)
+
+# Save to CSV
+df.to_csv(f"trajectory_heuristic2_{timestamp}.csv", index=False)
+
+
+
+#timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+data = np.hstack((position1, quaternion1))
+columns = ['px', 'py', 'pz', 'qw', 'qx', 'qy', 'qz']
+
+df = pd.DataFrame(data, columns=columns)
+
+# Save to CSV
+df.to_csv(f"trajectory_mekf1_{timestamp}.csv", index=False)
+
+print("Saved to trajectory.csv")
+print(df.head())
+# Charger le CSV
+df = pd.read_csv('trajectory_mekf1_20251015_103619.csv')
+
+position3 = df[['px', 'py', 'pz']].to_numpy()      # shape (N, 3)
+quaternion3 = df[['qw', 'qx', 'qy', 'qz']].to_numpy() 
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+#ax.plot(newset.acc)
+
+ax.plot(np.array(coords1[:,1]),np.array(coords1[:,0]))
+ax.plot(position0[:,0],position0[:,1])
+ax.plot(position1[:,0],position1[:,1])
+ax.plot(position3[:,0],position3[:,1])
+ax.legend(['GPS','Position from Gyro integration','Position from MEKF','Position from Rev-MEKF'])
 plt.xlabel('X axis in meters')
 plt.ylabel('Y axis in meters')
 ax.set_title('Projected position in 2D of GPS/Gyro Integration/MEKF')

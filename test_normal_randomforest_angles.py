@@ -80,7 +80,7 @@ if mmode == 'OdoAccPre':
 
 n_start = 0
 n_end=4000
-n_end=n_start +3000
+n_end=n_start +10000
 cols = np.array([0,1,2,3,10,11,12,19,20,21])
 df = data.values[n_start:n_end,cols]
 
@@ -635,3 +635,35 @@ ax.plot(position2[:,:2])
 ax.plot(np.array(coords1))
 ax.legend(['pos0_x','pos0_y','gps_x,','gps_y'])
 ax.set_title('Position from RF Rev-MEKF')
+
+alpha=np.pi/2+np.pi/8+np.pi/64+np.pi/128
+coords1 = np.zeros(coords.shape)
+coords1[:,0] = (np.cos(alpha)*coords[:,0]+np.sin(alpha)*coords[:,1])
+coords1[:,1] = (np.sin(alpha)*coords[:,0]-np.cos(alpha)*coords[:,1])
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+#ax.plot(newset.acc)
+
+ax.plot(np.array(coords1[:,1]),np.array(coords1[:,0]))
+ax.plot(position0[:,0],position0[:,1])
+ax.plot(position1[:,0],position1[:,1])
+ax.plot(position2[:,0],position2[:,1])
+ax.legend(['GPS','Position from Gyro integration','Position from MEKF','Position from LSTM Rev-MEKF'])
+plt.xlabel('X axis in meters')
+plt.ylabel('Y axis in meters')
+ax.set_title('Projected position in 2D of GPS/Gyro Integration/MEKF')
+
+
+
+import pandas as pd
+from datetime import datetime
+
+timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+data = np.hstack((position2, quaternion2))
+columns = ['px', 'py', 'pz', 'qw', 'qx', 'qy', 'qz']
+
+df = pd.DataFrame(data, columns=columns)
+
+# Save to CSV
+df.to_csv(f"trajectory_lstm2_{timestamp}.csv", index=False)

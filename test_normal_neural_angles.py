@@ -700,6 +700,38 @@ coords1[:,0] = (np.cos(alpha)*coords[:,0]+np.sin(alpha)*coords[:,1])
 coords1[:,1] = (np.sin(alpha)*coords[:,0]-np.cos(alpha)*coords[:,1])
 
 fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])    
+#ax.plot(newset.acc)
+
+ax.plot(np.array(coords1[:,1]),np.array(coords1[:,0]))
+ax.plot(position0[:,0],position0[:,1])
+ax.plot(position1[:,0],position1[:,1])
+ax.plot(position2[:,0],position2[:,1])
+ax.legend(['GPS','Position from Gyro integration','Position from MEKF','Position from Random Forest Rev-MEKF'])
+plt.xlabel('X axis in meters')
+plt.ylabel('Y axis in meters')
+ax.set_title('Projected position in 2D of GPS/Gyro Integration/MEKF')
+
+
+
+import pandas as pd
+from datetime import datetime
+
+timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+data = np.hstack((position2, quaternion2))
+columns = ['px', 'py', 'pz', 'qw', 'qx', 'qy', 'qz']
+
+df = pd.DataFrame(data, columns=columns)
+
+# Save to CSV
+df.to_csv(f"trajectory_lstm2_{timestamp}.csv", index=False)
+
+
+df = pd.read_csv('trajectory_lstm2_20251015_130852.csv')
+
+position3 = df[['px', 'py', 'pz']].to_numpy()      # shape (N, 3)
+quaternion3 = df[['qw', 'qx', 'qy', 'qz']].to_numpy() 
+fig = plt.figure()
 ax = fig.add_axes([0,0,1,1])
 #ax.plot(newset.acc)
 
@@ -707,7 +739,17 @@ ax.plot(np.array(coords1[:,1]),np.array(coords1[:,0]))
 ax.plot(position0[:,0],position0[:,1])
 ax.plot(position1[:,0],position1[:,1])
 ax.plot(position2[:,0],position2[:,1])
-ax.legend(['GPS','Position from Gyro integration','Position from MEKF','Position from Rev-MEKF'])
+ax.plot(position2[:,0],position2[:,1])
+ax.legend(['GPS','Position from Gyro integration','Position from MEKF','Position from Random Forest Rev-MEKF','Position from LSTM Rev-MEKF'])
 plt.xlabel('X axis in meters')
 plt.ylabel('Y axis in meters')
 ax.set_title('Projected position in 2D of GPS/Gyro Integration/MEKF')
+
+#timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+data = np.hstack((position1, quaternion1))
+columns = ['px', 'py', 'pz', 'qw', 'qx', 'qy', 'qz']
+
+df = pd.DataFrame(data, columns=columns)
+
+# Save to CSV
+df.to_csv(f"trajectory_mekf1_{timestamp}.csv", index=False)
