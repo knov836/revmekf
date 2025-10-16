@@ -27,12 +27,14 @@ class PredictFilter(Filter):
     def update(self,Gyroscope, Accelerometer,Magnetometer,Orient):
         acc = Accelerometer
         mag=Magnetometer
+        #print(self.gravity)
+        #print(np.linalg.norm(self.gravity.astype(float)))
+        #acc= np.array(quat_rot([0,0,0,1],quat_inv(self.Quaternion)))[1:4]*np.linalg.norm(self.gravity.astype(float))
         
         self.Quaternion,self.Bias,self.Pk = update_tested(self.Quaternion, self.Bias, self.Pk, self.R, Gyroscope, acc, mag, Orient,mag0=np.array(self.mag0,dtype=mpf))
 
     
     def variant_update_f(self, Time, Surface, Accelerometer,Gyroscope, Magnetometer,Orient):
         self.predict(Gyroscope,Orient)
-        mag = np.array(quat_rot([0,0,1,0], quat_inv(self.Quaternion)))[1:4]
         self.update(Gyroscope,Accelerometer,Magnetometer,Orient)
         

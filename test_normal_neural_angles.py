@@ -696,6 +696,7 @@ ax.set_title('Position from LSTM Rev-MEKF')
 
 alpha=np.pi/2+np.pi/8+np.pi/64+np.pi/128
 coords1 = np.zeros(coords.shape)
+coord1 = coords
 coords1[:,0] = (np.cos(alpha)*coords[:,0]+np.sin(alpha)*coords[:,1])
 coords1[:,1] = (np.sin(alpha)*coords[:,0]-np.cos(alpha)*coords[:,1])
 
@@ -703,7 +704,7 @@ fig = plt.figure()
 ax = fig.add_axes([0,0,1,1])    
 #ax.plot(newset.acc)
 
-ax.plot(np.array(coords1[:,1]),np.array(coords1[:,0]))
+ax.plot(np.array(coords1[:,0]),np.array(coords1[:,1]))
 ax.plot(position0[:,0],position0[:,1])
 ax.plot(position1[:,0],position1[:,1])
 ax.plot(position2[:,0],position2[:,1])
@@ -726,24 +727,59 @@ df = pd.DataFrame(data, columns=columns)
 # Save to CSV
 df.to_csv(f"trajectory_lstm2_{timestamp}.csv", index=False)
 
+timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+data = np.hstack((position3, quaternion3))
+columns = ['px', 'py', 'pz', 'qw', 'qx', 'qy', 'qz']
 
-df = pd.read_csv('trajectory_lstm2_20251015_130852.csv')
+df = pd.DataFrame(data, columns=columns)
+
+# Save to CSV
+df.to_csv(f"trajectory_randomforest2_{timestamp}.csv", index=False)
+
+
+df = pd.read_csv('trajectory_lstm2_20251015_134217.csv')
 
 position3 = df[['px', 'py', 'pz']].to_numpy()      # shape (N, 3)
 quaternion3 = df[['qw', 'qx', 'qy', 'qz']].to_numpy() 
+
+
+rposition0= np.zeros((len(position0),2))
+rposition0[:,0] = (np.cos(-alpha)*position0[:,0]+np.sin(-alpha)*position0[:,1])
+rposition0[:,1] = (np.sin(-alpha)*position0[:,0]-np.cos(-alpha)*position0[:,1])
+rposition1= np.zeros((len(position0),2))
+rposition1[:,0] = (np.cos(-alpha)*position1[:,0]+np.sin(-alpha)*position1[:,1])
+rposition1[:,1] = (np.sin(-alpha)*position1[:,0]-np.cos(-alpha)*position1[:,1])
+rposition2= np.zeros((len(position0),2))
+rposition2[:,0] = (np.cos(-alpha)*position2[:,0]+np.sin(-alpha)*position2[:,1])
+rposition2[:,1] = (np.sin(-alpha)*position2[:,0]-np.cos(-alpha)*position2[:,1])
+rposition3= np.zeros((len(position0),2))
+rposition3[:,0] = (np.cos(-alpha)*position3[:,0]+np.sin(-alpha)*position3[:,1])
+rposition3[:,1] = (np.sin(-alpha)*position3[:,0]-np.cos(-alpha)*position3[:,1])
+rposition4= np.zeros((len(position0),2))
+rposition4[:,0] = (np.cos(-alpha)*position4[:,0]+np.sin(-alpha)*position4[:,1])
+rposition4[:,1] = (np.sin(-alpha)*position4[:,0]-np.cos(-alpha)*position4[:,1])
+rposition5= np.zeros((len(position0),2))
+rposition5[:,0] = (np.cos(-alpha)*position5[:,0]+np.sin(-alpha)*position5[:,1])
+rposition5[:,1] = (np.sin(-alpha)*position5[:,0]-np.cos(-alpha)*position5[:,1])
+
+df = pd.read_csv('trajectory_mekf1_20251015_134106.csv')
+
+position5 = df[['px', 'py', 'pz']].to_numpy()      # shape (N, 3)
+quaternion5 = df[['qw', 'qx', 'qy', 'qz']].to_numpy() 
+
 fig = plt.figure()
 ax = fig.add_axes([0,0,1,1])
 #ax.plot(newset.acc)
 
 ax.plot(np.array(coords1[:,1]),np.array(coords1[:,0]))
 ax.plot(position0[:,0],position0[:,1])
-ax.plot(position1[:,0],position1[:,1])
-ax.plot(position2[:,0],position2[:,1])
+ax.plot(position5[:,0],position5[:,1])
+ax.plot(position3[:,0],position3[:,1])
 ax.plot(position2[:,0],position2[:,1])
 ax.legend(['GPS','Position from Gyro integration','Position from MEKF','Position from Random Forest Rev-MEKF','Position from LSTM Rev-MEKF'])
 plt.xlabel('X axis in meters')
 plt.ylabel('Y axis in meters')
-ax.set_title('Projected position in 2D of GPS/Gyro Integration/MEKF')
+ax.set_title('Projected position in 2D of GPS/Gyro Integration/Rev-MEKF')
 
 #timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 data = np.hstack((position1, quaternion1))

@@ -599,7 +599,7 @@ df.to_csv(f"trajectory_heuristic2_{timestamp}.csv", index=False)
 
 #timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 data = np.hstack((position1, quaternion1))
-columns = ['px', 'py', 'pz', 'qw', 'qx', 'qy', 'qz']
+columns = ['px', 'py', 'pz', 'qw', 'qx', 'qy', 'qz']    
 
 df = pd.DataFrame(data, columns=columns)
 
@@ -613,8 +613,16 @@ df = pd.read_csv('trajectory_mekf1_20251015_103619.csv')
 
 position3 = df[['px', 'py', 'pz']].to_numpy()      # shape (N, 3)
 quaternion3 = df[['qw', 'qx', 'qy', 'qz']].to_numpy() 
+"""fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(aa)
 fig = plt.figure()
 ax = fig.add_axes([0,0,1,1])
+ax.plot(position0[:,0],position0[:,1])
+ax.plot(position5[:,0],position5[:,1])
+ax.set_aspect('equal', adjustable='box')"""
+
+speed = np.diff(position0,axis=0)
 #ax.plot(newset.acc)
 
 ax.plot(np.array(coords1[:,1]),np.array(coords1[:,0]))

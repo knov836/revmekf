@@ -59,7 +59,6 @@ def compute_state(acc,acc0,mag,mag0,rotation_matrix,Pk,RR,test=0):
     v_t1 = (rotation_matrix) @ mag0
 
     yy = np.concatenate((v_m0-v_t0,v_m1-v_t1))
-    
     hh = h_mat_add(rotation_matrix,acc0,mag0)
     kk,cov_correct = kalman_gain(Pk,hh,RR)
     state = kk@yy.T
