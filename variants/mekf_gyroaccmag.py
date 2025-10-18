@@ -30,6 +30,7 @@ class PredictFilter(Filter):
         #print(self.gravity)
         #print(np.linalg.norm(self.gravity.astype(float)))
         #acc= np.array(quat_rot([0,0,0,1],quat_inv(self.Quaternion)))[1:4]*np.linalg.norm(self.gravity.astype(float))
+        #mag= np.array(quat_rot([0,*self.mag0],quat_inv(self.Quaternion)))[1:4]#*np.linalg.norm(self.gravity.astype(float))
         
         self.Quaternion,self.Bias,self.Pk = update_tested(self.Quaternion, self.Bias, self.Pk, self.R, Gyroscope, acc, mag, Orient,mag0=np.array(self.mag0,dtype=mpf))
 

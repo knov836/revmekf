@@ -1169,7 +1169,7 @@ def acc_from_normal_imu_grav(norm0,norm,acc,grav,normal,center,start=[0,0,1],s_r
         FF = FF_acc/t1t0
         t1t0=-t1t0"""
         
-        gamma = 0.5
+        gamma = 0.8
         
         prob = np.random.random(1)
         prob = 0
@@ -1216,10 +1216,11 @@ def acc_from_normal_imu_grav(norm0,norm,acc,grav,normal,center,start=[0,0,1],s_r
         ax.set_ylabel("meters")
         ax.set_title("h_k")
         ax.legend()
-        plt.show()
-        print("angles",t4t0,t_v0_acc,t0)"""
+        plt.show()"""
+        print("angles",t4t0,t_v0_acc,t_v0)
+        print(np.abs(t_v0-t4t0),np.abs(t_v0-t1t0)*gamma,sign*(teGG-C).dot(normal).evalf(subs={v:(t4t0+t2t0)/2}))
             
-        if (t4t0 == t2t0 and sign*(teGG-C).dot(normal).evalf(subs={v:(t4t0+t2t0)/2})<0) or sign*(teGG-C).dot(normal).evalf(subs={v:(t4t0+t2t0)/2})<0  or np.abs(t_v0-t3t0)>np.abs(t4t0 -t2t0)*1.5:
+        if (t4t0 == t2t0 and sign*(teGG-C).dot(normal).evalf(subs={v:(t4t0+t2t0)/2})<0) or sign*(teGG-C).dot(normal).evalf(subs={v:(t4t0+t2t0)/2})<0:#  or np.abs(t_v0-t3t0)>np.abs(t4t0 -t2t0)*1.5:
             t1t0 = t_v0
             t1t0 = t_v0_acc
             t1t0 = np.linalg.norm(FF_acc)

@@ -124,7 +124,7 @@ sos = butter(2, 24, fs=fs, output='sos')
 accs = np.copy(df[:,1:7])
 
 df[:,4:7]=df[:,4:7]*np.pi/180
-
+gyro = np.copy(df[:,4:7])
 time= np.array(df[:,0],dtype=mpf)#/10**9
 #time = time-2*time[0]+time[1]
 df[:,0]*=10**9
@@ -132,7 +132,12 @@ df[:,0]*=10**9
 #df[:,7:10] = c_mag
 
 #normal = np.mean(df[:100,7:10],axis=0)
-
+df[:,1] = -accs[:,1]
+df[:,2] = -accs[:,0]
+df[:,3] = accs[:,2]
+df[:,4] = gyro[:,1]
+df[:,5] = gyro[:,0]
+df[:,6] = -gyro[:,2]
 
 
 N = n_end-n_start

@@ -87,6 +87,7 @@ sos = butter(2, 24, fs=fs, output='sos')
 accs = np.copy(df[:,1:7])
 
 df[:,4:7]=df[:,4:7]*np.pi/180
+gyro = np.copy(df[:,4:7])
 
 time= np.array(df[:,0],dtype=mpf)#/10**9
 #time = time-2*time[0]+time[1]
@@ -95,7 +96,12 @@ df[:,0]*=10**9
 #df[:,7:10] = c_mag
 
 #normal = np.mean(df[:100,7:10],axis=0)
-
+df[:,1] = accs[:,1]
+df[:,2] = accs[:,0]
+df[:,3] = -accs[:,2]
+df[:,4] = gyro[:,1]
+df[:,5] = gyro[:,0]
+df[:,6] = -gyro[:,2]
 
 
 N = n_end-n_start
@@ -131,7 +137,7 @@ angle = int(N/2)
 orient = newset.orient
 pos_earth = newset.pos_earth
 
-q0,q1,r0,r1 = 10**(-2), 10**(-2), 10**(0), 10**(0)
+q0,q1,r0,r1 = 10**(-2), 10**(-2), 10**(6), 10**(6)
 normal = newset.normal
 
 
@@ -163,7 +169,20 @@ angle_applied = np.zeros(N)
      
 gravity = [0,0,np.mean(np.linalg.norm(acc_smooth[:150,:],axis=1))]
 
-normals = compute_normals(N,acc_smooth,gravity,df[:,7:10])
+
+for i in range(0,N-1,1):
+    
+    nn+=1
+    normal = np.array([0,0,1])
+    newset.acc[i+1,2] = s_acc_z[i+1]
+    Solv0.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], normal)
+quaternion0 = Solv0.quaternion[:N,:]   
+position0 = Solv0.position[:N,:]
+
+
+"""normals = compute_normals(N,acc_smooth,gravity,df[:,7:10])
+
+
 y = normals
 y_smooth0 = savgol_filter(y[:,0], 500, 2)
 y_smooth1 = savgol_filter(y[:,1], 500, 2)
@@ -176,8 +195,8 @@ fig = plt.figure()
 ax = fig.add_axes([0,0,1,1])
 ax.plot(y_smooth)
 ax.set_title('Evolution of the normal')
-normals = np.copy(y_smooth)
-
+normals = np.copy(y_smooth)"""
+normals = -np.array([quat_rot([0,0,0,1],quaternion0[i,:]) for i in range(N)])[:,1:4]
 
 
 #s_acc_z = acc_z
@@ -193,9 +212,9 @@ for i in range(0,N-1,1):
     #print(std_acc_z)
     print("iteration",i)
     newset.acc[i+1,2] = s_acc_z[i+1]
-    Solv0.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], normal)
+    #Solv0.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], normal)
     Solv1.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], normal)
-    #Solv2.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], normal,std_acc_z=std_acc_z)
+    Solv2.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], normal,std_acc_z=std_acc_z)
     correction_applied[i] = Solv2.KFilter.corrected
     angle_applied[i+1] =angle_applied[i]+Solv2.KFilter.angle
 
@@ -226,10 +245,9 @@ ax.set_title('Evolution of the normal')
  
 compare = np.zeros((N,4),dtype=float)
 compare2 = np.zeros((N,4),dtype=float)
-quaternion0 = Solv0.quaternion[:N,:]    
+ 
 quaternion1 = Solv1.quaternion[:N,:]
 quaternion2 = Solv2.quaternion[:N,:]
-position0 = Solv0.position[:N,:]
 position1 = Solv1.position[:N,:]
 position2 = Solv2.position[:N,:]
 gravity_r = Solv2.gravity_r[:N,:]
@@ -367,11 +385,13 @@ ax.set_title('Position from Rev-MEKF')
 q0 = np.zeros((N,3))
 q1 = np.zeros((N,3))
 q2 = np.zeros((N,3))
+q3 = np.zeros((N,3))
 
 for i in range(N):
     q0[i,:] = np.array(quat_rot([0,1,0,0],quat_inv(quaternion0[i,:])))[1:4]
     q1[i,:] = np.array(quat_rot([0,1,0,0],quat_inv(quaternion1[i,:])))[1:4]
-    q2[i,:] = np.array(quat_rot([0,1,0,0],quat_inv(newset.neworient[i,:])))[1:4]
+    q2[i,:] = np.array(quat_rot([0,1,0,0],quat_inv(quaternion2[i,:])))[1:4]
+    q3[i,:] = np.array(quat_rot([0,1,0,0],quat_inv(newset.neworient[i,:])))[1:4]
     
     
 fig = plt.figure()
@@ -512,8 +532,9 @@ fig = plt.figure()
 ax = fig.add_axes([0,0,1,1])
 ax.plot(np.array(coords1[:,1]),np.array(coords1[:,0]))
 ax.plot(position0[:,0],position0[:,1])
+ax.plot(position1[:,0],position1[:,1])
 ax.plot(position2[:,0],position2[:,1])
-ax.legend(['GPS','Position from Gyro integration','Position from MEKF'])
+ax.legend(['GPS','Position from Gyro integration','Position from MEKF','Position from Rev MEKF'])
 plt.xlabel('X axis in meters')
 plt.ylabel('Y axis in meters')
 ax.set_title('Projected position in 2D of GPS/Gyro Integration/Rev-MEKF')
@@ -563,16 +584,16 @@ def rotation_2d_from_a_to_b(a, b, eps=1e-12):
     R = np.array([[c, -s],
                   [s,  c]])
     return R
-p0=  coords1[-1,:2]/np.linalg.norm(coords1[-1,:2])
+"""p0=  coords1[-1,:2]/np.linalg.norm(coords1[-1,:2])
 p1=  position0[-1,:2]/np.linalg.norm(position0[-1,:2])
 p2=  position1[-1,:2]/np.linalg.norm(position1[-1,:2])
 R0 = rotation_2d_from_a_to_b(p1,p0)
 R1 = rotation_2d_from_a_to_b(p2,p0)
 
 rposition0 = position0[:,:2]@R0.T
-rposition1 = position1[:,:2]@R1.T
+rposition1 = position1[:,:2]@R1.T"""
 
-fig = plt.figure()
+"""fig = plt.figure()
 ax = fig.add_axes([0,0,1,1])
 ax.plot(np.array(coords1[:,0]),np.array(coords1[:,1]))
 ax.plot(rposition0[:,0],rposition0[:,1])
@@ -581,7 +602,7 @@ ax.legend(['GPS','Position from Gyro integration','Position from MEKF'])
 plt.xlabel('X axis in meters')
 plt.ylabel('Y axis in meters')
 ax.set_title('Projected position in 2D of GPS/Gyro Integration/MEKF')
-
+"""
 
 import pandas as pd
 from datetime import datetime
@@ -609,10 +630,10 @@ df.to_csv(f"trajectory_mekf1_{timestamp}.csv", index=False)
 print("Saved to trajectory.csv")
 print(df.head())
 # Charger le CSV
-df = pd.read_csv('trajectory_mekf1_20251015_103619.csv')
+"""df = pd.read_csv('trajectory_mekf1_20251015_103619.csv')
 
 position3 = df[['px', 'py', 'pz']].to_numpy()      # shape (N, 3)
-quaternion3 = df[['qw', 'qx', 'qy', 'qz']].to_numpy() 
+quaternion3 = df[['qw', 'qx', 'qy', 'qz']].to_numpy() """
 """fig = plt.figure()
 ax = fig.add_axes([0,0,1,1])
 ax.plot(aa)
@@ -622,7 +643,7 @@ ax.plot(position0[:,0],position0[:,1])
 ax.plot(position5[:,0],position5[:,1])
 ax.set_aspect('equal', adjustable='box')"""
 
-speed = np.diff(position0,axis=0)
+"""speed = np.diff(position0,axis=0)
 #ax.plot(newset.acc)
 
 ax.plot(np.array(coords1[:,1]),np.array(coords1[:,0]))
@@ -632,4 +653,17 @@ ax.plot(position3[:,0],position3[:,1])
 ax.legend(['GPS','Position from Gyro integration','Position from MEKF','Position from Rev-MEKF'])
 plt.xlabel('X axis in meters')
 plt.ylabel('Y axis in meters')
-ax.set_title('Projected position in 2D of GPS/Gyro Integration/MEKF')
+ax.set_title('Projected position in 2D of GPS/Gyro Integration/MEKF')"""
+
+
+heading0 = np.arctan2(q0[::per,1],q0[::per,0])
+heading1 = np.arctan2(q1[::per,1],q1[::per,0])
+heading2 = np.arctan2(q2[::per,1],q2[::per,0])
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(heading0)
+ax.plot(heading1)
+ax.plot(heading2)
+ax.plot(-theta+theta[0]+heading1[0])
+
+ax.set_title("q1 heading")

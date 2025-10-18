@@ -87,16 +87,26 @@ sos = butter(2, 24, fs=fs, output='sos')
 accs = np.copy(df[:,1:7])
 
 df[:,4:7]=df[:,4:7]*np.pi/180
-
+gyro = np.copy(df[:,4:7])
 time= np.array(df[:,0],dtype=mpf)#/10**9
 #time = time-2*time[0]+time[1]
 df[:,0]*=10**9
 #time = time-2*time[0]+time[1]#
 #df[:,7:10] = c_mag
 
+df[:,1] = accs[:,1]
+df[:,2] = accs[:,0]
+df[:,3] = -accs[:,2]
+df[:,4] = gyro[:,1]
+df[:,5] = gyro[:,0]
+df[:,6] = -gyro[:,2]
+
 #normal = np.mean(df[:100,7:10],axis=0)
 
-
+mags = np.copy(df[:,7:10])
+#df[:,9] = -mags[:,2]
+#df[:,8] = mags[:,0]
+#df[:,7] = mags[:,1]
 
 N = n_end-n_start
 normals = np.zeros((N,3))
@@ -131,9 +141,9 @@ angle = int(N/2)
 orient = newset.orient
 pos_earth = newset.pos_earth
 
-q0,q1,r0,r1 = 10**(-2), 10**(-10), 10**(0), 10**(-2)
+q0,q1,r0,r1 = 10**(-2), 10**(-2), 10**(0), 10**(0)
 normal = newset.normal
-
+    
 
 gravity = newset.gravity
 
@@ -151,9 +161,13 @@ nn=0
 proj_utm = Proj(proj="utm", zone=31, ellps="WGS84")
 gps = data.values[n_start:n_end,[-3,-2]]
 R = 6371000
-x, y = proj_utm(gps[:,1], gps[:,0])
+"""
+gps[:,0] = latitude
+gps[:,1] = longitude
+"""
+x, y = proj_utm(gps[:,0], gps[:,1])
 transformer = Transformer.from_crs("EPSG:4326", "EPSG:32722", always_xy=True)
-x, y = transformer.transform(gps[:,1], gps[:,0])
+x, y = transformer.transform(gps[:,0], gps[:,1])
 coords = np.column_stack((x, y))-np.array([x[0],y[0]])
 
 
@@ -176,7 +190,7 @@ for i in range(0,N-1,1):
     std_acc_zs[i+1] = std_acc_z 
     #print(std_acc_z)
     print("iteration",i)
-    #newset.acc[i+1,2] = s_acc_z[i+1]
+    newset.acc[i+1,2] = s_acc_z[i+1]
     Solv0.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], normal)
     Solv1.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], normal)
     #Solv2.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], normal,std_acc_z=std_acc_z)
@@ -226,7 +240,7 @@ fig = plt.figure()
 ax = fig.add_axes([0,0,1,1])
 ax.plot(position0[:nn,0],position0[:nn,1])
 #ax.plot(position1[:nn,0],position1[:nn,1])
-ax.plot(coords1[:nn,0],coords1[:nn,1])
+ax.plot(coords[:nn,0],coords[:nn,1])
 size  =n_end-n_start
 
 #size = n_start+N
@@ -248,29 +262,39 @@ ax.plot(position0)
 fig = plt.figure()
 ax = fig.add_axes([0,0,1,1])
 ax.plot(speed)
+ax.set_title("speed")
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(speed0)
+ax.set_title("speed0")
 fig = plt.figure()
 ax = fig.add_axes([0,0,1,1])
 ax.plot(speed1)
-
+ax.set_title("speed1")
 fig = plt.figure()
 ax = fig.add_axes([0,0,1,1])
 ax.plot(theta0)
-
+ax.set_title("theta0")
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(theta1)
+ax.set_title("theta1")
 
 fig = plt.figure()
 ax = fig.add_axes([0,0,1,1])
 ax.plot(theta)
 ax.plot(theta0)
 ax.plot(theta1)
+ax.set_title("thetas")
 q0 = np.zeros((N,3))
 q1 = np.zeros((N,3))
 q2 = np.zeros((N,3))
 
 
 for i in range(N):
-    q0[i,:] = np.array(quat_rot([0,1,0,0],(quaternion0[i,:])))[1:4]
-    q1[i,:] = np.array(quat_rot([0,1,0,0],(quaternion1[i,:])))[1:4]
-    q2[i,:] = np.array(quat_rot([0,1,0,0],(newset.neworient[i,:])))[1:4]
+    q0[i,:] = np.array(quat_rot([0,1,0,0],quat_inv(quaternion0[i,:])))[1:4]
+    q1[i,:] = np.array(quat_rot([0,1,0,0],quat_inv(quaternion1[i,:])))[1:4]
+    q2[i,:] = np.array(quat_rot([0,1,0,0],quat_inv(newset.neworient[i,:])))[1:4]
     
     
 fig = plt.figure()
@@ -293,45 +317,27 @@ theta_q0 = np.where(theta_q0 < 0, theta_q0 + 2 * np.pi, theta_q0 )
 theta_q1 = np.arctan2(q1[::per,0],q1[::per,1])
 theta_q1 = np.where(theta_q1 < 0, theta_q1 + 2 * np.pi, theta_q1 )
 
+theta_q2 = np.arctan2(q2[::per,0],q2[::per,1])
+theta_q2 = np.where(theta_q2 < 0, theta_q2 + 2 * np.pi, theta_q2 )
 
 fig = plt.figure()
 ax = fig.add_axes([0,0,1,1])
 ax.plot(theta)
 ax.plot(theta_q0)
-ax.plot(theta_q1)
+ax.plot(theta_q2)
 
 
 from scipy.ndimage import map_coordinates
 
 x, y, z = newset.mag.T
 
-# 3D scatter plot
-fig = plt.figure()
-ax = fig.add_subplot(111, projection='3d')
-
-ax.scatter(x, y, z, c=z, cmap='viridis', s=20)  # color by z just for visualization
-ax.set_xlabel('X')
-ax.set_ylabel('Y')
-ax.set_zlabel('Z')
-ax.set_box_aspect((1, 1, 1))  # equal aspect ratio
-plt.show()
-
-fig = plt.figure()
-ax = fig.add_axes([0,0,1,1])
-ax.plot(newset.mag)
 
 
 from scipy.spatial.transform import Rotation as R
 
-# Example: array of N quaternions (each in [x, y, z, w] format)
-quats = np.array([
-    [0, 0, 0.7071, 0.7071],
-    [0.5, 0.5, 0.5, 0.5],
-    [0, 0, 0, 1],
-])
 
 # Create Rotation object
-r = R.from_quat(quaternion1)
+"""r = R.from_quat(quaternion1)
 
 # Convert all to Euler angles (roll, pitch, yaw)
 eulers = r.as_euler('xyz', degrees=True)
@@ -340,7 +346,7 @@ print("Euler angles (degrees):")
 fig = plt.figure()
 ax = fig.add_axes([0,0,1,1])
 ax.plot(eulers[:,1:])
-
+"""
 
 r = R.from_quat(quaternion0)
 
@@ -354,6 +360,65 @@ ax.plot(eulers[:,1:])
 
 fig = plt.figure()
 ax = fig.add_axes([0,0,1,1])
+ax.plot(np.linalg.norm(np.cross(newset.acc[:100,:].astype(float),newset.mag[:100,:].astype(float)),axis=1))
+
+a = newset.acc[0,:].astype(float)
+a=a/np.linalg.norm(a)
+m = newset.mag[0,:].astype(float)
+
+adm = np.cross(a,m)
+nm = np.cross(adm,a)
+print(nm,m)
+
+
+res = acc_mag_to_R_body_to_ned(a, m, declination_deg=0.0)
+qq2 = res['R']@ np.array([1,0,0])
+print(np.arctan2(qq2[1],qq2[0]))
+print(acc_mag_to_rpy_ned(a,m))
+
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+#ax.plot(newset.acc)
+
+ax.plot(np.array(coords[:,1]),np.array(coords[:,0]))
+ax.plot(position0[:,0],position0[:,1])
+ax.plot(position1[:,0],position1[:,1])
+ax.legend(['GPS','Position from Gyro integration','Position from MEKF'])
+plt.axis('equal')
+plt.xlabel('X axis in meters')
+plt.ylabel('Y axis in meters')
+ax.set_title('Projected position in 2D of GPS/Gyro Integration/MEKF')
+fig = plt.figure()
+ax = fig.add_axes([0,0,2,2])
+ax.plot(compare2)
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(quaternion0)
+ax.set_title('quaternion0')
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(quaternion1)
+ax.set_title('quaternion1')
+
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(newset.neworient)
+ax.set_title('orient')
+
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(newset.neworient)
+ax.set_title('orient')
+
+
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
 ax.plot(theta)
 ax.set_title("GPS heading")
 
@@ -361,11 +426,122 @@ ax.set_title("GPS heading")
 
 fig = plt.figure()
 ax = fig.add_axes([0,0,1,1])
-ax.plot(np.arctan2(newset.mag[:,1].astype(float),newset.mag[:,0].astype(float)))
+ax.plot(np.arctan2(-newset.mag[:,1].astype(float),newset.mag[:,0].astype(float)))
 ax.set_title("Mag heading")
+
+theta_q0 = np.arctan2(q0[:,1],q0[:,0])
+heading0 = np.arctan2(q0[::per,1],q0[::per,0])
+heading1 = np.arctan2(q1[::per,1],q1[::per,0])
+#theta_q0 = np.where(theta_q0 < 0, theta_q0 + 2 * np.pi, theta_q0 )
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(np.arctan2(q0[:,1],q0[:,0]))
+ax.plot(np.arctan2(q1[:,1],q1[:,0]))
+ax.plot(range(0,len(q0)-500,500),-theta+theta[0]+heading1[0])
+
+ax.set_title("q0 q1 heading")
 
 
 fig = plt.figure()
 ax = fig.add_axes([0,0,1,1])
-ax.plot(np.arctan2(q0[:,1],q0[:,0]))
-ax.set_title("q0 heading")
+ax.plot(heading0)
+ax.plot(heading1)
+
+ax.plot(-theta+theta[0]+heading1[0])
+
+ax.set_title("q1 heading")
+
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(np.arctan2(q2[:,1],q2[:,0]))
+ax.set_title("q2 heading")
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(position0)
+ax.plot(coords)
+ax.set_title('position0')
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(position1)
+ax.plot(coords)
+ax.set_title('position1')
+
+
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(quaternion0)
+ax.set_title('quaternion0')
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(quaternion1)
+ax.set_title('quaternion1')
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(quaternion2)
+ax.set_title('quaternion2')
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(newset.orient)
+ax.set_title('orient')
+
+
+pos0,speed0=quat_to_pos(time0,quaternion0,newset.acc,newset.gravity)
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(pos0)
+ax.plot(coords)
+ax.set_title("pos0")
+
+from datetime import datetime
+
+timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+data = np.hstack((position1, quaternion1))
+columns = ['px', 'py', 'pz', 'qw', 'qx', 'qy', 'qz']
+
+df = pd.DataFrame(data, columns=columns)
+
+# Save to CSV
+df.to_csv(f"trajectory_mekf_{timestamp}.csv", index=False)
+data = np.hstack((position0, quaternion0))
+columns = ['px', 'py', 'pz', 'qw', 'qx', 'qy', 'qz']
+
+df = pd.DataFrame(data, columns=columns)
+
+# Save to CSV
+df.to_csv(f"trajectory_gyro_{timestamp}.csv", index=False)
+
+q0z = np.zeros((N,3))
+q1z = np.zeros((N,3))
+q2z = np.zeros((N,3))
+
+
+for i in range(N):
+    q0z[i,:] = np.array(quat_rot([0,0,0,1],quat_inv(quaternion0[i,:])))[1:4]
+    q1z[i,:] = np.array(quat_rot([0,0,0,1],quat_inv(quaternion1[i,:])))[1:4]
+    q2z[i,:] = np.array(quat_rot([0,0,0,1],quat_inv(newset.neworient[i,:])))[1:4]
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+
+ax.plot(np.arctan2(q2z[:,1],-q2z[:,2]))
+ax.plot(np.arctan2(q1z[:,1],-q1z[:,2]))
+ax.plot(np.arctan2(q0z[:,1],-q0z[:,2]))
+ax.legend(['neworient','mekf','gyro'])
+ax.set_title('roll q2 q1 q0')
+
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(np.arctan2(-q2z[:,0],np.sqrt(q2z[:,2]**2+q2z[:,1]**2)))
+ax.plot(np.arctan2(-q1z[:,0],np.sqrt(q1z[:,2]**2+q1z[:,1]**2)))
+ax.plot(np.arctan2(-q0z[:,0],np.sqrt(q0z[:,2]**2+q0z[:,1]**2)))
+ax.legend(['neworient','mekf','gyro'])
+ax.set_title('pitch q2 q1 q0')
+
