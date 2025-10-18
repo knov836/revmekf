@@ -71,7 +71,6 @@ class PredictFilter(Filter):
         
         qq = quat_rot(self.Quaternion,(quat))
         logrot1 = log_q(np.array(qq))
-        print(self.surf_center,nAccelerometer)
         #logrot1 = np.zeros(3)
         #pdb.set_trace()
         if self.neural:
