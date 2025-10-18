@@ -891,6 +891,7 @@ def acc_from_normal_imu_grav(norm0,norm,acc,grav,normal,center,start=[0,0,1],s_r
     HHz = sym.N(((teGG-C).dot(np.array([0,0,1],dtype=mpf))),40)
     dHHz = sym.diff(HHz,v)
     #t_v0 = v0[0]#np.mod(v0[0],np.pi)
+    print("start",start)
     t_v0 = start[1]
     racc= (SymExpRot2(FF,mpf(t_v0))@acc).flatten()
     rgrav= (SymExpRot2(FF,mpf(t_v0))@grav).flatten()
@@ -1153,12 +1154,17 @@ def acc_from_normal_imu_grav(norm0,norm,acc,grav,normal,center,start=[0,0,1],s_r
         #print(sign,c,b)
         qq_acc = quat_ntom(np.array([0,0,1],dtype=mpf), acc/np.linalg.norm(acc))
         FF_acc = log_q(qq_acc)
+        print("fff",FF_acc,FF)
         duFF2 = uFF-sym.Matrix(-FF_acc)
         duFF2 = duFF2.dot(duFF2)
+        #pdb.set_trace()
+        rotate_ff_acc = quat_ntom(FF_acc/np.linalg.norm(FF_acc),np.array(FF).flatten())
+        FF_racc = np.array(quat_rot([0,*FF_acc],rotate_ff_acc))[1:4]
         lam_h2 = lambdify(v, duFF2)
         v0_acc = opt.minimize(lam_h2, 0).x
         t_v0_acc = v0_acc[0]
-        t_v0_acc = -FF_acc[1]
+        t_v0_acc = FF_racc[1]
+        #if t_v0_acc 
         #t1t0 = t_v0_acc
         
         """t1t0 = np.linalg.norm(FF_acc)

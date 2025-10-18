@@ -69,9 +69,11 @@ class PredictFilter(Filter):
         mm1 = np.array([0,1,0],dtype=mpf)
         quat= quat_ntom(mm0,mm1)
         
-        qq = quat_mult(self.Quaternion,quat_inv(quat))
+        qq = quat_rot(self.Quaternion,(quat))
         logrot1 = log_q(np.array(qq))
+        print(self.surf_center,nAccelerometer)
         #logrot1 = np.zeros(3)
+        #pdb.set_trace()
         if self.neural:
             
             acc1,rot1,irot1,acc2,rot2,irot2,acc3,rot3,irot3,corrected,not_corrected,angle_acc,t0,t2,t3,t4,et0,et2,et3,et4= acc_from_normal_imu_grav_neural(np.array(quat_rot([0,*np.array(nAxis,dtype=mpf)],quat))[1:4],np.array([0,1,0],dtype=mpf) , np.array(quat_rot([0,*(nAccelerometer*(self.dt**2))],quat))[1:4],np.array(quat_rot([0,*(grav*(self.dt**2))],quat))[1:4], normal, self.surf_center,start = logrot1,heuristic=self.heuristic,correction = False)

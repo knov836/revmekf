@@ -137,7 +137,7 @@ angle = int(N/2)
 orient = newset.orient
 pos_earth = newset.pos_earth
 
-q0,q1,r0,r1 = 10**(-2), 10**(-2), 10**(6), 10**(6)
+q0,q1,r0,r1 = 10**(-2), 10**(-2), 10**(5), 10**(5)
 normal = newset.normal
 
 
@@ -196,7 +196,7 @@ ax = fig.add_axes([0,0,1,1])
 ax.plot(y_smooth)
 ax.set_title('Evolution of the normal')
 normals = np.copy(y_smooth)"""
-normals = -np.array([quat_rot([0,0,0,1],quaternion0[i,:]) for i in range(N)])[:,1:4]
+normals = np.array([quat_rot([0,0,0,1],quaternion0[i,:]) for i in range(N)])[:,1:4]
 
 
 #s_acc_z = acc_z
