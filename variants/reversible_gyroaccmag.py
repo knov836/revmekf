@@ -50,7 +50,7 @@ class PredictFilter(Filter):
         
         grav= np.copy(Accelerometer)
         #if np.abs(self.std_acc_z)>0.85:
-        grav[2] = normal[2]*np.linalg.norm(self.gravity)
+        #grav[2] = normal[2]*np.linalg.norm(self.gravity)
         #print(acc[2],Accelerometer[2],normal)
         #nAccelerometer = np.array(quat_rot([0,*acc],self.Quaternion))[1:4]
         
@@ -69,10 +69,20 @@ class PredictFilter(Filter):
         mm1 = np.array([0,1,0],dtype=mpf)
         quat= quat_ntom(mm0,mm1)
         
-        qq = quat_rot(self.Quaternion,(quat))
+        mm2 = np.array(self.mag0,dtype=mpf)
+        mag0 = np.copy(self.mag0)
+        mag0[2] = 0
+        mag0 = mag0/np.linalg.norm(mag0)
+        quat2 = quat_ntom(mag0,mm1)
+        """qq = quat_mult(self.Quaternion,quat_inv(quat))
+        logq1 = log_q(np.array(self.Quaternion))
+        qq0 = quat_ntom(logq1/np.linalg.norm(logq1),mm2)
+        qq1 = quat_rot(self.Quaternion,qq0)
+        qq2 = np.array(quat_mult(qq1,quat_ntom(self.mag0,mm1)))"""
+        qq = quat_mult(quat_mult(quat2,self.Quaternion),quat_inv(quat))
         logrot1 = log_q(np.array(qq))
         #logrot1 = np.zeros(3)
-        #pdb.set_trace()
+        
         if self.neural:
             
             acc1,rot1,irot1,acc2,rot2,irot2,acc3,rot3,irot3,corrected,not_corrected,angle_acc,t0,t2,t3,t4,et0,et2,et3,et4= acc_from_normal_imu_grav_neural(np.array(quat_rot([0,*np.array(nAxis,dtype=mpf)],quat))[1:4],np.array([0,1,0],dtype=mpf) , np.array(quat_rot([0,*(nAccelerometer*(self.dt**2))],quat))[1:4],np.array(quat_rot([0,*(grav*(self.dt**2))],quat))[1:4], normal, self.surf_center,start = logrot1,heuristic=self.heuristic,correction = False)
@@ -130,8 +140,8 @@ class PredictFilter(Filter):
                 acc1,rot1,irot1,acc2,rot2,irot2,acc3,rot3,irot3,corrected,not_corrected,label,angle_acc,t0,t2,t3,t4,et0,et2,et3,et4= acc_from_normal_imu_grav_manual(np.array(quat_rot([0,*np.array(nAxis,dtype=mpf)],quat))[1:4],np.array([0,1,0],dtype=mpf) , np.array(quat_rot([0,*(nAccelerometer*(self.dt**2))],quat))[1:4],np.array(quat_rot([0,*(grav*(self.dt**2))],quat))[1:4], normal, self.surf_center,start = logrot1,heuristic=self.heuristic,correction = self.correction)
                 self.label=label
             else:
-                
-                acc1,rot1,irot1,acc2,rot2,irot2,acc3,rot3,irot3,corrected,not_corrected,angle_acc,t0,t2,t3,t4,et0,et2,et3,et4= acc_from_normal_imu_grav(np.array(quat_rot([0,*np.array(nAxis,dtype=mpf)],quat))[1:4],np.array([0,1,0],dtype=mpf) , np.array(quat_rot([0,*(nAccelerometer*(self.dt**2))],quat))[1:4],np.array(quat_rot([0,*(grav*(self.dt**2))],quat))[1:4], normal, self.surf_center,start = logrot1,heuristic=self.heuristic,correction = self.correction)
+                #pdb.set_trace()
+                acc1,rot1,irot1,acc2,rot2,irot2,acc3,rot3,irot3,corrected,not_corrected,angle_acc,t0,t2,t3,t4,et0,et2,et3,et4= acc_from_normal_imu_grav(np.array(quat_rot([0,*np.array(nAxis,dtype=mpf)],quat))[1:4],np.array([0,1,0],dtype=mpf) , np.array(quat_rot([0,*(nAccelerometer*(self.dt**2))],quat))[1:4],np.array(quat_rot([0,*(grav*(self.dt**2))],quat))[1:4], np.array(quat_rot([0,*normal],(quat2)))[1:4], np.array(quat_rot([0,*self.surf_center],(quat2)))[1:4],start = logrot1,heuristic=self.heuristic,correction = self.correction)
             self.t0 = t0
             self.t2 = t2
             self.t3 = t3
@@ -148,7 +158,8 @@ class PredictFilter(Filter):
             self.not_corrected = True
 
         acc = np.array(quat_rot([0,*(acc1)],quat_inv(quat)),dtype=mpf)[1:4]
-        rot = QuatToRot(quat_inv(quat))@rot1
+        rot = QuatToRot(quat_inv(quat))@rot1@QuatToRot((quat2))
+        #pdb.set_trace()
         return acc
     
     def update(self,Gyroscope, Accelerometer,Magnetometer,Orient):

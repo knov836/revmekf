@@ -100,6 +100,7 @@ class KFilterDataSynth:
         self.grav_earth = self.calc_grav_earth(self.speed_earth)
         self.gravs = self.mems_ref(self.grav_earth)
         self.mag0 = np.array([0,1,0],dtype=mpf)
+        self.mag0 = np.array([1,0,0],dtype=mpf)
         
         
     def gyro_data(self,orient):
@@ -139,13 +140,14 @@ class KFilterDataSynth:
         for i in range(len(self.orient)):
             acc[i,:]=self.gravity
 
-        acc[:acc_earth.shape[0]] = acc_earth
+        #acc[:acc_earth.shape[0]] = acc_earth
         return acc
     
     def calc_mag_earth(self):
         mag= np.zeros((len(self.orient),3),dtype=mpf)
         for i in range(len(self.orient)):
-            mag[i,1]=mpf(1)
+            #mag[i,1]=mpf(1)
+            mag[i,0]=mpf(1)
         return mag
     def new_orient(self):
         new_orient = np.zeros((self.size,4),dtype=mpf)
@@ -157,6 +159,7 @@ class KFilterDataSynth:
             m = m/mp.norm(m)
             m0 = np.array([0,1,0],dtype=mpf)
             M = np.array([-skewSymmetric(a)@m,m,a]).T
+            M = np.array([m,skewSymmetric(a)@m,a]).T
             new_orient[i,:] = normalize(quat_inv(RotToQuat(M)))
         return new_orient
     
@@ -173,7 +176,7 @@ class KFilterDataSynth:
 N=100
 angle = int(N/2)
 newset = KFilterDataSynth(N,mpf(0.1),mode='GyroAccMag') 
-newset = KFilterDataSynth(N,mpf(0.1),mode='OdoAccPre') 
+#newset = KFilterDataSynth(N,mpf(0.1),mode='OdoAccPre') 
 
 fig = plt.figure()
 ax = fig.add_axes([0,0,1,1])

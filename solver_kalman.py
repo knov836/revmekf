@@ -162,7 +162,7 @@ class SolverFilterPlan:
         
         qq = (self.quaternion[i, :])
         if newset==None:
-            KFilter.UpdateSensor(mpf(time),Surface,acc,gyro, mag,self.orient[i,:])
+            KFilter.UpdateSensor(mpf(time),Surface,acc,gyro, mag,self.orient[i+1,:])
         else:
             """if self.mode.startswith('GyroAccMag'):
                 KFilter.UpdateSensor(mpf(time),Surface, acc,gyro,mag,self.orient[i,:])
@@ -189,7 +189,7 @@ class SolverFilterPlan:
                 if "model" in kargs.keys():
                     model = kargs["model"]        
                 Surface = np.array(np.concatenate(([0,],normal.astype(mpf),np.zeros(6))),dtype=mpf)
-                KFilter.UpdateSensor(time,Surface, acc,gyro,mag,newset.orient[i,:],std_acc_z = std_acc_z,correction = correction,xtensor = xtensor,model=model)
+                KFilter.UpdateSensor(time,Surface, acc,gyro,mag,newset.orient[i+1,:],std_acc_z = std_acc_z,correction = correction,xtensor = xtensor,model=model)
             elif self.mode == 'GyroAcc':
                 gyro, acc, normal= args[:3]
                 Surface = np.array(np.concatenate(([0,],normal.astype(mpf),np.zeros(6))),dtype=mpf)
@@ -197,7 +197,7 @@ class SolverFilterPlan:
             elif self.mode == 'OdoAccPre':
                 acc,pressure,leftw,rightw= args[:4]
                 Surface = np.array(np.concatenate(([0,],normal.astype(mpf),np.zeros(6))),dtype=mpf)
-                KFilter.UpdateSensor(time,Surface,acc, pressure,leftw,rightw,self.orient[i,:])
+                KFilter.UpdateSensor(time,Surface,acc, pressure,leftw,rightw,self.orient[i+1,:])
         self.gravity_r[i+1, :] = KFilter.gravity_r[0:4]
         
         #KFilter.UpdateSensor(mpf(time),gyro, acc,mag,None,Surface)

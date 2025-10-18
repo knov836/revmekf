@@ -935,6 +935,8 @@ def acc_from_normal_imu_grav(norm0,norm,acc,grav,normal,center,start=[0,0,1],s_r
         x = (depth-center[1])/direc[1]
         P1 = x*direc+center
         
+        R = mp.norm(pracc)
+        Rg = mp.norm(rgrav)
         
         if mp.norm(P1)>R:
             beta = mpf(0)
@@ -942,6 +944,17 @@ def acc_from_normal_imu_grav(norm0,norm,acc,grav,normal,center,start=[0,0,1],s_r
             beta = mp.acos(mp.norm(P1)/R)
         Q0 = np.array(P1+R*mp.sin(beta)*L1,dtype=mpf)
         Q1 = np.array(P1-R*mp.sin(beta)*L1,dtype=mpf)
+        
+        
+        
+        if mp.norm(P1)>Rg:
+            betag = mpf(0)
+            t4t0g = t_v0
+        else:
+            betag = mp.acos(mp.norm(P1)/Rg)
+            #beta = mp.acos(mp.norm([P1[0],P1[2]])/R)
+        Qg0 = np.array(P1+Rg*mp.sin(betag)*L1,dtype=mpf)
+        Qg1 = np.array(P1-Rg*mp.sin(betag)*L1,dtype=mpf)
         
         
     else:
@@ -983,6 +996,7 @@ def acc_from_normal_imu_grav(norm0,norm,acc,grav,normal,center,start=[0,0,1],s_r
             Qg0 = np.array(P1+Rg*mp.sin(betag)*L1,dtype=mpf)
             Qg1 = np.array(P1-Rg*mp.sin(betag)*L1,dtype=mpf)
         else:
+            print(normal)
             Q0 = racc
             Q1 = racc
             t4t0 = t_v0
@@ -1199,7 +1213,7 @@ def acc_from_normal_imu_grav(norm0,norm,acc,grav,normal,center,start=[0,0,1],s_r
          l_HH.evalf(subs={v: float(t2t0 - t_v0)})]).astype(float)
         
         labels = ["MEKF", "Theta 1", "Theta 2"]
-        tt = np.max([np.abs(float(t4t0)),np.abs(float(t2t0))])
+        tt = np.max([np.abs(float(t4t0-t_v0)),np.abs(float(t2t0-t_v0))])
         f = sym.lambdify(v, l_HH, 'numpy')
         vv = np.linspace(-tt, tt, 1000)
         fig, ax = plt.subplots(figsize=(6,4))
