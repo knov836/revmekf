@@ -1158,6 +1158,7 @@ def acc_from_normal_imu_grav(norm0,norm,acc,grav,normal,center,start=[0,0,1],s_r
     
     if heuristic:
         t1t0=t3t0 #remove noise
+        #t1t0 = (t4t0+t2t0)/2
         #sign = np.sign((center-acc).dot(normal))
         #sign = np.sign((center).dot(normal))
         a = ((center).dot(normal))
@@ -1166,20 +1167,58 @@ def acc_from_normal_imu_grav(norm0,norm,acc,grav,normal,center,start=[0,0,1],s_r
         sign = np.sign(c)
         #print(acc,normal,center)
         #print(sign,c,b)
-        qq_acc = quat_ntom(np.array([0,0,1],dtype=mpf), acc/np.linalg.norm(acc))
-        FF_acc = log_q(qq_acc)
-        print("fff",FF_acc,FF)
+        qq_acc = quat_ntom(ppracc,np.array([0,0,1],dtype=mpf))
+        FF_acc = log_q(qq_acc).astype(float)
+        
         duFF2 = uFF-sym.Matrix(-FF_acc)
         duFF2 = duFF2.dot(duFF2)
         #pdb.set_trace()
+        print(FF_acc)
         rotate_ff_acc = quat_ntom(FF_acc/np.linalg.norm(FF_acc),np.array(FF).flatten())
         FF_racc = np.array(quat_rot([0,*FF_acc],rotate_ff_acc))[1:4]
         lam_h2 = lambdify(v, duFF2)
         v0_acc = opt.minimize(lam_h2, 0).x
         t_v0_acc = v0_acc[0]
         t_v0_acc = FF_racc[1]
+        scal_prod0 = np.array(quat_rot([0,*ppracc],ExpQua(FF_racc)))[3]
+        scal_prod1 = np.array(quat_rot([0,*ppracc],ExpQua(-FF_racc)))[3]
+        if np.abs(scal_prod0-1)>np.abs(scal_prod1-1):
+            t_v0_acc = -FF_racc[1]
+        print("fff",FF_acc,FF,FF_racc)
+        print(ppracc,racc/mp.norm(racc))
+        #pdb.set_trace()
         #if t_v0_acc 
-        #t1t0 = t_v0_acc
+        t1t0 = t_v0_acc+t_v0
+        print((SymExpRot2(FF,mpf(t1t0))@acc).flatten())
+        print((SymExpRot2(FF,mpf(-t_v0_acc+t_v0))@acc).flatten())
+        
+        
+        prenormal = (SymExpRot2(FF,mpf(t_v0))@np.array([0,0,1],dtype=mpf)).flatten()
+        pprenormal = np.array([prenormal[0],0,prenormal[2]]).astype(float)
+        pprenormal = pprenormal/np.linalg.norm(pprenormal)
+        qq_normal = quat_ntom(pprenormal,normal)
+        FF_normal = log_q(qq_normal).astype(float)
+        rotate_ff_normal= quat_ntom(FF_normal/np.linalg.norm(FF_normal),np.array(FF).flatten())
+        FF_rnormal = np.array(quat_rot([0,*FF_normal],rotate_ff_normal))[1:4]
+        t_v0_normal = FF_rnormal[1]
+        scal_prod0 = np.dot(np.array(quat_rot([0,*pprenormal],ExpQua(FF_rnormal)))[1:4],normal)
+        scal_prod1 = np.dot(np.array(quat_rot([0,*pprenormal],ExpQua(-FF_rnormal)))[1:4],normal)
+        if np.abs(scal_prod0-1)>np.abs(scal_prod1-1):
+            t_v0_normal = -FF_rnormal[1]
+        print("fff",FF_normal,FF,FF_rnormal)
+        print(pprenormal,prenormal)
+        #pdb.set_trace()
+        #if t_v0_acc 
+        t1t0 = t_v0_normal+t_v0
+        print((SymExpRot2(FF,mpf(t1t0))@np.array([0,0,1],dtype=mpf)).flatten())
+        print((SymExpRot2(FF,mpf(-t_v0_normal+t_v0))@np.array([0,0,1],dtype=mpf)).flatten())
+        
+        
+        #pdb.set_trace()
+        """t1t0 = t_v0_acc
+        if np.abs(t1t0-t_v0)>3*np.pi/4:
+            t1t0-=2*np.pi*np.sign(t1t0)"""
+        #t1t0 = (t4t0+t2t0)/2
         
         """t1t0 = np.linalg.norm(FF_acc)
         FF = FF_acc/t1t0
@@ -1189,7 +1228,7 @@ def acc_from_normal_imu_grav(norm0,norm,acc,grav,normal,center,start=[0,0,1],s_r
         FF = FF_acc/t1t0
         t1t0=-t1t0"""
         
-        gamma = 0.5
+        gamma = 0.25*0
         
         prob = np.random.random(1)
         prob = 0
@@ -1207,8 +1246,8 @@ def acc_from_normal_imu_grav(norm0,norm,acc,grav,normal,center,start=[0,0,1],s_r
         ert4 = HH.evalf(subs={v: float(t4t0)})
         
         
-        """x_pts = [float(t_v0_acc - t_v0),float(t4t0 - t_v0), float(t2t0 - t_v0)]
-        y_pts = np.array([l_HH.evalf(subs={v: float(t_v0_acc - t_v0)}),
+        """x_pts = [float(t1t0 - t_v0),float(t4t0 - t_v0), float(t2t0 - t_v0)]
+        y_pts = np.array([l_HH.evalf(subs={v: float(t1t0 - t_v0)}),
          l_HH.evalf(subs={v: float(t4t0 - t_v0)}),
          l_HH.evalf(subs={v: float(t2t0 - t_v0)})]).astype(float)
         
@@ -1237,16 +1276,34 @@ def acc_from_normal_imu_grav(norm0,norm,acc,grav,normal,center,start=[0,0,1],s_r
         ax.set_title("h_k")
         ax.legend()
         plt.show()"""
-        print("angles",t4t0,t_v0_acc,t_v0)
+        print("angles",t4t0,t1t0,t_v0)
         print(np.abs(t_v0-t4t0),np.abs(t_v0-t1t0)*gamma,sign*(teGG-C).dot(normal).evalf(subs={v:(t4t0+t2t0)/2}))
-            
+        
+        qq0 = np.array(ExpQua(np.array([0,0,np.arctan2(-acc.astype(float)[1],acc.astype(float)[0])]))).astype(float)
+        qq_normal = quat_ntom(np.array([0,0,1],dtype=mpf),normal)
+        qq_final = np.array(quat_mult(qq0,qq_normal)).astype(float)
+        FF_normal = log_q(qq_final).astype(float)
+        t1t0 = np.linalg.norm(FF_normal)
+        FF = FF_normal/t1t0
+        #pdb.set_trace()
         if (t4t0 == t2t0 and sign*(teGG-C).dot(normal).evalf(subs={v:(t4t0+t2t0)/2})<0) or sign*(teGG-C).dot(normal).evalf(subs={v:(t4t0+t2t0)/2})<0:#  or np.abs(t_v0-t3t0)>np.abs(t4t0 -t2t0)*1.5:
             t1t0 = t_v0
             t1t0 = t_v0_acc
+            
+            qq_acc = quat_ntom(acc/np.linalg.norm(acc),np.array([0,0,1],dtype=mpf))
+            FF_acc = log_q(qq_acc).astype(float)
             t1t0 = np.linalg.norm(FF_acc)
             FF = FF_acc/t1t0
-            t1t0=-t1t0
             
+            qq0 = np.array(ExpQua(np.array([0,0,np.arctan2(-acc.astype(float)[1],acc.astype(float)[0])]))).astype(float)
+            qq_normal = quat_ntom(np.array([0,0,1],dtype=mpf),normal)
+            qq_final = np.array(quat_mult(qq0,qq_normal)).astype(float)
+            FF_normal = log_q(qq_final).astype(float)
+            t1t0 = np.linalg.norm(FF_normal)
+            FF = FF_normal/t1t0
+            #t1t0=-t1t0
+            #pdb.set_trace()
+            #pdb.set_trace()
             t0 = t3t0
         #elif (((np.abs(t_v0-t4t0)<np.abs(t_v0-t1t0)*gamma and np.abs((teGG-C).dot(normal).evalf(subs={v:t_v0})-(teGG-C).dot(normal).evalf(subs={v:t4t0}))<np.abs((teGG-C).dot(normal).evalf(subs={v:t_v0})-(teGG-C).dot(normal).evalf(subs={v:t1t0})))) and sign*(teGG-C).dot(normal).evalf(subs={v:(t4t0+t2t0)/2})>=0):
         elif (np.abs(t_v0-t4t0)<np.abs(t_v0-t1t0)*gamma and sign*(teGG-C).dot(normal).evalf(subs={v:(t4t0+t2t0)/2})>=0):

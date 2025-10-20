@@ -74,7 +74,7 @@ if mmode == 'OdoAccPre':
 
 n_start = 0
 n_end=4000
-n_end=n_start +10000
+n_end=n_start +2000
 cols = np.array([0,1,2,3,10,11,12,19,20,21])
 df = data.values[n_start:n_end,cols]
 
@@ -141,7 +141,7 @@ angle = int(N/2)
 orient = newset.orient
 pos_earth = newset.pos_earth
 
-q0,q1,r0,r1 = 10**(-2), 10**(-2), 10**(0), 10**(0)
+q0,q1,r0,r1 = 10**(-2), 10**(-2), 10**(-1), 10**(0)
 normal = newset.normal
     
 
@@ -544,4 +544,50 @@ ax.plot(np.arctan2(-q1z[:,0],np.sqrt(q1z[:,2]**2+q1z[:,1]**2)))
 ax.plot(np.arctan2(-q0z[:,0],np.sqrt(q0z[:,2]**2+q0z[:,1]**2)))
 ax.legend(['neworient','mekf','gyro'])
 ax.set_title('pitch q2 q1 q0')
+
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(np.arctan2(q2[:,1],q2[:,0]))
+ax.plot(np.arctan2(q1[:,1],q1[:,0]))
+ax.plot(np.arctan2(q0[:,1],q0[:,0]))
+ax.legend(['neworient','mekf','gyro'])
+ax.set_title("q0 q1 heading")
+
+window=1000
+global_quatw = savgol_filter(newset.neworient[:,0], window , 2)
+global_quatx = savgol_filter(newset.neworient[:,1], window , 2)
+global_quaty = savgol_filter(newset.neworient[:,2], window , 2)
+global_quatz = savgol_filter(newset.neworient[:,3], window , 2)
+quat_accmag= np.vstack((global_quatw,global_quatx,global_quaty,global_quatz)).T
+pos_accmag,speed_accmag=quat_to_pos(time0,quat_accmag,newset.acc,newset.gravity)
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+
+#ax.plot(newset.acc)
+
+#ax.plot(-np.array(coords[:,0]),-np.array(coords[:,1]))
+ax.plot(pos_accmag[:,0],pos_accmag[:,1])
+ax.plot(position0[:,0],position0[:,1])
+ax.plot(position1[:,0],position1[:,1])
+
+ax.legend(['accmag','Position from Gyro integration','Position from MEKF'])
+plt.axis('equal')
+plt.xlabel('X axis in meters')
+plt.ylabel('Y axis in meters')
+ax.set_title('Projected position in 2D of GPS/Gyro Integration/MEKF')
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(pos_accmag)
+ax.set_title('pos_accmag')
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(position0)
+ax.set_title('position0')
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(position1)
+ax.set_title('position1')
 

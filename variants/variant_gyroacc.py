@@ -42,7 +42,7 @@ class Filter:
         self.gravity = np.array(grav,dtype=mpf)
         self.gravity_r = np.array(quat_rot([0,*(grav)],quat_inv(self.Quaternion)))[1:4]
         self.grav_earth = np.copy(self.gravity)
-        self.mag0 = mag0
+        self.mag0 = mag0/np.linalg.norm(mag0)
         self.heuristic=heuristic
         self.manual=manual
         self.neural=neural
