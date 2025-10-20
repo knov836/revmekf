@@ -39,6 +39,34 @@ class PredictFilter(Filter):
         self.label = ""
         self.angle = 0
     
+    def roll_correct(self,Gyroscope,Accelerometer,Magnetometer,Orient,normal=[0,0,1]):
+        quat=self.rotsurf
+        RR = QuatToRot((Orient))
+        iRR = QuatToRot(quat_inv(Orient))
+        logrot = log_q(self.Quaternion)
+        nMagnetometer = Magnetometer
+        nAccelerometer = Accelerometer
+        mm0 = nMagnetometer
+        nAxis = np.array([0,1,0],dtype=mpf)
+        nAxis=nMagnetometer
+        nAxis = nAxis/np.linalg.norm(nAxis)
+        
+        mm0 = nAxis
+        mm1 = np.array([0,1,0],dtype=mpf)
+        quat= quat_ntom(mm0,mm1)
+        
+        mag0 = np.array(quat_rot([0,*Magnetometer],self.Quaternion))[1:4]
+        mm2 = np.array(mag0,dtype=mpf)
+        mag0 = np.copy(mag0)
+        mag0[2] = 0
+        mag0 = mag0/np.linalg.norm(mag0)
+        quat2 = quat_ntom(mag0,mm1)
+        qq = quat_mult(quat_mult(quat2,self.Quaternion),quat_inv(quat))
+        logrot1 = log_q(np.array(qq))
+        acc1= acc_from_normal_imu_roll(np.array(quat_rot([0,*np.array(nAxis,dtype=mpf)],quat))[1:4],np.array([0,1,0],dtype=mpf) , np.array(quat_rot([0,*(nAccelerometer*(self.dt**2))],quat))[1:4], np.array(quat_rot([0,*normal],(quat2)))[1:4], np.array(quat_rot([0,*self.surf_center],(quat2)))[1:4],start = logrot1,heuristic=self.heuristic,correction = self.correction)/(self.dt**2)
+        acc = np.array(quat_rot([0,*(acc1)],quat_inv(quat)),dtype=mpf)[1:4]
+        return acc
+    
     def linalg_correct(self,Gyroscope,Accelerometer,Magnetometer,Orient,normal=[0,0,1]):
         quat=self.rotsurf
         RR = QuatToRot((Orient))
@@ -178,15 +206,19 @@ class PredictFilter(Filter):
             #print(Accelerometer,np.dot(self.gravity/np.linalg.norm(self.gravity),Surface[1:4]/np.linalg.norm(Surface[1:4])))
             #acc[2] = self.gravity[2]*np.dot(self.gravity/np.linalg.norm(self.gravity),Surface[1:4]/np.linalg.norm(Surface[1:4]))
             #print(np.dot(self.gravity/np.linalg.norm(self.gravity),Surface[1:4]/np.linalg.norm(Surface[1:4])))
-            mag = np.array(quat_rot([0,1,0,0], quat_inv(self.Quaternion)))[1:4]
             mag = np.array(quat_rot([0,0,1,0], quat_inv(self.Quaternion)))[1:4]
+            acc = self.roll_correct(Gyroscope, acc, mag, Orient,normal=self.normal)
+            mag = np.array(quat_rot([0,1,0,0], quat_inv(self.Quaternion)))[1:4]
+            acc = self.linalg_correct(Gyroscope, acc, mag, Orient,normal=self.normal)
+            
             #mag0 =np.copy(self.mag0)
             #mag0[2] = 0
             #mag0 = mag0/np.linalg.norm(mag0)
             #mag = np.array(quat_rot([0,*mag0], quat_inv(self.Quaternion)))[1:4]
             #mag=Magnetometer
-        grav_earth = self.linalg_correct(Gyroscope, acc, mag, Orient,normal=self.normal)
-        
+        else:
+            acc = self.linalg_correct(Gyroscope, acc, mag, Orient,normal=self.normal)
+        grav_earth=acc
         self.gravity_r = grav_earth
         self.update(Gyroscope,grav_earth,Magnetometer,Orient)
 

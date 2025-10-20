@@ -847,6 +847,184 @@ def acc_from_normal_imu_grav_neural(norm0,norm,acc,grav,normal,center,start=[0,0
     irot= (SymExpRot2(FF,-t0))
     
     return np.array(irot1,dtype=mpf)@np.array([0,0,1],dtype=mpf),irot1,rot1,np.array(irot2,dtype=mpf)@np.array([0,0,1],dtype=mpf),irot2,rot2,np.array(irot3,dtype=mpf)@np.array([0,0,1],dtype=mpf),irot3,rot3,corrected,not_corrected,np.abs(t_v0_acc-t1t0),rt0,rt2,rt3,rt4,ert0,ert2,ert3,ert4
+def acc_from_normal_imu_roll(norm0,norm,acc,normal,center,start=[0,0,1],s_rot=np.array([0,0,0]),heuristic=False,correction=False):
+    X = sym.Symbol('X')
+    Y = sym.Symbol('Y')
+    Z = sym.Symbol('Z')
+    u, v, w = symbols('u v w')
+    N = sym.Matrix([X,Y,Z])#/gamma
+    g = np.array([0,0,1],dtype=mpf)
+    A = sym.Matrix(acc)
+    OAe = A
+    C = sym.Matrix(center)
+    Pae = sym.simplify((OAe.dot(N))*N)
+    M0 = sym.Matrix(norm0)
+    M1 = sym.Matrix(norm)
+    
+    M0 = M0/sym.sqrt(M0.dot(M0))
+    M1 = M1/sym.sqrt(M1.dot(M1))
+    
+    
+    fe = A-Pae
+    ge = skewSymmetric(N)@fe
+    
+    
+    NM= M0
+    FF = NM
+    KK = v
+    uFF = FF*v
+    eGG = cos(v)*fe+sin(v)*ge+Pae
+
+    teGG =eGG.subs([(X,FF[0]),(Y,FF[1]),(Z,FF[2])])
+    
+    duFF = uFF-sym.Matrix(start)
+    duFF = duFF.dot(duFF)
+    #lam_h = lambdify(v, duFF)
+    #v0 = opt.minimize(lam_h, 0).x
+    HH = sym.N(((teGG-C).dot(normal)),40)
+    HHt = sym.N(((teGG-C).dot(normal))**2,40)
+    dHHt = sym.diff(HHt,v)
+    dHH = sym.diff(HH,v)
+    ddHH = sym.diff(dHH,v)
+    HHz = sym.N(((teGG-C).dot(np.array([0,0,1],dtype=mpf))),40)
+    dHHz = sym.diff(HHz,v)
+    #t_v0 = v0[0]#np.mod(v0[0],np.pi)
+    print("start",start)
+    t_v0 = start[1]
+    racc= (SymExpRot2(FF,mpf(t_v0))@acc).flatten()
+    #rgrav= (SymExpRot2(FF,mpf(t_v0))@acc).flatten()
+    cor_racc = (racc -center).dot(normal)
+    #pracc = racc-cor_racc*normal
+    pracc = racc
+    
+    depth = np.array(sym.N(Pae.subs([(X,FF[0]),(Y,FF[1]),(Z,FF[2])]),40).tolist()).flatten()[1]
+    
+    
+    K = -center.dot(normal)
+    """
+    P0z projection in direction z on plane
+    """
+    t4t0 = -1
+    if normal[0]!=0 and np.abs(normal[0])>0.1:
+        R = mp.norm(pracc)
+        P0z = 0
+        P0x = (-K-normal[1]*depth)/normal[0]
+        L1 = np.array([-normal[2]/normal[0],0,1],dtype=mpf)
+        P0 = np.array([P0x,depth,0],dtype=mpf)
+        L1 = L1/mp.norm(L1)
+        if P0x ==0:
+            alpha = mp.acos(0)
+        else:
+            alpha =  mp.acos((sym.Matrix([-P0x,0,0]).dot(sym.Matrix(L1))/((mp.norm(P0x))*mp.norm(L1))))
+        P1 = np.array(P0+P0x*mp.cos(alpha)*L1,dtype=mpf)
+        
+        ppracc = np.array([racc[0],0,racc[2]],dtype=mpf)
+        ppracc = ppracc/mp.norm(ppracc)
+        
+        pnormal = np.array([normal[0],0,normal[2]],dtype=mpf)
+        pnormal = pnormal/mp.norm(pnormal)
+        
+        gamma = mp.acos(sym.Matrix(ppracc).dot(sym.Matrix(-pnormal)))
+        P1 = np.array([racc[0]*mp.cos(gamma)-racc[2]*mp.sin(gamma),depth,racc[0]*mp.sin(gamma)+racc[2]*mp.cos(gamma)],dtype=mpf)
+        
+        e = skewSymmetric(normal)@np.array([0,1,0],dtype=mpf)
+        e = e/mp.norm(e)
+        direc = skewSymmetric(e)@normal
+        x = (depth-center[1])/direc[1]
+        P1 = x*direc+center
+        
+        R = mp.norm(pracc)
+        Rg = mp.norm(racc)
+        
+        if mp.norm(P1)>R:
+            beta = mpf(0)
+        else:
+            beta = mp.acos(mp.norm(P1)/R)
+        Q0 = np.array(P1+R*mp.sin(beta)*L1,dtype=mpf)
+        Q1 = np.array(P1-R*mp.sin(beta)*L1,dtype=mpf)
+        
+        
+        
+        if mp.norm(P1)>Rg:
+            betag = mpf(0)
+            t4t0g = t_v0
+        else:
+            betag = mp.acos(mp.norm(P1)/Rg)
+            #beta = mp.acos(mp.norm([P1[0],P1[2]])/R)
+        Qg0 = np.array(P1+Rg*mp.sin(betag)*L1,dtype=mpf)
+        Qg1 = np.array(P1-Rg*mp.sin(betag)*L1,dtype=mpf)
+        
+        
+    else:
+        if normal[2] != 0:
+            P0z = (-K-normal[1]*depth)/normal[2]
+            L1 = np.array([1,0,-normal[0]/normal[2]],dtype=mpf)
+            P0 = np.array([0,depth,P0z],dtype=mpf)
+            L1 = L1/mp.norm(L1)
+            e = skewSymmetric(normal)@np.array([0,1,0],dtype=mpf)
+            e = e/mp.norm(e)
+            direc = skewSymmetric(e)@normal
+            x = (depth-center[1])/direc[1]
+            P1 = x*direc+center
+            R = mp.norm(pracc)
+            
+            if mp.norm(P1)>R:
+                beta = mpf(0)
+                t4t0 = t_v0
+            else:
+                beta = mp.acos(mp.norm(P1)/R)
+                #beta = mp.acos(mp.norm([P1[0],P1[2]])/R)
+            Q0 = np.array(P1+R*mp.sin(beta)*L1,dtype=mpf)
+            Q1 = np.array(P1-R*mp.sin(beta)*L1,dtype=mpf)
+            
+        else:
+            print(normal)
+            Q0 = racc
+            Q1 = racc
+            t4t0 = t_v0
+            
+    ppracc = np.array([racc[0],0,racc[2]],dtype=mpf)
+    ppracc = ppracc/mp.norm(ppracc)
+    pQ0 = np.array([Q0[0],0,Q0[2]],dtype=mpf)
+    pQ0 = pQ0/mp.norm(pQ0)
+    pQ1 = np.array([Q1[0],0,Q1[2]],dtype=mpf)
+    pQ1 = pQ1/mp.norm(pQ1)
+    qq0 = np.array(log_q(quat_ntom(ppracc,pQ0)))
+    qq1 = np.array(log_q(quat_ntom(ppracc,pQ1)))
+    dang0 = mp.norm(qq0)
+    dang1 = mp.norm(qq1)
+    if np.linalg.norm(qq0.astype(float)) ==0:
+        dang0 = 0
+    else:
+        v_qq0 = qq0/dang0
+        dang0 = dang0*np.sign(np.dot(v_qq0,np.array(list(M0),dtype=mpf)))
+    if np.linalg.norm(qq1.astype(float)) ==0:
+        dang1 = 0
+    else:
+        v_qq1 = qq1/dang1
+        dang1 = dang1*np.sign(np.dot(v_qq1,np.array(list(M0),dtype=mpf)))
+    d_angle = dang0
+    if np.abs(dang1)<np.abs(d_angle):
+        d_angle = dang1
+    summ = dang0+dang1
+    
+    
+    t1t0 = mpf(d_angle+t_v0)
+    t2t0 = mpf(summ-d_angle+t_v0)
+    
+    acc_earth0 = racc
+    """if (np.abs(t2t0-t1t0)<0.1 and t1t0 !=t2t0):
+        acc_earth1 = (SymExpRot2(FF,mpf(t2t0-t1t0+t_v0))@acc).flatten()
+        #pdb.set_trace()
+    else:
+        acc_earth1 = acc_earth0"""
+    #acc_earth1 = (SymExpRot2(FF,mpf(t2t0-t1t0+t_v0))@acc).flatten()
+    #acc_earth = (acc_earth0+acc_earth1)/2
+    acc_earth = (SymExpRot2(FF,mpf((t2t0-t1t0)/2+t1t0))@acc).flatten()
+    acc_r = (SymExpRot2(FF,mpf(-t_v0))@acc_earth).flatten()
+    #pdb.set_trace()
+    print(acc_r,acc)
+    return np.array(acc_r).astype(float).flatten()
 
 
 def acc_from_normal_imu_grav(norm0,norm,acc,grav,normal,center,start=[0,0,1],s_rot=np.array([0,0,0]),heuristic=False,correction=False):
@@ -1196,20 +1374,24 @@ def acc_from_normal_imu_grav(norm0,norm,acc,grav,normal,center,start=[0,0,1],s_r
         prenormal = (SymExpRot2(FF,mpf(t_v0))@np.array([0,0,1],dtype=mpf)).flatten()
         pprenormal = np.array([prenormal[0],0,prenormal[2]]).astype(float)
         pprenormal = pprenormal/np.linalg.norm(pprenormal)
-        qq_normal = quat_ntom(pprenormal,normal)
+        
+        qq0 = ExpQua(t_v0*np.array(FF).flatten())
+        qq1 = quat_ntom(np.array(quat_rot([0,0,0,1],qq0))[1:4], normal)
+        qq_normal = np.array(quat_mult(qq1,qq0)).astype(float)
+        #qq_normal = quat_ntom(pprenormal,normal)
         FF_normal = log_q(qq_normal).astype(float)
         rotate_ff_normal= quat_ntom(FF_normal/np.linalg.norm(FF_normal),np.array(FF).flatten())
         FF_rnormal = np.array(quat_rot([0,*FF_normal],rotate_ff_normal))[1:4]
         t_v0_normal = FF_rnormal[1]
-        scal_prod0 = np.dot(np.array(quat_rot([0,*pprenormal],ExpQua(FF_rnormal)))[1:4],normal)
-        scal_prod1 = np.dot(np.array(quat_rot([0,*pprenormal],ExpQua(-FF_rnormal)))[1:4],normal)
+        scal_prod0 = np.dot(np.array(quat_rot([0,0,0,1],ExpQua(FF_rnormal)))[1:4],normal)
+        scal_prod1 = np.dot(np.array(quat_rot([0,0,0,1],ExpQua(-FF_rnormal)))[1:4],normal)
         if np.abs(scal_prod0-1)>np.abs(scal_prod1-1):
             t_v0_normal = -FF_rnormal[1]
         print("fff",FF_normal,FF,FF_rnormal)
         print(pprenormal,prenormal)
         #pdb.set_trace()
         #if t_v0_acc 
-        t1t0 = t_v0_normal+t_v0
+        t1t0 = t_v0_normal
         print((SymExpRot2(FF,mpf(t1t0))@np.array([0,0,1],dtype=mpf)).flatten())
         print((SymExpRot2(FF,mpf(-t_v0_normal+t_v0))@np.array([0,0,1],dtype=mpf)).flatten())
         
@@ -1228,7 +1410,37 @@ def acc_from_normal_imu_grav(norm0,norm,acc,grav,normal,center,start=[0,0,1],s_r
         FF = FF_acc/t1t0
         t1t0=-t1t0"""
         
-        gamma = 0.25*0
+        """qq0 = ExpQua(t_v0*np.array(FF).flatten())
+        corrnormal = np.array([normal[0],0,normal[2]]).astype(float)
+        corrnormal = corrnormal/np.linalg.norm(corrnormal)
+        corrnormal=normal
+        qq1 = quat_ntom(np.array(quat_rot([0,0,0,1],qq0))[1:4], corrnormal)
+        qq_normal = np.array(quat_mult(qq1,qq0)).astype(float)
+        
+        pracc = np.copy(np.array(quat_rot([0,*(acc/np.linalg.norm(acc))],quat_mult(qq1,qq0)))[1:4]).astype(float)
+        #pracc[1]=0
+        pracc = pracc/np.linalg.norm(pracc)
+        qq2 = quat_ntom(pracc-np.dot(pracc,corrnormal)*corrnormal, np.array([0,0,1])-np.dot(np.array([0,0,1]),corrnormal)*corrnormal)
+        logqq2 = np.dot(np.array(log_q(np.array(qq2))),corrnormal)*corrnormal
+        #pdb.set_trace()
+        print("logqq2",logqq2)
+        qq_normal = np.array(quat_mult(ExpQua(logqq2),quat_mult(qq1,qq0))).astype(float)
+        FF_normal = log_q(qq_normal).astype(float)
+        t1t0 = np.linalg.norm(FF_normal)
+        FF = FF_normal/t1t0
+        """
+        qq0 = ExpQua(t_v0*np.array(FF).flatten())
+        pracc = np.copy(np.array(quat_rot([0,*(acc/np.linalg.norm(acc))],qq0))[1:4]).astype(float)
+        pracc[1]=0
+        pracc = pracc/np.linalg.norm(pracc)
+        qq1 = quat_ntom(pracc, np.array([0,0,1]))
+        qq_normal = np.array(quat_mult(qq1,qq0)).astype(float)
+        FF_normal = log_q(qq_normal).astype(float)
+        t1t0 = np.linalg.norm(FF_normal)
+        FF = FF_normal/t1t0
+
+        
+        gamma = 0.1
         
         prob = np.random.random(1)
         prob = 0
@@ -1279,12 +1491,8 @@ def acc_from_normal_imu_grav(norm0,norm,acc,grav,normal,center,start=[0,0,1],s_r
         print("angles",t4t0,t1t0,t_v0)
         print(np.abs(t_v0-t4t0),np.abs(t_v0-t1t0)*gamma,sign*(teGG-C).dot(normal).evalf(subs={v:(t4t0+t2t0)/2}))
         
-        qq0 = np.array(ExpQua(np.array([0,0,np.arctan2(-acc.astype(float)[1],acc.astype(float)[0])]))).astype(float)
-        qq_normal = quat_ntom(np.array([0,0,1],dtype=mpf),normal)
-        qq_final = np.array(quat_mult(qq0,qq_normal)).astype(float)
-        FF_normal = log_q(qq_final).astype(float)
-        t1t0 = np.linalg.norm(FF_normal)
-        FF = FF_normal/t1t0
+        
+        
         #pdb.set_trace()
         if (t4t0 == t2t0 and sign*(teGG-C).dot(normal).evalf(subs={v:(t4t0+t2t0)/2})<0) or sign*(teGG-C).dot(normal).evalf(subs={v:(t4t0+t2t0)/2})<0:#  or np.abs(t_v0-t3t0)>np.abs(t4t0 -t2t0)*1.5:
             t1t0 = t_v0
@@ -1295,12 +1503,44 @@ def acc_from_normal_imu_grav(norm0,norm,acc,grav,normal,center,start=[0,0,1],s_r
             t1t0 = np.linalg.norm(FF_acc)
             FF = FF_acc/t1t0
             
-            qq0 = np.array(ExpQua(np.array([0,0,np.arctan2(-acc.astype(float)[1],acc.astype(float)[0])]))).astype(float)
-            qq_normal = quat_ntom(np.array([0,0,1],dtype=mpf),normal)
-            qq_final = np.array(quat_mult(qq0,qq_normal)).astype(float)
-            FF_normal = log_q(qq_final).astype(float)
+            """
+            acc parameters
+            """
+            qq0 = ExpQua(t_v0*np.array(FF).flatten())
+            
+            #qq1 = quat_ntom(np.array(quat_rot([0,*(acc/np.linalg.norm(acc))],qq0))[1:4], np.array([0,0,1]))
+            pracc = np.copy(np.array(quat_rot([0,*(acc/np.linalg.norm(acc))],qq0))[1:4]).astype(float)
+            #pracc[1]=0
+            pracc = pracc/np.linalg.norm(pracc)
+            qq1 = quat_ntom(pracc, np.array([0,0,1]))
+            
+            qq_normal = np.array(quat_mult(qq1,qq0)).astype(float)
+            FF_normal = log_q(qq_normal).astype(float)
             t1t0 = np.linalg.norm(FF_normal)
             FF = FF_normal/t1t0
+            
+            """
+            normal parameters
+            """
+            """qq0 = ExpQua(t_v0*np.array(FF).flatten())
+            corrnormal = np.array([normal[0],0,normal[2]]).astype(float)
+            corrnormal = corrnormal/np.linalg.norm(corrnormal)
+            qq1 = quat_ntom(np.array(quat_rot([0,0,0,1],qq0))[1:4], corrnormal)
+            
+            pracc = np.copy(np.array(quat_rot([0,*(acc/np.linalg.norm(acc))],quat_mult(qq1,qq0)))[1:4]).astype(float)
+            #pracc[1]=0
+            pracc = pracc/np.linalg.norm(pracc)
+            qq2 = quat_ntom(pracc-np.dot(pracc,corrnormal)*corrnormal, np.array([0,0,1])-np.dot(np.array([0,0,1]),corrnormal)*corrnormal)
+            logqq2 = np.dot(np.array(log_q(np.array(qq2))),corrnormal)*corrnormal
+            #pdb.set_trace()
+            print("logqq2",logqq2)
+            qq_normal = np.array(quat_mult(ExpQua(logqq2),quat_mult(qq1,qq0))).astype(float)
+            #qq2 = quat_ntom(np.array(quat_rot([0,*(acc/np.linalg.norm(acc))],qq_normal))[1:4], np.array([0,0,1]))
+            #logqq2 = log_q(np.array(qq2))
+            
+            FF_normal = log_q(qq_normal).astype(float)
+            t1t0 = np.linalg.norm(FF_normal)
+            FF = FF_normal/t1t0"""
             #t1t0=-t1t0
             #pdb.set_trace()
             #pdb.set_trace()
@@ -1356,7 +1596,7 @@ def acc_from_normal_imu_grav(norm0,norm,acc,grav,normal,center,start=[0,0,1],s_r
     rot1= (SymExpRot2(FF,t1t0))
     irot1= (SymExpRot2(FF,-t1t0))
     
-
+    #print("verification",rot1@acc/np.linalg.norm(acc))
     
     rot= (SymExpRot2(FF,t0))
     irot= (SymExpRot2(FF,-t0))

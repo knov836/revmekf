@@ -74,7 +74,7 @@ if mmode == 'OdoAccPre':
 
 n_start = 0
 n_end=4000
-n_end=n_start +2000
+n_end=n_start +10000
 cols = np.array([0,1,2,3,10,11,12,19,20,21])
 df = data.values[n_start:n_end,cols]
 
@@ -141,7 +141,7 @@ angle = int(N/2)
 orient = newset.orient
 pos_earth = newset.pos_earth
 
-q0,q1,r0,r1 = 10**(-2), 10**(-2), 10**(-1), 10**(0)
+q0,q1,r0,r1 = 10**(-2), 10**(-2), 10**(6), 10**(4)
 normal = newset.normal
     
 

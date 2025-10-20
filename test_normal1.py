@@ -137,7 +137,7 @@ angle = int(N/2)
 orient = newset.orient
 pos_earth = newset.pos_earth
 
-q0,q1,r0,r1 = 10**(-2), 10**(-2), 10**(5), 10**(5)
+q0,q1,r0,r1 = 10**(-2), 10**(-2), 10**(3), 10**(3)
 normal = newset.normal
 
 
@@ -259,6 +259,86 @@ size  =n_end-n_start
 
 
 time0=time-time[0]
+
+
+q0 = np.zeros((N,3))
+q1 = np.zeros((N,3))
+q2 = np.zeros((N,3))
+q3 = np.zeros((N,3))
+gq = np.zeros((N,3))
+q0z = np.zeros((N,3))
+q1z = np.zeros((N,3))
+q2z = np.zeros((N,3))
+gqz = np.zeros((N,3))
+
+global_quatw = savgol_filter(newset.neworient[:,0], window , 2)
+global_quatx = savgol_filter(newset.neworient[:,1], window , 2)
+global_quaty = savgol_filter(newset.neworient[:,2], window , 2)
+global_quatz = savgol_filter(newset.neworient[:,3], window , 2)
+quat_accmag= np.vstack((global_quatw,global_quatx,global_quaty,global_quatz)).T
+pos_accmag,speed_accmag=quat_to_pos(time0,quat_accmag,newset.acc,newset.gravity)
+
+
+for i in range(N):
+    q0[i,:] = np.array(quat_rot([0,1,0,0],quat_inv(quaternion0[i,:])))[1:4]
+    q1[i,:] = np.array(quat_rot([0,1,0,0],quat_inv(quaternion1[i,:])))[1:4]
+    q2[i,:] = np.array(quat_rot([0,1,0,0],quat_inv(quaternion2[i,:])))[1:4]
+    gq[i,:] = np.array(quat_rot([0,1,0,0],quat_inv(quat_accmag[i,:])))[1:4]
+
+for i in range(N):
+    q0z[i,:] = np.array(quat_rot([0,0,0,1],quat_inv(quaternion0[i,:])))[1:4]
+    q1z[i,:] = np.array(quat_rot([0,0,0,1],quat_inv(quaternion1[i,:])))[1:4]
+    q2z[i,:] = np.array(quat_rot([0,0,0,1],quat_inv(quaternion2[i,:])))[1:4]
+    gqz[i,:] = np.array(quat_rot([0,0,0,1],quat_inv(quat_accmag[i,:])))[1:4]
+    
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(q0)
+ax.set_title('q0')
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(q1)
+ax.set_title('q1')
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(q2)
+ax.set_title('q2')
+
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(newset.new_orient()[:,[0,1,3]])
+ax.set_title('neworient')
+
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(np.arctan2(gqz[:,1],-gqz[:,2]))
+ax.plot(np.arctan2(q2z[:,1],-q2z[:,2]))
+ax.plot(np.arctan2(q1z[:,1],-q1z[:,2]))
+ax.plot(np.arctan2(q0z[:,1],-q0z[:,2]))
+ax.legend(['acc-mag','revmekf','mekf','gyro'])
+ax.set_title('roll q2 q1 q0')
+
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(np.arctan2(-gqz[:,0],np.sqrt(gqz[:,2]**2+gqz[:,1]**2)))
+ax.plot(np.arctan2(-q2z[:,0],np.sqrt(q2z[:,2]**2+q2z[:,1]**2)))
+ax.plot(np.arctan2(-q1z[:,0],np.sqrt(q1z[:,2]**2+q1z[:,1]**2)))
+ax.plot(np.arctan2(-q0z[:,0],np.sqrt(q0z[:,2]**2+q0z[:,1]**2)))
+ax.legend(['acc-mag','revmekf','mekf','gyro'])
+ax.set_title('pitch q2 q1 q0')
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(np.arctan2(gq[:,1],gq[:,0]))
+ax.plot(np.arctan2(q2[:,1],q2[:,0]))
+ax.plot(np.arctan2(q1[:,1],q1[:,0]))
+ax.plot(np.arctan2(q0[:,1],q0[:,0]))
+ax.legend(['acc-mag','revmekf','mekf','gyro'])
+ax.set_title("heading")
+
 fig = plt.figure()
 ax = fig.add_axes([0,0,1,1])
 ax.plot(time0[:size-1],[np.linalg.norm(Solv0.position[j,:]) for j in range(size-1)])
@@ -382,36 +462,7 @@ ax.plot(position2)
 ax.plot(np.array(coords1))
 ax.set_title('Position from Rev-MEKF')
 
-q0 = np.zeros((N,3))
-q1 = np.zeros((N,3))
-q2 = np.zeros((N,3))
-q3 = np.zeros((N,3))
 
-for i in range(N):
-    q0[i,:] = np.array(quat_rot([0,1,0,0],quat_inv(quaternion0[i,:])))[1:4]
-    q1[i,:] = np.array(quat_rot([0,1,0,0],quat_inv(quaternion1[i,:])))[1:4]
-    q2[i,:] = np.array(quat_rot([0,1,0,0],quat_inv(quaternion2[i,:])))[1:4]
-    q3[i,:] = np.array(quat_rot([0,1,0,0],quat_inv(newset.neworient[i,:])))[1:4]
-    
-    
-fig = plt.figure()
-ax = fig.add_axes([0,0,1,1])
-ax.plot(q0)
-ax.set_title('q0')
-fig = plt.figure()
-ax = fig.add_axes([0,0,1,1])
-ax.plot(q1)
-ax.set_title('q1')
-fig = plt.figure()
-ax = fig.add_axes([0,0,1,1])
-ax.plot(q2)
-ax.set_title('q2')
-
-
-fig = plt.figure()
-ax = fig.add_axes([0,0,1,1])
-ax.plot(newset.new_orient()[:,[0,1,3]])
-ax.set_title('neworient')
 
 fig = plt.figure()
 ax = fig.add_axes([0,0,1,1])
