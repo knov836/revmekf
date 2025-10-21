@@ -28,6 +28,9 @@ from function_quat import *
 from proj_func import *
 from linalg import *
 
+from scipy.spatial.transform import Rotation as R
+
+
 mp.prec=40
 
 class PredictFilter(Filter):
@@ -206,18 +209,35 @@ class PredictFilter(Filter):
             #print(Accelerometer,np.dot(self.gravity/np.linalg.norm(self.gravity),Surface[1:4]/np.linalg.norm(Surface[1:4])))
             #acc[2] = self.gravity[2]*np.dot(self.gravity/np.linalg.norm(self.gravity),Surface[1:4]/np.linalg.norm(Surface[1:4]))
             #print(np.dot(self.gravity/np.linalg.norm(self.gravity),Surface[1:4]/np.linalg.norm(Surface[1:4])))
-            mag = np.array(quat_rot([0,0,1,0], quat_inv(self.Quaternion)))[1:4]
-            acc = self.roll_correct(Gyroscope, acc, mag, Orient,normal=self.normal)
-            mag = np.array(quat_rot([0,1,0,0], quat_inv(self.Quaternion)))[1:4]
-            acc = self.linalg_correct(Gyroscope, acc, mag, Orient,normal=self.normal)
+            """mag = np.array(quat_rot([0,0,1,0], quat_inv(self.Quaternion)))[1:4]
+            acc = self.roll_correct(Gyroscope, acc, mag, Orient,normal=self.normal)"""
+            mag0 =np.copy(self.mag0)
+            mag0[2] = 0
+            mag0 = mag0/np.linalg.norm(mag0)
+            zaxis = np.array([0,0,1])
+            mag = np.array(quat_rot([0,*mag0],ExpQua(zaxis*np.pi/2)))[1:4]
+            mag = np.array(quat_rot([0,*mag0], quat_inv(self.Quaternion)))[1:4]#.astype(float)
+            acc = self.linalg_correct(Gyroscope, acc, mag, Orient,normal=self.normal).astype(float)
             
-            #mag0 =np.copy(self.mag0)
-            #mag0[2] = 0
-            #mag0 = mag0/np.linalg.norm(mag0)
+            
             #mag = np.array(quat_rot([0,*mag0], quat_inv(self.Quaternion)))[1:4]
             #mag=Magnetometer
         else:
             acc = self.linalg_correct(Gyroscope, acc, mag, Orient,normal=self.normal)
+        """mag = Magnetometer.astype(float)
+        normal = self.normal.astype(float)
+        qq0 = quat_ntom(np.array([0,0,1]), normal-normal[0]*np.array([1,0,0]))
+        #pacc= acc/n.linalg.norm(acc)-np.dot(acc/n.linalg.norm(acc))
+        qq1 = quat_ntom(np.array(quat_rot([0,*acc/np.linalg.norm(acc)],qq0))[1:4],np.array([0,0,1]))
+        logqq1 = np.dot(np.array(log_q(qq1)),normal)*normal*0
+        revacc = np.array(quat_rot([0,0,0,1],quat_inv(quat_mult(ExpQua(logqq1),qq0))))[1:4].astype(float)
+        roll = np.arctan2(revacc[1],revacc[2])
+        #pdb.set_trace()
+        pitch = np.arctan2(-acc[0],np.sqrt(acc[2]**2+acc[1]**2))
+        heading = np.arctan2(mag[1],mag[0])
+        roth = R.from_euler('ZYX', [heading, pitch,roll], degrees=False)
+        nacc = roth.inv().as_matrix()[:]@[0,0,1]
+        nmag = roth.inv().as_matrix()[:]@self.mag0"""
         grav_earth=acc
         self.gravity_r = grav_earth
         self.update(Gyroscope,grav_earth,Magnetometer,Orient)

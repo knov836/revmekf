@@ -137,7 +137,7 @@ angle = int(N/2)
 orient = newset.orient
 pos_earth = newset.pos_earth
 
-q0,q1,r0,r1 = 10**(-2), 10**(-2), 10**(3), 10**(3)
+q0,q1,r0,r1 = 10**(-2), 10**(-2), 10**(2), 10**(2)
 normal = newset.normal
 
 
@@ -270,6 +270,7 @@ q0z = np.zeros((N,3))
 q1z = np.zeros((N,3))
 q2z = np.zeros((N,3))
 gqz = np.zeros((N,3))
+window=1000
 
 global_quatw = savgol_filter(newset.neworient[:,0], window , 2)
 global_quatx = savgol_filter(newset.neworient[:,1], window , 2)
@@ -706,6 +707,7 @@ plt.xlabel('X axis in meters')
 plt.ylabel('Y axis in meters')
 ax.set_title('Projected position in 2D of GPS/Gyro Integration/MEKF')"""
 
+per=500
 
 heading0 = np.arctan2(q0[::per,1],q0[::per,0])
 heading1 = np.arctan2(q1[::per,1],q1[::per,0])
