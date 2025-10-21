@@ -717,6 +717,5 @@ ax = fig.add_axes([0,0,1,1])
 ax.plot(heading0)
 ax.plot(heading1)
 ax.plot(heading2)
-ax.plot(-theta+theta[0]+heading1[0])
 
 ax.set_title("q1 heading")
