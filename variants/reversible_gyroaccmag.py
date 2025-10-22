@@ -215,8 +215,8 @@ class PredictFilter(Filter):
             mag0[2] = 0
             mag0 = mag0/np.linalg.norm(mag0)
             zaxis = np.array([0,0,1])
-            #mag = np.array(quat_rot([0,*mag0],ExpQua(-zaxis*np.pi/2)))[1:4]
-            mag = np.array(quat_rot([0,*mag], quat_inv(self.Quaternion)))[1:4]#.astype(float)
+            #mag0 = np.array(quat_rot([0,*mag0],ExpQua(-zaxis*np.pi/2)))[1:4]
+            mag = np.array(quat_rot([0,*mag0], quat_inv(self.Quaternion)))[1:4]#.astype(float)
             acc = self.linalg_correct(Gyroscope, acc, mag, Orient,normal=self.normal).astype(float)
             
             
@@ -249,7 +249,7 @@ class PredictFilter(Filter):
         
         grav_earth=nacc
         self.gravity_r = grav_earth
-        self.update(Gyroscope,grav_earth,nmag,Orient)
+        self.update(Gyroscope,grav_earth,Magnetometer,Orient)
 
 
 

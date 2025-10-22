@@ -1431,14 +1431,16 @@ def acc_from_normal_imu_grav(norm0,norm,acc,grav,normal,center,start=[0,0,1],s_r
         """
         qq0 = ExpQua(t_v0*np.array(FF).flatten())
         pracc = np.copy(np.array(quat_rot([0,*(acc/np.linalg.norm(acc))],qq0))[1:4]).astype(float)
-        pracc[1]=0
+        #pracc[1]=0
         pracc = pracc/np.linalg.norm(pracc)
         qq1 = quat_ntom(pracc, np.array([0,0,1]))
         qq_normal = np.array(quat_mult(qq1,qq0)).astype(float)
         FF_normal = log_q(qq_normal).astype(float)
-        t1t0 = np.linalg.norm(FF_normal)
-        FF = FF_normal/t1t0
-
+        t1t0 = np.linalg.norm(FF_normal[1])
+        
+        #FF_old = np.copy(FF)
+        ##FF = FF_normal/t1t0
+        #pdb.set_trace()
         
         gamma = 0.25
         
@@ -1549,7 +1551,7 @@ def acc_from_normal_imu_grav(norm0,norm,acc,grav,normal,center,start=[0,0,1],s_r
         elif (np.abs(t_v0-t4t0)<np.abs(t_v0-t1t0)*gamma and sign*(teGG-C).dot(normal).evalf(subs={v:(t4t0+t2t0)/2})>=0):
             t1t0=t4t0
             #plot(((teGG-C).dot(normal).subs(v,v+sym.Rational(float(t_v0)))),(v,-0.1,0.1),title="t_v0 "+str(t_v0))
-
+            #FF = FF_old
             corrected=True 
             
         """else:

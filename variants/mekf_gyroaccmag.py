@@ -39,7 +39,7 @@ class PredictFilter(Filter):
     def variant_update_f(self, Time, Surface, Accelerometer,Gyroscope, Magnetometer,Orient):
         self.predict(Gyroscope,Orient)
         
-        mag = Magnetometer.astype(float)
+        """mag = Magnetometer.astype(float)
         acc = Accelerometer
         heading = np.arctan2(mag[1],mag[0])
         zaxis = np.array([0,0,1])
@@ -55,6 +55,6 @@ class PredictFilter(Filter):
         
         roth = R.from_euler('ZYX', [heading, pitch,roll], degrees=False)
         nacc = roth.inv().as_matrix()[:]@[0,0,1]
-        nmag = roth.inv().as_matrix()[:]@self.mag0
-        self.update(Gyroscope,nacc,nmag,Orient)
+        nmag = roth.inv().as_matrix()[:]@self.mag0"""
+        self.update(Gyroscope,Accelerometer,Magnetometer,Orient)
         
