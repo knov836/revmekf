@@ -212,8 +212,9 @@ class PredictFilter(Filter):
             """mag = np.array(quat_rot([0,0,1,0], quat_inv(self.Quaternion)))[1:4]
             acc = self.roll_correct(Gyroscope, acc, mag, Orient,normal=self.normal)"""
             mag0 =np.copy(self.mag0)
-            mag0[2] = 0
+            #mag0[2] = 0
             mag0 = mag0/np.linalg.norm(mag0)
+            mag0 = np.array([1,0,0])
             zaxis = np.array([0,0,1])
             orth = np.cross(zaxis,mag0)
             nzaxis = np.cross(mag0,orth)

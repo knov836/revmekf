@@ -1437,12 +1437,15 @@ def acc_from_normal_imu_grav(norm0,norm,acc,grav,normal,center,start=[0,0,1],s_r
         qq_normal = np.array(quat_mult(qq1,qq0)).astype(float)
         FF_normal = log_q(qq_normal).astype(float)
         t1t0 = np.linalg.norm(FF_normal[1])
+        if np.abs(t1t0-t_v0)>6*np.pi/4:
+            #pdb.set_trace()
+            t1t0 -=2*np.pi*np.sign(float(t1t0-t_v0))
         
         #FF_old = np.copy(FF)
         ##FF = FF_normal/t1t0
         #pdb.set_trace()
         
-        gamma = 0.5
+        gamma = 0.1
         
         prob = np.random.random(1)
         prob = 0
@@ -1460,7 +1463,7 @@ def acc_from_normal_imu_grav(norm0,norm,acc,grav,normal,center,start=[0,0,1],s_r
         ert4 = HH.evalf(subs={v: float(t4t0)})
         
         
-        x_pts = [float(t1t0 - t_v0),float(t4t0 - t_v0), float(t2t0 - t_v0)]
+        """x_pts = [float(t1t0 - t_v0),float(t4t0 - t_v0), float(t2t0 - t_v0)]
         y_pts = np.array([l_HH.evalf(subs={v: float(t1t0 - t_v0)}),
          l_HH.evalf(subs={v: float(t4t0 - t_v0)}),
          l_HH.evalf(subs={v: float(t2t0 - t_v0)})]).astype(float)
@@ -1489,7 +1492,7 @@ def acc_from_normal_imu_grav(norm0,norm,acc,grav,normal,center,start=[0,0,1],s_r
         ax.set_ylabel("meters")
         ax.set_title("h_k")
         ax.legend()
-        plt.show()
+        plt.show()"""
         print("angles",t4t0,t1t0,t_v0)
         print(np.abs(t_v0-t4t0),np.abs(t_v0-t1t0)*gamma,sign*(teGG-C).dot(normal).evalf(subs={v:(t4t0+t2t0)/2}))
         
@@ -1549,9 +1552,41 @@ def acc_from_normal_imu_grav(norm0,norm,acc,grav,normal,center,start=[0,0,1],s_r
             t0 = t3t0
         #elif (((np.abs(t_v0-t4t0)<np.abs(t_v0-t1t0)*gamma and np.abs((teGG-C).dot(normal).evalf(subs={v:t_v0})-(teGG-C).dot(normal).evalf(subs={v:t4t0}))<np.abs((teGG-C).dot(normal).evalf(subs={v:t_v0})-(teGG-C).dot(normal).evalf(subs={v:t1t0})))) and sign*(teGG-C).dot(normal).evalf(subs={v:(t4t0+t2t0)/2})>=0):
         elif (np.abs(t_v0-t4t0)<np.abs(t_v0-t1t0)*gamma and sign*(teGG-C).dot(normal).evalf(subs={v:(t4t0+t2t0)/2})>=0):
-            t1t0=t4t0
+            
             #plot(((teGG-C).dot(normal).subs(v,v+sym.Rational(float(t_v0)))),(v,-0.1,0.1),title="t_v0 "+str(t_v0))
             #FF = FF_old
+            
+            """x_pts = [float(t1t0 - t_v0),float(t4t0 - t_v0), float(t2t0 - t_v0)]
+            y_pts = np.array([l_HH.evalf(subs={v: float(t1t0 - t_v0)}),
+             l_HH.evalf(subs={v: float(t4t0 - t_v0)}),
+             l_HH.evalf(subs={v: float(t2t0 - t_v0)})]).astype(float)
+            
+            labels = ["MEKF", "Theta 1", "Theta 2"]
+            tt = np.max([np.abs(float(t4t0-t_v0)),np.abs(float(t2t0-t_v0))])
+            f = sym.lambdify(v, l_HH, 'numpy')
+            vv = np.linspace(-tt, tt, 1000)
+            fig, ax = plt.subplots(figsize=(6,4))
+            ax.plot(vv, f(vv), label='h_k(Theta)', color='blue')
+            ax.scatter(x_pts, y_pts, color='red', marker='o', s=60,label='Intersection points')
+            
+            for x, y, label in zip(x_pts, y_pts, labels):
+                ax.annotate(label,
+                    xy=(x, y),                # position du point
+                    xytext=(0, 8),            # décalage texte en points
+                    textcoords='offset points',
+                    ha='center',
+                    color='green',
+                    fontsize=12)
+            # Axes, grille, labels
+            ax.axhline(0, color='black', linewidth=0.8)
+            ax.axvline(0, color='black', linewidth=0.8)
+            ax.grid(True, linestyle='--', alpha=0.6)
+            ax.set_xlabel("Theta")
+            ax.set_ylabel("meters")
+            ax.set_title("h_k")
+            ax.legend()
+            plt.show()"""
+            t1t0=t4t0
             corrected=True 
             
         """else:

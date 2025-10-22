@@ -112,9 +112,9 @@ def absolute_r(columns, axis):
 gps = df_left.values[:,[-3,-2]]
 
 mpu = pd.DataFrame(columns = ['timestamp','acceleration_x','acceleration_y','acceleration_z', 'gyro_x', 'gyro_y', 'gyro_z','mag_x','mag_y','mag_z','gps_x','gps_y','speed'])
-mpu['acceleration_x']= absolute(acc_columns_x, acc_x)
-mpu['acceleration_y']= absolute(acc_columns_y, acc_y)
-mpu['acceleration_z']= absolute(acc_columns_z, acc_z)
+mpu['acceleration_x']= absolute_l(acc_columns_x, acc_x)
+mpu['acceleration_y']= absolute_l(acc_columns_y, acc_y)
+mpu['acceleration_z']= absolute_l(acc_columns_z, acc_z)
 mpu['gyro_x']= absolute_l(gyro_columns_x, gyro_x)
 mpu['gyro_y']= absolute_l(gyro_columns_y, gyro_y)
 mpu['gyro_z']= absolute_l(gyro_columns_z, gyro_z)
@@ -329,7 +329,7 @@ angle = int(N/2)
 orient = newset.orient
 pos_earth = newset.pos_earth
 
-q0,q1,r0,r1 = 10**(-2), 10**(-2), 10**(6), 10**(6)
+q0,q1,r0,r1 = 10**(-2), 10**(-2), 10**(7), 10**(7)
 normal = newset.normal
     
 

@@ -226,7 +226,7 @@ class KFilterDataFile:
         
         self.freq = np.mean(1/dtime[ind])
         self.size=len(time)
-        self.c_size = 300
+        self.c_size = 200
         self.DT = mpf(1)/mpf(self.freq)
         self.grav = np.mean([mp.norm(a) for a in acc])
         

@@ -47,18 +47,18 @@ from solver_kalman import SolverFilterPlan
 
 acc_columns_x = [
     'acc_x_dashboard',
-    'acc_x_above_suspension',
-    'acc_x_below_suspension'
+    #'acc_x_above_suspension',
+    #'acc_x_below_suspension'
 ]
 acc_columns_y = [
     'acc_y_dashboard',
-    'acc_y_above_suspension',
-    'acc_y_below_suspension'
+    #'acc_y_above_suspension',
+    #'acc_y_below_suspension'
 ]
 acc_columns_z = [
     'acc_z_dashboard',
-    'acc_z_above_suspension',
-    'acc_z_below_suspension'
+    #'acc_z_above_suspension',
+    #'acc_z_below_suspension'
 ]
 gyro_columns_x = [
     'gyro_x_dashboard'#,
@@ -114,9 +114,9 @@ def absolute_r(columns, axis):
 gps = df_left.values[:,[-3,-2]]
 
 mpu = pd.DataFrame(columns = ['timestamp','acceleration_x','acceleration_y','acceleration_z', 'gyro_x', 'gyro_y', 'gyro_z','mag_x','mag_y','mag_z','gps_x','gps_y','speed'])
-mpu['acceleration_x']= absolute(acc_columns_x, acc_x)
-mpu['acceleration_y']= absolute(acc_columns_y, acc_y)
-mpu['acceleration_z']= absolute(acc_columns_z, acc_z)
+mpu['acceleration_x']= absolute_l(acc_columns_x, acc_x)
+mpu['acceleration_y']= absolute_l(acc_columns_y, acc_y)
+mpu['acceleration_z']= absolute_l(acc_columns_z, acc_z)
 mpu['gyro_x']= absolute_l(gyro_columns_x, gyro_x)
 mpu['gyro_y']= absolute_l(gyro_columns_y, gyro_y)
 mpu['gyro_z']= absolute_l(gyro_columns_z, gyro_z)
@@ -157,7 +157,7 @@ if mmode == 'OdoAccPre':
 
 n_start = 9090
 n_end=4000
-n_end=n_start +3000
+n_end=n_start +3500
 cols = np.array([0,1,2,3,10,11,12,19,20,21])
 cols = np.array([0,7,8,9,16,17,18,25,26,27])
 cols = np.array(range(10))
@@ -330,7 +330,7 @@ angle = int(N/2)
 orient = newset.orient
 pos_earth = newset.pos_earth
 
-q0,q1,r0,r1 = 10**(-2), 10**(-2), 10**(6), 10**(6)
+q0,q1,r0,r1 = 10**(-2), 10**(-2), 10**(7), 10**(7)
 normal = newset.normal
 
 
@@ -372,8 +372,8 @@ for i in range(0,N-1,1):
 quaternion0 = Solv0.quaternion[:N,:]   
 position0 = Solv0.position[:N,:]
 
-
-"""normals = compute_normals(N,acc_smooth,gravity,df[:,7:10])
+"""
+normals = compute_normals(N,acc_smooth,gravity,df[:,7:10])
 
 
 y = normals
