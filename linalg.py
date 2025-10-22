@@ -1442,7 +1442,7 @@ def acc_from_normal_imu_grav(norm0,norm,acc,grav,normal,center,start=[0,0,1],s_r
         ##FF = FF_normal/t1t0
         #pdb.set_trace()
         
-        gamma = 0.25
+        gamma = 0.5
         
         prob = np.random.random(1)
         prob = 0
@@ -1460,7 +1460,7 @@ def acc_from_normal_imu_grav(norm0,norm,acc,grav,normal,center,start=[0,0,1],s_r
         ert4 = HH.evalf(subs={v: float(t4t0)})
         
         
-        """x_pts = [float(t1t0 - t_v0),float(t4t0 - t_v0), float(t2t0 - t_v0)]
+        x_pts = [float(t1t0 - t_v0),float(t4t0 - t_v0), float(t2t0 - t_v0)]
         y_pts = np.array([l_HH.evalf(subs={v: float(t1t0 - t_v0)}),
          l_HH.evalf(subs={v: float(t4t0 - t_v0)}),
          l_HH.evalf(subs={v: float(t2t0 - t_v0)})]).astype(float)
@@ -1489,7 +1489,7 @@ def acc_from_normal_imu_grav(norm0,norm,acc,grav,normal,center,start=[0,0,1],s_r
         ax.set_ylabel("meters")
         ax.set_title("h_k")
         ax.legend()
-        plt.show()"""
+        plt.show()
         print("angles",t4t0,t1t0,t_v0)
         print(np.abs(t_v0-t4t0),np.abs(t_v0-t1t0)*gamma,sign*(teGG-C).dot(normal).evalf(subs={v:(t4t0+t2t0)/2}))
         

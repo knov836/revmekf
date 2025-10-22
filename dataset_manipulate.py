@@ -44,16 +44,19 @@ from scipy.spatial.transform import Rotation
 from solver_kalman import SolverFilterPlan
 
 acc_columns_x = [
-    'acc_x_dashboard'#,
-    #'acc_x_above_suspension'#,'acc_x_below_suspension'
+    'acc_x_dashboard',
+    'acc_x_above_suspension',
+    'acc_x_below_suspension'
 ]
 acc_columns_y = [
-    'acc_y_dashboard'#,
-    #'acc_y_above_suspension'#,'acc_y_below_suspension'
+    'acc_y_dashboard',
+    'acc_y_above_suspension',
+    'acc_y_below_suspension'
 ]
 acc_columns_z = [
-    'acc_z_dashboard'#,
-    #'acc_z_above_suspension'#,'acc_z_below_suspension'
+    'acc_z_dashboard',
+    'acc_z_above_suspension',
+    'acc_z_below_suspension'
 ]
 gyro_columns_x = [
     'gyro_x_dashboard'#,
@@ -109,9 +112,9 @@ def absolute_r(columns, axis):
 gps = df_left.values[:,[-3,-2]]
 
 mpu = pd.DataFrame(columns = ['timestamp','acceleration_x','acceleration_y','acceleration_z', 'gyro_x', 'gyro_y', 'gyro_z','mag_x','mag_y','mag_z','gps_x','gps_y','speed'])
-mpu['acceleration_x']= absolute_l(acc_columns_x, acc_x)
-mpu['acceleration_y']= absolute_l(acc_columns_y, acc_y)
-mpu['acceleration_z']= absolute_l(acc_columns_z, acc_z)
+mpu['acceleration_x']= absolute(acc_columns_x, acc_x)
+mpu['acceleration_y']= absolute(acc_columns_y, acc_y)
+mpu['acceleration_z']= absolute(acc_columns_z, acc_z)
 mpu['gyro_x']= absolute_l(gyro_columns_x, gyro_x)
 mpu['gyro_y']= absolute_l(gyro_columns_y, gyro_y)
 mpu['gyro_z']= absolute_l(gyro_columns_z, gyro_z)
@@ -152,7 +155,7 @@ if mmode == 'OdoAccPre':
 
 n_start = 9090
 n_end=4000
-n_end=n_start +15000
+n_end=n_start +10000
 cols = np.array([0,1,2,3,10,11,12,19,20,21])
 cols = np.array([0,7,8,9,16,17,18,25,26,27])
 cols = np.array(range(10))
@@ -326,7 +329,7 @@ angle = int(N/2)
 orient = newset.orient
 pos_earth = newset.pos_earth
 
-q0,q1,r0,r1 = 10**(-2), 10**(-2), 10**(1), 10**(1)
+q0,q1,r0,r1 = 10**(-2), 10**(-2), 10**(6), 10**(6)
 normal = newset.normal
     
 
@@ -794,22 +797,33 @@ ax.plot(range(per,len(q2)-per+1,per),theta[:]-delta)
 ax.legend(['Magneto','MEKF','Gyro','GPS'])
 ax.set_title('Heading')
 alpha=np.pi/2+np.pi/8+np.pi/64+np.pi/128
-alpha=-delta
+alpha=-(delta)#-theta[0])
 coords1 = np.zeros(coords.shape)
-coords1[:,0] = (np.cos(alpha)*coords[:,0]+np.sin(alpha)*coords[:,1])
-coords1[:,1] = (np.sin(alpha)*coords[:,0]-np.cos(alpha)*coords[:,1])
-
+coords1[:,1] = (np.cos(alpha)*coords[:,1]+np.sin(alpha)*coords[:,0])
+coords1[:,0] = (-np.sin(alpha)*coords[:,1]+np.cos(alpha)*coords[:,0])
+speed1 = np.diff(-coords1[::per,:].astype(float),axis=0)*newset.freq
+theta1 = np.arctan2(speed1[:,1],speed1[:,0])
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(np.arctan2(mag[:,1],mag[:,0]))
+#ax.plot(np.arctan2(q2[:,1],q2[:,0]))
+ax.plot(np.arctan2(q1[:,1],q1[:,0]))
+ax.plot(np.arctan2(q0[:,1],q0[:,0]))
+ax.plot(range(per,len(q2)-per+1,per),theta[:])
+ax.plot(range(0,len(q2)-per,per),theta1[:])
+ax.legend(['Magneto','MEKF','Gyro','GPS'])
+ax.set_title('Heading')
 
 fig = plt.figure()
 ax = fig.add_axes([0,0,1,1])
 
 #ax.plot(newset.acc)
 
-ax.plot(-np.array(coords1[:,1]),np.array(coords1[:,0]))
-#ax.plot(position0[:,0],position0[:,1])
+ax.plot(-np.array(coords1[:,0]),-np.array(coords1[:,1]))
+ax.plot(position0[:,0],position0[:,1])
 ax.plot(position1[:,0],position1[:,1])
 
-ax.legend(['GPS','Position from MEKF'])
+ax.legend(['GPS','Gyro','Position from MEKF'])
 plt.axis('equal')
 plt.xlabel('X axis in meters')
 plt.ylabel('Y axis in meters')

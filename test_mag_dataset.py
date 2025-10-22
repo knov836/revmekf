@@ -45,19 +45,19 @@ from scipy.spatial.transform import Rotation
 from solver_kalman import SolverFilterPlan
 
 acc_columns_x = [
-    #'acc_x_dashboard'#,
-    'acc_x_above_suspension'#,
-    #'acc_x_below_suspension'
+    'acc_x_dashboard',#,
+    'acc_x_above_suspension',#,
+    'acc_x_below_suspension'
 ]
 acc_columns_y = [
-    #'acc_y_dashboard'#,
-    'acc_y_above_suspension'#,
-    #'acc_y_below_suspension'
+    'acc_y_dashboard',#,
+    'acc_y_above_suspension',#,
+    'acc_y_below_suspension'
 ]
 acc_columns_z = [
-    #'acc_z_dashboard'#,
-    'acc_z_above_suspension'#,
-    #'acc_z_below_suspension'
+    'acc_z_dashboard',#,
+    'acc_z_above_suspension',#,
+    'acc_z_below_suspension'
 ]
 gyro_columns_x = [
     'gyro_x_dashboard',
@@ -102,8 +102,8 @@ df_right=pd.read_csv('dataset_gps_mpu_right.csv')
 def absolute(columns, axis):
     sum_left = df_left[columns].sum(axis=1).div(axis)
     print((sum_left))
-    sum_right = df_right[columns].sum(axis=1).div(axis)*0
-    return pd.concat([sum_left, sum_right], axis=1).mean(axis=1)*2
+    sum_right = df_right[columns].sum(axis=1).div(axis)
+    return pd.concat([sum_left, sum_right], axis=1).mean(axis=1)
 
 
 gps = df_left.values[:,[-3,-2]]
@@ -156,17 +156,17 @@ ax.set_title('gyro')
 
 fig = plt.figure()
 ax = fig.add_axes([0,0,1,1])
-ax.plot(acc[9000:19000,:])
+ax.plot(acc[9000:12000,:])
 ax.set_title('acc')
-fig = plt.figure()
+"""fig = plt.figure()
 ax = fig.add_axes([0,0,1,1])
 ax.plot(mag[9000:19000,:])
 ax.set_title('Mag')
 fig = plt.figure()
 ax = fig.add_axes([0,0,1,1])
 ax.plot(np.arctan2(mag[9000:19000,1],mag[9000:19000,0]))
-
-
+"""
+"""
 from mpl_toolkits.mplot3d import Axes3D  # (not strictly needed in modern versions)
 
 # Example: random data of size (N, 3)
@@ -337,3 +337,4 @@ ax.set_title('c Mag')
 fig = plt.figure()
 ax = fig.add_axes([0,0,1,1])
 ax.plot(np.arctan2(c_mag[:,1],c_mag[:,0]))
+"""

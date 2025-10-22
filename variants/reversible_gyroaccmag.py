@@ -215,7 +215,9 @@ class PredictFilter(Filter):
             mag0[2] = 0
             mag0 = mag0/np.linalg.norm(mag0)
             zaxis = np.array([0,0,1])
-            #mag0 = np.array(quat_rot([0,*mag0],ExpQua(-zaxis*np.pi/2)))[1:4]
+            orth = np.cross(zaxis,mag0)
+            nzaxis = np.cross(mag0,orth)
+            #mag0 = np.array(quat_rot([0,*mag0],ExpQua(-nzaxis*np.pi/2)))[1:4]
             mag = np.array(quat_rot([0,*mag0], quat_inv(self.Quaternion)))[1:4]#.astype(float)
             acc = self.linalg_correct(Gyroscope, acc, mag, Orient,normal=self.normal).astype(float)
             
@@ -223,20 +225,20 @@ class PredictFilter(Filter):
             #mag = np.array(quat_rot([0,*mag0], quat_inv(self.Quaternion)))[1:4]
             #mag=Magnetometer
         else:
-            acc = self.linalg_correct(Gyroscope, acc, mag, Orient,normal=self.normal)
-        mag = Magnetometer.astype(float)
+            acc = self.linalg_correct(Gyroscope, Accelerometer, Magnetometer, Orient,normal=self.normal)
+        """mag = Magnetometer.astype(float)
         heading = np.arctan2(mag[1],mag[0])
         zaxis = np.array([0,0,1])
         
         normal = self.normal.astype(float)
         normal_h= np.array(quat_rot([0,*normal],ExpQua(-zaxis*heading)))[1:4]
         
-        qq0 = quat_ntom(np.array([0,0,1]), normal_h)#-normal_h[0]*np.array([1,0,0]))#-normal[0]*np.array([1,0,0]))
+        qq0 = quat_ntom(np.array([0,0,1]), normal_h)#-normal_h[0]*np.array([1,0,0]))#-normal[0]*np.array([1,0,0]))"""
         #pacc= acc/n.linalg.norm(acc)-np.dot(acc/n.linalg.norm(acc))
         """qq1 = quat_ntom(np.array(quat_rot([0,*acc/np.linalg.norm(acc)],qq0))[1:4],np.array([0,0,1]))
         logqq1 = np.dot(np.array(log_q(qq1)),normal)*normal*0
         revacc = np.array(quat_rot([0,0,0,1],quat_inv(quat_mult(ExpQua(logqq1),qq0))))[1:4].astype(float)"""
-        revacc = np.array(quat_rot([0,0,0,1],quat_inv(qq0)))[1:4].astype(float)
+        """revacc = np.array(quat_rot([0,0,0,1],quat_inv(qq0)))[1:4].astype(float)
         roll = np.arctan2(revacc[1],revacc[2])
         
         print("roll",revacc,Accelerometer)
@@ -245,9 +247,9 @@ class PredictFilter(Filter):
         
         roth = R.from_euler('ZYX', [heading, pitch,roll], degrees=False)
         nacc = roth.inv().as_matrix()[:]@[0,0,1]
-        nmag = roth.inv().as_matrix()[:]@self.mag0
+        nmag = roth.inv().as_matrix()[:]@self.mag0"""
         
-        grav_earth=nacc
+        grav_earth=acc
         self.gravity_r = grav_earth
         self.update(Gyroscope,grav_earth,Magnetometer,Orient)
 
