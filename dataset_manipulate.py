@@ -828,3 +828,21 @@ plt.axis('equal')
 plt.xlabel('X axis in meters')
 plt.ylabel('Y axis in meters')
 ax.set_title('Projected position in 2D of GPS/Gyro Integration/MEKF')
+
+
+speed0 = np.diff(position0[:,:].astype(float),axis=0)*newset.freq
+speed1 = np.diff(position1[:,:].astype(float),axis=0)*newset.freq
+speed2 = np.diff(position2[:,:].astype(float),axis=0)*newset.freq
+
+theta0 = np.arctan2(speed0[:,1],speed0[:,0])
+theta1 = np.arctan2(speed1[:,1],speed1[:,0])
+theta2 = np.arctan2(speed2[:,1],speed2[:,0])
+
+htheta0 =np.arctan2(q0[:,1],q0[:,0])
+htheta1 =np.arctan2(q1[:,1],q1[:,0])
+htheta2 =np.arctan2(q2[:,1],q2[:,0])
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot((theta0[:]-htheta0[1:])[1000:])
+ax.plot((theta1[:]-htheta1[1:])[1000:])

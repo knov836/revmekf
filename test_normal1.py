@@ -157,7 +157,7 @@ if mmode == 'OdoAccPre':
 
 n_start = 9090
 n_end=4000
-n_end=n_start +3500
+n_end=n_start +10000
 cols = np.array([0,1,2,3,10,11,12,19,20,21])
 cols = np.array([0,7,8,9,16,17,18,25,26,27])
 cols = np.array(range(10))
@@ -535,8 +535,14 @@ ax.set_title("heading")
 
 per=250
 speed = np.diff(-coords[::per,:].astype(float),axis=0)*newset.freq
-theta = np.arctan2(speed[:,1],speed[:,0])
+speed0 = np.diff(position0[::per,:].astype(float),axis=0)*newset.freq
+speed1 = np.diff(position1[::per,:].astype(float),axis=0)*newset.freq
+speed2 = np.diff(position2[::per,:].astype(float),axis=0)*newset.freq
 
+theta = np.arctan2(speed[:,1],speed[:,0])
+theta0 = np.arctan2(speed0[:,1],speed0[:,0])
+theta1 = np.arctan2(speed1[:,1],speed1[:,0])
+theta2 = np.arctan2(speed2[:,1],speed2[:,0])
 mag0 = newset.mag.astype(float)
 #mag = np.array([np.array(quat_rot([0,*m],ExpQua(np.array([-0.5,0.0,0]))))[1:4] for m in mag0]).astype(float)
 mag = mag0
@@ -547,9 +553,47 @@ ax.plot(np.arctan2(mag[:,1],mag[:,0]))
 #ax.plot(np.arctan2(q2[:,1],q2[:,0]))
 ax.plot(np.arctan2(q1[:,1],q1[:,0]))
 ax.plot(np.arctan2(q0[:,1],q0[:,0]))
+"""ax.plot(range(per,len(q2)-per+1,per),theta0[:])
+ax.plot(range(per,len(q2)-per+1,per),theta1[:])
+ax.plot(range(per,len(q2)-per+1,per),theta2[:])"""
+
 ax.plot(range(per,len(q2)-per+1,per),theta[:]-delta)
 ax.legend(['Magneto','MEKF','Gyro','GPS'])
 ax.set_title('Heading')
+
+speed0 = np.diff(position0[:,:].astype(float),axis=0)*newset.freq
+speed1 = np.diff(position1[:,:].astype(float),axis=0)*newset.freq
+speed2 = np.diff(position2[:,:].astype(float),axis=0)*newset.freq
+
+theta0 = np.arctan2(speed0[:,1],speed0[:,0])
+theta1 = np.arctan2(speed1[:,1],speed1[:,0])
+theta2 = np.arctan2(speed2[:,1],speed2[:,0])
+
+htheta0 =np.arctan2(q0[:,1],q0[:,0])
+htheta1 =np.arctan2(q1[:,1],q1[:,0])
+htheta2 =np.arctan2(q2[:,1],q2[:,0])
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(np.abs(theta0[:]-htheta0[1:])[1000:])
+ax.plot(np.abs(theta2[:]-htheta2[1:])[1000:])
+ax.plot(np.abs(theta1[:]-htheta1[1:])[1000:])
+ax.legend(['Gyro','RevMEKF','MEKF'])
+ax.set_title('Metric on heading')
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(np.abs(theta0[:]))
+ax.plot(np.abs(htheta0[1:]))
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(np.abs(theta1[:]))
+ax.plot(np.abs(htheta1[1:]))
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(np.abs(theta2[:]))
+ax.plot(np.abs(htheta2[1:]))
 
 
 alpha=-(delta)#-theta[0])
@@ -895,6 +939,15 @@ df = pd.DataFrame(data, columns=columns)
 
 # Save to CSV
 df.to_csv(f"trajectory_mekf1_{timestamp}.csv", index=False)
+
+
+data = np.hstack((position0, quaternion0))
+columns = ['px', 'py', 'pz', 'qw', 'qx', 'qy', 'qz']    
+
+df = pd.DataFrame(data, columns=columns)
+
+# Save to CSV
+df.to_csv(f"trajectory_gyro0_{timestamp}.csv", index=False)
 
 print("Saved to trajectory.csv")
 print(df.head())

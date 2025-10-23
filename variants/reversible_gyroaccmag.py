@@ -104,7 +104,7 @@ class PredictFilter(Filter):
         print("mag0",mag0)
         mm2 = np.array(mag0,dtype=mpf)
         mag0 = np.copy(mag0)
-        mag0[2] = 0
+        #mag0[2] = 0
         mag0 = mag0/np.linalg.norm(mag0)
         quat2 = quat_ntom(mag0,mm1)
         """qq = quat_mult(self.Quaternion,quat_inv(quat))
@@ -192,6 +192,8 @@ class PredictFilter(Filter):
 
         acc = np.array(quat_rot([0,*(acc1)],quat_inv(quat)),dtype=mpf)[1:4]
         rot = QuatToRot(quat_inv(quat))@rot1@QuatToRot((quat2))
+        acc = rot@ np.array([0,0,1])
+        print(rot,iRR,acc,iRR@np.array([0,0,1]))
         #pdb.set_trace()
         return acc
     
@@ -215,17 +217,22 @@ class PredictFilter(Filter):
             #mag0[2] = 0
             mag0 = mag0/np.linalg.norm(mag0)
             mag0 = np.array([1,0,0])
-            zaxis = np.array([0,0,1])
-            orth = np.cross(zaxis,mag0)
-            nzaxis = np.cross(mag0,orth)
-            #mag0 = np.array(quat_rot([0,*mag0],ExpQua(-nzaxis*np.pi/2)))[1:4]
+            #zaxis = np.array([0,0,1])
+            #orth = np.cross(zaxis,mag0)
+            #nzaxis = np.cross(mag0,orth)
+            #mag1 = np.array(quat_rot([0,*mag0],ExpQua(-nzaxis*np.pi/2)))[1:4]
+            #mag = np.array(quat_rot([0,*mag0], quat_inv(self.Quaternion)))[1:4]
+            #acc = self.linalg_correct(Gyroscope, acc, mag, Orient,normal=np.cross(self.normal,np.array(quat_rot([0,1,0,0],self.Quaternion))))
+            mag0 = np.array([0,1,0])
             mag = np.array(quat_rot([0,*mag0], quat_inv(self.Quaternion)))[1:4]#.astype(float)
             acc = self.linalg_correct(Gyroscope, acc, mag, Orient,normal=self.normal).astype(float)
-            
             
             #mag = np.array(quat_rot([0,*mag0], quat_inv(self.Quaternion)))[1:4]
             #mag=Magnetometer
         else:
+            #mag0 =np.copy(np.array([0,1,0.1]))
+            #mag0 = mag0/np.linalg.norm(mag0)
+            #mag = np.array(quat_rot([0,*mag0], quat_inv(self.Quaternion)))[1:4]
             acc = self.linalg_correct(Gyroscope, Accelerometer, Magnetometer, Orient,normal=self.normal)
         """mag = Magnetometer.astype(float)
         heading = np.arctan2(mag[1],mag[0])
