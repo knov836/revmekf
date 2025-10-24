@@ -309,6 +309,7 @@ class KFilterDataFile:
         
         
         self.mag0 = np.array(quat_rot([0,*np.mean(self.mag[:300,:].astype(float),axis=0)], self.quat_calib))[1:4]
+        self.mag0 = self.mag0/np.linalg.norm(self.mag0)
         #self.mag0 = np.array(quat_rot([0,*np.mean(self.mag[:300,:].astype(float),axis=0)], quat_inv(self.quat_calib)))[1:4]
         
         #self.mag0 = np.array([1,0,0],dtype=mpf)

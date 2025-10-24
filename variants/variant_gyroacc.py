@@ -108,9 +108,10 @@ class Filter:
         self.dt = mpf(Time) - self.time
         self.time = mpf(Time)
         self.xtensor = np.array([])
-        
+        #Surface[1:4] = np.cross(self.normal,np.array(quat_rot([0,1,0,0],self.Quaternion))[1:4])
         normal = Surface[1:4]
         normal = normal/mp.norm(normal)
+        
         self.normal = normal
         
         normal0 = np.array([0,0,1],dtype=mpf)

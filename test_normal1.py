@@ -330,7 +330,7 @@ angle = int(N/2)
 orient = newset.orient
 pos_earth = newset.pos_earth
 
-q0,q1,r0,r1 = 10**(-2), 10**(-2), 10**(7), 10**(7)
+q0,q1,r0,r1 = 10**(-2), 10**(-2), 10**(4), 10**(4)
 normal = newset.normal
 
 
@@ -372,24 +372,37 @@ for i in range(0,N-1,1):
 quaternion0 = Solv0.quaternion[:N,:]   
 position0 = Solv0.position[:N,:]
 
-"""
-normals = compute_normals(N,acc_smooth,gravity,df[:,7:10])
+
+"""normals = compute_normals(N,acc_smooth,gravity,df[:,7:10],newset.mag0.astype(float))
 
 
 y = normals
-y_smooth0 = savgol_filter(y[:,0], 500, 2)
-y_smooth1 = savgol_filter(y[:,1], 500, 2)
-y_smooth2 = savgol_filter(y[:,2], 500, 2)
+y_smooth0 = savgol_filter(y[:,0], 100, 2)
+y_smooth1 = savgol_filter(y[:,1], 100, 2)
+y_smooth2 = savgol_filter(y[:,2], 100, 2)
+y_smooth = np.vstack((y_smooth0,y_smooth1,y_smooth2)).T
+"""
+#normals = np.copy(y_smooth)
+normals = np.array([quat_rot([0,0,0,1],quaternion0[i,:]) for i in range(N)])[:,1:4]
+
+quaternion_normal = np.zeros((N,4))
+
+for i in range(N):
+    quaternion_normal[i,:] = (RotToQuat(acc_mag_to_rotation(np.array(quat_rot([0,0,0,1],quat_inv(quaternion0[i,:])))[1:4],newset.mag[i,:])['R']))
+    normals[i,:] = np.array(quat_rot([0,0,0,1],quaternion_normal[i,:]))[1:4]
+y = normals
+y_smooth0 = savgol_filter(y[:,0], 100, 2)
+y_smooth1 = savgol_filter(y[:,1], 100, 2)
+y_smooth2 = savgol_filter(y[:,2], 100, 2)
 y_smooth = np.vstack((y_smooth0,y_smooth1,y_smooth2)).T
 normals = np.copy(y_smooth)
 
-
 fig = plt.figure()
 ax = fig.add_axes([0,0,1,1])
-ax.plot(y_smooth)
+ax.plot(normals)
 ax.set_title('Evolution of the normal')
-normals = np.copy(y_smooth)"""
-normals = np.array([quat_rot([0,0,0,1],quaternion0[i,:]) for i in range(N)])[:,1:4]
+#normals = np.copy(y_smooth)
+#normals = np.array([quat_rot([0,0,0,1],quaternion0[i,:]) for i in range(N)])[:,1:4]
 
 
 #s_acc_z = acc_z

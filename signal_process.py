@@ -3,10 +3,11 @@ from mpmath import mp
 from mpmath import mpf
 from function_quat import *
 import sympy as sp
+import pdb
 xaxis = np.array([1,0,0])
 yaxis = np.array([0,1,0])
 zaxis = np.array([0,0,1])
-def compute_normals(N,Acc,gravity,Mag):
+def compute_normals(N,Acc,gravity,Mag,mag0):
     normals = np.zeros((N,3))
 
     for i in range(0,N,1):
@@ -17,8 +18,16 @@ def compute_normals(N,Acc,gravity,Mag):
             a = np.copy(acc_mean)
             a=a/np.linalg.norm(a)
             mag_mean = np.mean(Mag[i:ss+i,0:3],axis=0)
-            mag_mean = mag_mean /np.linalg.norm(mag_mean)
+            h_mag = mag_mean[:2]
+            h_axis = np.cross(h_mag,zaxis)
+            h_axis = h_axis/np.linalg.norm(h_axis)
             
+            mag_mean = mag_mean /np.linalg.norm(mag_mean)
+            #print(mag_mean)
+            mag_mean = np.array(quat_rot([0,*mag_mean],ExpQua(h_axis*np.arcsin(mag0[2]))))[1:4]
+            #print(mag_mean,np.array(quat_rot([0,*mag0],ExpQua(h_axis*np.arcsin(mag0[2]))))[1:4])
+            #pdb.set_trace()
+            #break
             acc_mean = acc_mean /np.linalg.norm(gravity)
             alpha = np.sqrt(np.max(np.abs(1-acc_mean[2]**2),0))
             
@@ -27,6 +36,7 @@ def compute_normals(N,Acc,gravity,Mag):
             """angle_beta = np.pi/2-angle_alpha
             beta = np.cos(angle_beta)
             angle_gamma = np.arccos(np.sign(mag_mean[2])*np.max(np.abs(mag_mean[2]),np.abs(beta))/beta)"""
+            
             
             qq1 = quat_ntom( np.array([1,0,0]),mag_mean)
             rotated_z = np.array(quat_rot(np.array([0,0,0,1]),(qq1)))[1:4]
@@ -95,4 +105,4 @@ def compute_normals(N,Acc,gravity,Mag):
     return normals
 
 N0=1000
-compute_normals(N0, np.random.rand(N0,3), np.repeat(1,3),np.random.rand(N0,3))
+compute_normals(N0, np.random.rand(N0,3), np.repeat(1,3),np.random.rand(N0,3),np.array([1,0,0]))
