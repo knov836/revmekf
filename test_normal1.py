@@ -157,7 +157,7 @@ if mmode == 'OdoAccPre':
 
 n_start = 9090
 n_end=4000
-n_end=n_start +10000
+n_end=n_start +3000
 cols = np.array([0,1,2,3,10,11,12,19,20,21])
 cols = np.array([0,7,8,9,16,17,18,25,26,27])
 cols = np.array(range(10))
@@ -318,7 +318,7 @@ s_acc_z = kalman_filter_1d(acc_z,10**(-2),0.1)
 df[:,3] = s_acc_z
 
 
-newset = KFilterDataFile(df[:,:],mode=mmode,g_bias=g_bias,base_width=0.23,normals=normals)#,gravity=np.array([0,0,9.80665],dtype=mpf))#,normal=np.array([0.1101,1,0])) 
+newset = KFilterDataFile(df[:,:],mode=mmode,g_bias=g_bias,base_width=0.23,normals=normals,gravity=np.array([0,0,9.80665],dtype=mpf))#,normal=np.array([0.1101,1,0])) 
 N=newset.size
 #N=len(df)
 nn = N-1
@@ -391,9 +391,9 @@ for i in range(N):
     quaternion_normal[i,:] = (RotToQuat(acc_mag_to_rotation(np.array(quat_rot([0,0,0,1],quat_inv(quaternion0[i,:])))[1:4],newset.mag[i,:])['R']))
     normals[i,:] = np.array(quat_rot([0,0,0,1],quaternion_normal[i,:]))[1:4]
 y = normals
-y_smooth0 = savgol_filter(y[:,0], 100, 2)
-y_smooth1 = savgol_filter(y[:,1], 100, 2)
-y_smooth2 = savgol_filter(y[:,2], 100, 2)
+y_smooth0 = savgol_filter(y[:,0], 50, 2)
+y_smooth1 = savgol_filter(y[:,1], 50, 2)
+y_smooth2 = savgol_filter(y[:,2], 50, 2)
 y_smooth = np.vstack((y_smooth0,y_smooth1,y_smooth2)).T
 normals = np.copy(y_smooth)
 
