@@ -330,7 +330,7 @@ angle = int(N/2)
 orient = newset.orient
 pos_earth = newset.pos_earth
 
-q0,q1,r0,r1 = 10**(-2), 10**(-2), 10**(4), 10**(4)
+q0,q1,r0,r1 = 10**(-2), 10**(-2), 10**(6), 10**(6)
 normal = newset.normal
 
 

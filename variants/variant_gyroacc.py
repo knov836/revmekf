@@ -8,7 +8,7 @@ import sympy
 from mpmath import mpf
 from mpmath import mp
 import numdifftools as nd 
-
+import pdb
 
 from function_quat import *
 from predict_test import predict as predict_tested
@@ -26,6 +26,7 @@ class Filter:
         self.Quaternion[0:4] = self.Quaternion[0:4]/mp.norm(self.Quaternion)
         self.acc = np.zeros(3,dtype=mpf)
         self.speed = np.zeros(3,dtype=mpf)
+        self.proj_speed = np.zeros(3,dtype=mpf)
         self.position = np.zeros(3,dtype=mpf)
         self.Q = np.array(Q).reshape(6,6)
         self.R = np.array(R)
@@ -80,7 +81,7 @@ class Filter:
     def predict_sposition(self):
         self.s_position = self.s_position +self.s_speed*self.dt
     def predict_speed_proj(self,normal):
-        self.speed = self.speed - np.dot(self.speed,normal)*normal
+        self.proj_speed = np.dot(self.speed,normal)*normal
     def predict(self,Gyroscope,Orient):
         self.Quaternion,self.Bias,self.Pk,Phi = predict_tested(self.Quaternion, self.Bias, self.Pk, self.Q, Gyroscope, Orient,dt=self.dt)
     def compute_center(self,Surface):
@@ -123,10 +124,10 @@ class Filter:
         speed = self.predict_sspeed()
         p0 = self.position
         p1  = self.position +speed*self.dt
-        Surface[0] =  0#np.dot(p1,normal)
+        Surface[0] =  np.dot(self.proj_speed,normal)
         self.predict_speed(-self.gravity)
         self.compute_center(Surface)
-        
+        #pdb.set_trace()
         
         self.acc = Accelerometer
         if kargs["std_acc_z"]!= None:
