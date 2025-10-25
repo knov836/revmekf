@@ -1436,7 +1436,8 @@ def acc_from_normal_imu_grav(norm0,norm,acc,grav,normal,center,start=[0,0,1],s_r
         qq1 = quat_ntom(pracc, np.array([0,0,1]))
         qq_normal = np.array(quat_mult(qq1,qq0)).astype(float)
         FF_normal = log_q(qq_normal).astype(float)
-        t1t0 = np.linalg.norm(FF_normal[1])
+        t1t0 = FF_normal[1]
+        print("ff normal",FF_normal)
         if np.abs(t1t0-t_v0)>6*np.pi/4:
             #pdb.set_trace()
             t1t0 -=2*np.pi*np.sign(float(t1t0-t_v0))

@@ -157,7 +157,7 @@ if mmode == 'OdoAccPre':
 
 n_start = 9090
 n_end=4000
-n_end=n_start +3000
+n_end=n_start +10000
 cols = np.array([0,1,2,3,10,11,12,19,20,21])
 cols = np.array([0,7,8,9,16,17,18,25,26,27])
 cols = np.array(range(10))
