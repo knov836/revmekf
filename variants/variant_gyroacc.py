@@ -79,7 +79,8 @@ class Filter:
     #    print("test predict pos acc",self.position +acc*(self.dt)**2)
     def predict_sposition(self):
         self.s_position = self.s_position +self.s_speed*self.dt
-        
+    def predict_speed_proj(self,normal):
+        self.speed = self.speed - np.dot(self.speed,normal)*normal
     def predict(self,Gyroscope,Orient):
         self.Quaternion,self.Bias,self.Pk,Phi = predict_tested(self.Quaternion, self.Bias, self.Pk, self.Q, Gyroscope, Orient,dt=self.dt)
     def compute_center(self,Surface):
@@ -100,8 +101,8 @@ class Filter:
         normal = Surface[1:4]
         normal = normal/mp.norm(normal)
         
-        self.center= self.position-np.dot(normal,self.position)*normal+cst*normal #+/- cst ???
-        self.surf_center= -np.dot(normal,self.position)*normal+cst*normal
+        self.center= self.speed-np.dot(normal,self.speed)*normal+cst*normal #+/- cst ???
+        self.surf_center= -np.dot(normal,self.speed)*normal+cst*normal
 
     def UpdateSensor(self, *args,**kargs):
         Time, Surface, Accelerometer = args[:3]
@@ -122,11 +123,11 @@ class Filter:
         speed = self.predict_sspeed()
         p0 = self.position
         p1  = self.position +speed*self.dt
-        Surface[0] =  np.dot(p1,normal)
+        Surface[0] =  0#np.dot(p1,normal)
         self.predict_speed(-self.gravity)
-        #self.predict_position_acc(-self.gravity)
-        self.predict_position()
         self.compute_center(Surface)
+        
+        
         self.acc = Accelerometer
         if kargs["std_acc_z"]!= None:
             self.std_acc_z = kargs["std_acc_z"]
@@ -150,7 +151,11 @@ class Filter:
             self.compute_center(Surface)
             self.Quaternion,self.Pk,acc_earth = self.proj_fun(self.dt, self.Quaternion, self.Pk, self.position, self.center, Accelerometer, Surface)
         
+        
+        
+        self.predict_position()
         self.predict_position_acc(acc_earth)
         old_speed = self.speed
         self.predict_speed(acc_earth)
+        self.predict_speed_proj(normal)
         #print(self.position.dot(normal))
