@@ -110,7 +110,9 @@ class Filter:
         self.dt = mpf(Time) - self.time
         self.time = mpf(Time)
         self.xtensor = np.array([])
-        #Surface[1:4] = np.cross(self.normal,np.array(quat_rot([0,1,0,0],self.Quaternion))[1:4])
+        #quaternion_normal = (RotToQuat(acc_mag_to_rotation(np.array(quat_rot([0,0,0,1],quat_inv(self.Quaternion)))[1:4],args[4])['R']))
+        #pdb.set_trace()
+        #Surface[1:4] = np.cross(self.normal,np.array(quat_rot([0,1,0,0],quaternion_normal))[1:4])
         normal = Surface[1:4]
         normal = normal/mp.norm(normal)
         
