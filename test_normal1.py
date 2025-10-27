@@ -318,7 +318,7 @@ s_acc_z = kalman_filter_1d(acc_z,10**(-2),0.1)
 df[:,3] = s_acc_z
 
 
-newset = KFilterDataFile(df[:,:],mode=mmode,g_bias=g_bias,base_width=0.23,normals=normals,gravity=np.array([0,0,9.80665],dtype=mpf))#,normal=np.array([0.1101,1,0])) 
+newset = KFilterDataFile(df[:,:],mode=mmode,g_bias=g_bias,base_width=0.23,normals=normals)#,gravity=np.array([0,0,9.785],dtype=mpf))#,normal=np.array([0.1101,1,0])) 
 N=newset.size
 #N=len(df)
 nn = N-1
@@ -546,8 +546,12 @@ ax.plot(np.arctan2(q0[:,1],q0[:,0]))
 ax.legend(['acc-mag','revmekf','mekf','gyro'])
 ax.set_title("heading")
 
+
+coords1 = np.array([coords[:,1],coords[:,0]]).T
 per=250
 speed = np.diff(-coords[::per,:].astype(float),axis=0)*newset.freq
+#speed = np.diff(-coords1[::per,:].astype(float),axis=0)*newset.freq
+
 speed0 = np.diff(position0[::per,:].astype(float),axis=0)*newset.freq
 speed1 = np.diff(position1[::per,:].astype(float),axis=0)*newset.freq
 speed2 = np.diff(position2[::per,:].astype(float),axis=0)*newset.freq
@@ -560,10 +564,11 @@ mag0 = newset.mag.astype(float)
 #mag = np.array([np.array(quat_rot([0,*m],ExpQua(np.array([-0.5,0.0,0]))))[1:4] for m in mag0]).astype(float)
 mag = mag0
 delta = theta[int(2000/per)]-np.arctan2(q1[2000,1],q1[2000,0])
+delta = 18*np.pi/180-np.pi/2
 fig = plt.figure()
 ax = fig.add_axes([0,0,1,1])
 ax.plot(np.arctan2(mag[:,1],mag[:,0]))
-#ax.plot(np.arctan2(q2[:,1],q2[:,0]))
+ax.plot(np.arctan2(q2[:,1],q2[:,0]))
 ax.plot(np.arctan2(q1[:,1],q1[:,0]))
 ax.plot(np.arctan2(q0[:,1],q0[:,0]))
 """ax.plot(range(per,len(q2)-per+1,per),theta0[:])
@@ -571,7 +576,7 @@ ax.plot(range(per,len(q2)-per+1,per),theta1[:])
 ax.plot(range(per,len(q2)-per+1,per),theta2[:])"""
 
 ax.plot(range(per,len(q2)-per+1,per),theta[:]-delta)
-ax.legend(['Magneto','MEKF','Gyro','GPS'])
+ax.legend(['Magneto','Rev-MEKF','MEKF','Gyro','GPS'])
 ax.set_title('Heading')
 
 speed0 = np.diff(position0[:,:].astype(float),axis=0)*newset.freq

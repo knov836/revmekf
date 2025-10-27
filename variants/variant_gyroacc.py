@@ -60,6 +60,7 @@ class Filter:
         self.et4 = 0
         self.et2 = 0
         self.et3 = 0
+        self.ind=0
         
         
         
@@ -160,5 +161,8 @@ class Filter:
         self.predict_position_acc(acc_earth)
         old_speed = self.speed
         self.predict_speed(acc_earth)
+        #pdb.set_trace()
         self.predict_speed_proj(normal)
+        self.speed = self.speed#-self.proj_speed
+        #self.predict_speed_proj(normal)
         #print(self.position.dot(normal))

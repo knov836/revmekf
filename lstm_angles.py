@@ -22,7 +22,9 @@ from scipy.signal import savgol_filter
 #files = glob.glob("corrections_windows_angles_20251011_1456081.csv")
 
 #files = glob.glob("corrections_windows_angles_20251012_1051310.csv")
-files = glob.glob("corrections_windows_angles_20251012_1357260.csv")
+#files = glob.glob("corrections_windows_angles_20251012_1357260.csv")
+#files = glob.glob("corrections_windows_angles_20251026_1846029090.csv")
+files = glob.glob("corrections_windows_angles_20251027_1312119090.csv")
 
 #files = glob.glob("corrections_windows_20251006_1029030.csv")
 df_list = [pd.read_csv(f) for f in files]
@@ -103,7 +105,7 @@ X_extra_seq = np.repeat(X_extra[:, np.newaxis, :], timesteps, axis=1)
 X = np.concatenate([X_seq.reshape(len(df), timesteps, 12+8), X_extra_seq], axis=2)
 
 #y = df["correction_applied"].values
-y = np.array(df["correction_applied"].values) & np.array(df["et3_last"]>=0)
+y = np.array(df["correction_applied"].values)# & np.array(df["et3_last"]>=0)
 
 X_tensor = torch.tensor(X, dtype=torch.float32)
 y_tensor = torch.tensor(y, dtype=torch.long)
@@ -188,7 +190,7 @@ with torch.no_grad():
         y_pred.extend(preds.numpy())
         y_proba.extend(probs.numpy())
 
-threshold = 0.45
+threshold = 0.5
 y_pred = (np.array(y_proba) >= threshold).astype(int)
 
 print("Confusion matrix :")

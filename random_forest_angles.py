@@ -18,10 +18,12 @@ from scipy.signal import savgol_filter
 #files = glob.glob("corrections_windows_angles_20251007_1408550.csv")
 #files = glob.glob("corrections_windows_angles_20251011_1456080.csv")
 #files = glob.glob("corrections_windows_angles_20251012_1051310.csv")
-files = glob.glob("corrections_windows_angles_20251012_1357260.csv")
+#files = glob.glob("corrections_windows_angles_20251012_1357260.csv")
 
+files = glob.glob("corrections_windows_angles_20251026_1846029090.csv")
 #files = glob.glob("corrections_windows_20251006_1029030.csv")
 
+files = glob.glob("corrections_windows_angles_20251027_1312119090.csv")
 df_list = [pd.read_csv(f,) for f in files]
 df = pd.concat(df_list, ignore_index=True)
 
