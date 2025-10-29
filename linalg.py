@@ -516,7 +516,7 @@ def acc_from_normal_imu(norm0,norm,acc,normal,center,start=[0,0,1],s_rot=np.arra
     
     return np.array(irot1,dtype=mpf)@np.array([0,0,1],dtype=mpf),irot1,rot1,np.array(irot2,dtype=mpf)@np.array([0,0,1],dtype=mpf),irot2,rot2,np.array(irot3,dtype=mpf)@np.array([0,0,1],dtype=mpf),irot3,rot3,corrected,np.abs(t_v0_acc-t1t0)
 
-def acc_from_normal_imu_grav_neural(norm0,norm,acc,grav,normal,center,start=[0,0,1],s_rot=np.array([0,0,0]),heuristic=False,correction=False):
+def acc_from_normal_imu_grav_neural(norm0,norm,acc,grav,normal,center,start=[0,0,1],s_rot=np.array([0,0,0]),heuristic=False,correction=False,speed=np.array([0,0,0]),magneto =np.array([0,1,0])):
     X = sym.Symbol('X')
     Y = sym.Symbol('Y')
     Z = sym.Symbol('Z')
@@ -806,6 +806,13 @@ def acc_from_normal_imu_grav_neural(norm0,norm,acc,grav,normal,center,start=[0,0
         
         rt4 = t4t0-t_v0
         ert4 = HH.evalf(subs={v: float(t4t0)})
+        rot1 =(SymExpRot2(FF,t4t0)) 
+        rot3= (SymExpRot2(FF,t1t0))
+        ss0 = speed+rot1@acc
+        ss1 = speed+rot3@acc
+        head0 = np.arctan2(float(ss0[1]),float(ss0[0]))
+        head1 = np.arctan2(float(ss1[1]),float(ss1[0])) 
+        head_ref = np.arctan2(float(magneto[1]),float(magneto[0]))+np.pi/2
 
         #print("prob",prob,sign*(teGG-C).dot(normal).evalf(subs={v:(t1t0+t2t0)/2})<0,np.abs(t_v0-t3t0)>np.abs(t1t0 -t2t0)*1.5,(t1t0 == t2t0 and sign*(teGG-C).dot(normal).evalf(subs={v:t1t0})<0))
         #print("norms",(np.abs((teGG).dot(normal).evalf(subs={v:t_v0}))),(np.abs((C).dot(normal))))
@@ -863,7 +870,7 @@ def acc_from_normal_imu_grav_neural(norm0,norm,acc,grav,normal,center,start=[0,0
     rot= (SymExpRot2(FF,t0))
     irot= (SymExpRot2(FF,-t0))
     
-    return np.array(irot1,dtype=mpf)@np.array([0,0,1],dtype=mpf),irot1,rot1,np.array(irot2,dtype=mpf)@np.array([0,0,1],dtype=mpf),irot2,rot2,np.array(irot3,dtype=mpf)@np.array([0,0,1],dtype=mpf),irot3,rot3,corrected,not_corrected,np.abs(t_v0_acc-t1t0),rt0,rt2,rt3,rt4,ert0,ert2,ert3,ert4
+    return np.array(irot1,dtype=mpf)@np.array([0,0,1],dtype=mpf),irot1,rot1,np.array(irot2,dtype=mpf)@np.array([0,0,1],dtype=mpf),irot2,rot2,np.array(irot3,dtype=mpf)@np.array([0,0,1],dtype=mpf),irot3,rot3,corrected,not_corrected,np.abs(t_v0_acc-t1t0),rt0,rt2,rt3,rt4,ert0,ert2,ert3,ert4,head0,head1,head_ref
 def acc_from_normal_imu_roll(norm0,norm,acc,normal,center,start=[0,0,1],s_rot=np.array([0,0,0]),heuristic=False,correction=False):
     X = sym.Symbol('X')
     Y = sym.Symbol('Y')
@@ -1230,7 +1237,7 @@ def acc_from_normal_imu_grav(norm0,norm,acc,grav,normal,center,start=[0,0,1],s_r
     t1t0 = mpf(d_angle+t_v0)
     t2t0 = mpf(summ-d_angle+t_v0)
     
-    ppracc = np.array([rgrav[0],0,rgrav[2]],dtype=mpf)
+    """ppracc = np.array([rgrav[0],0,rgrav[2]],dtype=mpf)
     ppracc = ppracc/mp.norm(ppracc)
     pQ0 = np.array([Qg0[0],0,Qg0[2]],dtype=mpf)
     pQ0 = pQ0/mp.norm(pQ0)
@@ -1260,7 +1267,7 @@ def acc_from_normal_imu_grav(norm0,norm,acc,grav,normal,center,start=[0,0,1],s_r
     
     t1t0g = mpf(d_angle+t_v0)
     t2t0g = mpf(summ-d_angle+t_v0)
-    
+    """
     
     
     t3t0 = nsolve(dHHz,t_v0,prec=40,verify=False)
@@ -1361,7 +1368,7 @@ def acc_from_normal_imu_grav(norm0,norm,acc,grav,normal,center,start=[0,0,1],s_r
         sign = np.sign(c)
         #print(acc,normal,center)
         #print(sign,c,b)
-        qq_acc = quat_ntom(ppracc,np.array([0,0,1],dtype=mpf))
+        """qq_acc = quat_ntom(ppracc,np.array([0,0,1],dtype=mpf))
         FF_acc = log_q(qq_acc).astype(float)
         
         duFF2 = uFF-sym.Matrix(-FF_acc)
@@ -1410,7 +1417,7 @@ def acc_from_normal_imu_grav(norm0,norm,acc,grav,normal,center,start=[0,0,1],s_r
         t1t0 = t_v0_normal
         #print((SymExpRot2(FF,mpf(t1t0))@np.array([0,0,1],dtype=mpf)).flatten())
         #print((SymExpRot2(FF,mpf(-t_v0_normal+t_v0))@np.array([0,0,1],dtype=mpf)).flatten())
-        
+        """
         
         #pdb.set_trace()
         """t1t0 = t_v0_acc
@@ -1659,7 +1666,7 @@ def acc_from_normal_imu_grav(norm0,norm,acc,grav,normal,center,start=[0,0,1],s_r
 
 debug=True
 
-def acc_from_normal_imu_grav_manual(norm0,norm,acc,grav,normal,center,start=[0,0,1],s_rot=np.array([0,0,0]),heuristic=False,correction=False,ind=0):
+def acc_from_normal_imu_grav_manual(norm0,norm,acc,grav,normal,center,start=[0,0,1],s_rot=np.array([0,0,0]),heuristic=False,correction=False,ind=0,speed=np.array([0,0,0]),magneto =np.array([0,1,0])):
     X = sym.Symbol('X')
     Y = sym.Symbol('Y')
     Z = sym.Symbol('Z')
@@ -1846,7 +1853,7 @@ def acc_from_normal_imu_grav_manual(norm0,norm,acc,grav,normal,center,start=[0,0
     t1t0 = mpf(d_angle+t_v0)
     t2t0 = mpf(summ-d_angle+t_v0)
     
-    ppracc = np.array([rgrav[0],0,rgrav[2]],dtype=mpf)
+    """ppracc = np.array([rgrav[0],0,rgrav[2]],dtype=mpf)
     ppracc = ppracc/mp.norm(ppracc)
     pQ0 = np.array([Qg0[0],0,Qg0[2]],dtype=mpf)
     pQ0 = pQ0/mp.norm(pQ0)
@@ -1875,7 +1882,7 @@ def acc_from_normal_imu_grav_manual(norm0,norm,acc,grav,normal,center,start=[0,0
     
     
     t1t0g = mpf(d_angle+t_v0)
-    t2t0g = mpf(summ-d_angle+t_v0)
+    t2t0g = mpf(summ-d_angle+t_v0)"""
     
     
     
@@ -1910,11 +1917,8 @@ def acc_from_normal_imu_grav_manual(norm0,norm,acc,grav,normal,center,start=[0,0
         b = (teGG).dot(normal).evalf(subs={v:(t1t0+t2t0)/2})
         c = -ddHH.evalf(subs={v:t_v0})
         sign = np.sign(c)
-        #print(acc,normal,center)
-        #print(sign,c,b)
         qq0 = ExpQua(t_v0*np.array(FF).flatten())
         pracc = np.copy(np.array(quat_rot([0,*(acc/np.linalg.norm(acc))],qq0))[1:4]).astype(float)
-        #pracc[1]=0
         pracc = pracc/np.linalg.norm(pracc)
         qq1 = quat_ntom(pracc, np.array([0,0,1]))
         qq_normal = np.array(quat_mult(qq1,qq0)).astype(float)
@@ -1925,6 +1929,8 @@ def acc_from_normal_imu_grav_manual(norm0,norm,acc,grav,normal,center,start=[0,0
             #pdb.set_trace()
             t_v0_acc -=2*np.pi*np.sign(float(t_v0_acc-t_v0))
         t1t0 = t_v0_acc
+        
+        
         #rt3=t1t0-t_v0
         #FF_old = np.copy(FF)
         ##FF = FF_normal/t1t0
@@ -1946,6 +1952,14 @@ def acc_from_normal_imu_grav_manual(norm0,norm,acc,grav,normal,center,start=[0,0
         
         rt4 = t4t0-t_v0
         ert4 = HH.evalf(subs={v: float(t4t0)})
+        
+        rot1 =(SymExpRot2(FF,t4t0)) 
+        rot3= (SymExpRot2(FF,t1t0))
+        ss0 = speed+rot1@acc
+        ss1 = speed+rot3@acc
+        head0 = np.arctan2(float(ss0[1]),float(ss0[0]))
+        head1 = np.arctan2(float(ss1[1]),float(ss1[0])) 
+        head_ref = np.arctan2(float(magneto[1]),float(magneto[0]))+np.pi/2
         
         if (np.abs(t_v0-t4t0)<np.abs(t_v0-t1t0)*gamma and sign*(teGG-C).dot(normal).evalf(subs={v:(t4t0+t2t0)/2})>=0):
             plot(((teGG-C).dot(normal).subs(v,v+sym.Rational(float(t_v0)))),(v,-0.1,0.1),title="t_v0 "+str(t_v0))
@@ -2010,8 +2024,13 @@ def acc_from_normal_imu_grav_manual(norm0,norm,acc,grav,normal,center,start=[0,0
             print("norm",mp.norm(racc)*10000)
             print("angles",rt0,rt2,rt3,rt4,ert0,ert2,ert3,ert4)
             #pdb.set_trace()
-            if not(ind<400 or (t4t0 == t2t0 and (np.abs(ert3)>0.001 and np.abs(np.linalg.norm(acc*100)-9.789)<0.2))):
-                pdb.set_trace()
+            if not(ind<1000 or (t4t0 == t2t0 and (np.abs(ert3)>0.001 and np.abs(np.linalg.norm(acc*100)-9.789)<0.2))):
+                
+                if (np.abs(head0-head_ref))<(np.abs(head1-head_ref)):
+                    corrected,not_corrected= True,False
+                else:
+                    corrected,not_corrected= False,True
+                #pdb.set_trace()
             else:
                 corrected,not_corrected= False,True
         """
@@ -2040,4 +2059,4 @@ def acc_from_normal_imu_grav_manual(norm0,norm,acc,grav,normal,center,start=[0,0
     rot= (SymExpRot2(FF,t0))
     irot= (SymExpRot2(FF,-t0))
     
-    return np.array(irot1,dtype=mpf)@np.array([0,0,1],dtype=mpf),irot1,rot1,np.array(irot2,dtype=mpf)@np.array([0,0,1],dtype=mpf),irot2,rot2,np.array(irot3,dtype=mpf)@np.array([0,0,1],dtype=mpf),irot3,rot3,corrected,not_corrected,label,np.abs(t_v0_acc-t1t0),rt0,rt2,rt3,rt4,ert0,ert2,ert3,ert4
+    return np.array(irot1,dtype=mpf)@np.array([0,0,1],dtype=mpf),irot1,rot1,np.array(irot2,dtype=mpf)@np.array([0,0,1],dtype=mpf),irot2,rot2,np.array(irot3,dtype=mpf)@np.array([0,0,1],dtype=mpf),irot3,rot3,corrected,not_corrected,label,np.abs(t_v0_acc-t1t0),rt0,rt2,rt3,rt4,ert0,ert2,ert3,ert4,head0,head1,head_ref

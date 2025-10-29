@@ -157,7 +157,7 @@ if mmode == 'OdoAccPre':
 
 n_start = 9090
 n_end=4000
-n_end=n_start +1500
+n_end=n_start +3000
 cols = np.array([0,1,2,3,10,11,12,19,20,21])
 cols = np.array([0,7,8,9,16,17,18,25,26,27])
 cols = np.array(range(10))
@@ -342,7 +342,7 @@ gravity = newset.gravity
 proj_func = correct_proj2
 proj_func = None
 Solv0 = SolverFilterPlan(Integration,q0,q1,r0,r1,normal,newset,start=np.array(newset.quat_calib,dtype=mpf),proj_fun=proj_func)
-Solv1 = SolverFilterPlan(MEKF,q0,q1,r0,r1,normal,newset,start=np.array(newset.quat_calib,dtype=mpf),proj_fun=proj_func)#,grav=newset.grav)
+Solv1 = SolverFilterPlan(Rev,q0,q1,r0,r1,normal,newset,start=np.array(newset.quat_calib,dtype=mpf),proj_fun=proj_func,heuristic=True)#,grav=newset.grav)
 Solv2 = SolverFilterPlan(Rev,q0,q1,r0,r1,normal,newset,start=np.array(newset.quat_calib,dtype=mpf),proj_fun=proj_func,heuristic=True,manual=True)#,grav=newset.grav)
 
 newset.orient = Solv0.quaternion[:,:]  
@@ -417,6 +417,10 @@ array_et2 = np.zeros(N)
 array_et3 = np.zeros(N)
 array_et4 = np.zeros(N)
 
+array_head0 = np.zeros(N)
+array_head1 = np.zeros(N)
+array_head_ref = np.zeros(N)
+
 for i in range(0,N-1,1):
     
     nn+=1
@@ -446,6 +450,10 @@ for i in range(0,N-1,1):
     array_et2[i+1] = Solv2.KFilter.et2
     array_et3[i+1] = Solv2.KFilter.et3
     array_et4[i+1] = Solv2.KFilter.et4
+    
+    array_head0[i+1] = Solv2.KFilter.head0
+    array_head1[i+1] = Solv2.KFilter.head1
+    array_head_ref[i+1] = Solv2.KFilter.head_ref
 
     if i%10 ==0 and i>0:
         fig = plt.figure()
@@ -551,7 +559,7 @@ ax.plot(np.arctan2(gqz[:,1],-gqz[:,2]))
 ax.plot(np.arctan2(q2z[:,1],-q2z[:,2]))
 ax.plot(np.arctan2(q1z[:,1],-q1z[:,2]))
 ax.plot(np.arctan2(q0z[:,1],-q0z[:,2]))
-ax.legend(['acc-mag','revmekf','mekf','gyro'])
+ax.legend(['acc-mag','revmekf','heuristic revmekf','gyro'])
 ax.set_title('roll q2 q1 q0')
 
 
@@ -561,7 +569,7 @@ ax.plot(np.arctan2(-gqz[:,0],np.sqrt(gqz[:,2]**2+gqz[:,1]**2)))
 ax.plot(np.arctan2(-q2z[:,0],np.sqrt(q2z[:,2]**2+q2z[:,1]**2)))
 ax.plot(np.arctan2(-q1z[:,0],np.sqrt(q1z[:,2]**2+q1z[:,1]**2)))
 ax.plot(np.arctan2(-q0z[:,0],np.sqrt(q0z[:,2]**2+q0z[:,1]**2)))
-ax.legend(['acc-mag','revmekf','mekf','gyro'])
+ax.legend(['acc-mag','revmekf','heuristic revmekf','gyro'])
 ax.set_title('pitch q2 q1 q0')
 
 fig = plt.figure()
@@ -570,7 +578,7 @@ ax.plot(np.arctan2(gq[:,1],gq[:,0]))
 ax.plot(np.arctan2(q2[:,1],q2[:,0]))
 ax.plot(np.arctan2(q1[:,1],q1[:,0]))
 ax.plot(np.arctan2(q0[:,1],q0[:,0]))
-ax.legend(['acc-mag','revmekf','mekf','gyro'])
+ax.legend(['acc-mag','revmekf','heuristic revmekf','gyro'])
 ax.set_title("heading")
 
 
@@ -622,7 +630,7 @@ ax = fig.add_axes([0,0,1,1])
 ax.plot(np.abs(theta0[:]-htheta0[1:])[1000:])
 ax.plot(np.abs(theta2[:]-htheta2[1:])[1000:])
 ax.plot(np.abs(theta1[:]-htheta1[1:])[1000:])
-ax.legend(['Gyro','RevMEKF','MEKF'])
+ax.legend(['Gyro','RevMEKF','Heuristic Rev MEKF'])
 ax.set_title('Metric on heading')
 
 fig = plt.figure()
@@ -652,7 +660,7 @@ ax.plot(-np.array(coords1[:,0]),-np.array(coords1[:,1]))
 ax.plot(position0[:,0],position0[:,1])
 ax.plot(position1[:,0],position1[:,1])
 ax.plot(position2[:,0],position2[:,1])
-ax.legend(['GPS','Position from Gyro integration','Position from MEKF','Position from Rev-MEKF'])
+ax.legend(['GPS','Position from Gyro integration','Position from Heuristic RevMEKF','Position from Rev-MEKF'])
 plt.xlabel('X axis in meters')
 plt.ylabel('Y axis in meters')
 ax.set_title('Projected position in 2D of GPS/Gyro Integration/MEKF')
@@ -664,7 +672,7 @@ ax.plot(time0[:size-1],[np.linalg.norm(Solv2.position[j,:]) for j in range(size-
 ax.plot(time0[:size-1],[np.linalg.norm(coords[j,:]) for j in range(size-1)])
 ax.plot(time0[np.argwhere(correction_applied).flatten()], [np.linalg.norm(Solv2.position[j,:]) for j in np.argwhere(correction_applied).flatten()],'.',**dict(markersize=10))
 
-ax.legend(['Integration of Gyroscope','MEKF','Rev-MEKF','GPS','Corrections applied by Rev-MEKF'])
+ax.legend(['Integration of Gyroscope','Heuristic Rev-MEKF','Rev-MEKF','GPS','Corrections applied by Rev-MEKF'])
 ax.set_title('Distance computed in meters')
 plt.show()
 
@@ -828,10 +836,11 @@ rows = []
 
 window = 20
 
-for p1 in range(window,N,1):
+#for p1 in range(window,N,1):
+for p1 in range(1000,N,1):
     
     p0=p1
-    if p1 in np.argwhere(correction_applied).flatten() or p1 in np.argwhere(correction_not_applied).flatten():
+    if p0 in np.argwhere(correction_applied).flatten() or p0 in np.argwhere(correction_not_applied).flatten():
         
         p_start = max(0, p0 - window)
         p_end   = min(len(time0), p0 + window)
@@ -856,6 +865,10 @@ for p1 in range(window,N,1):
             row[f"et2_{k}"] = float(array_et2[j])
             row[f"et3_{k}"] = float(array_et3[j])
             row[f"et4_{k}"] = float(array_et4[j])
+            
+            row[f"head0_{k}"] = float(array_head0[j])
+            row[f"head1_{k}"] = float(array_head1[j])
+            row[f"headref_{k}"] = float(array_head_ref[j])
         for k,j in enumerate(indices):
             row["label"] = str(labels[j])
         for k, j in enumerate(indices):

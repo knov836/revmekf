@@ -116,9 +116,9 @@ class PredictFilter(Filter):
         logrot1 = log_q(np.array(qq))
         #logrot1 = np.zeros(3)
         
-        if self.neural and self.ind>1500:
-            
-            acc1,rot1,irot1,acc2,rot2,irot2,acc3,rot3,irot3,corrected,not_corrected,angle_acc,t0,t2,t3,t4,et0,et2,et3,et4= acc_from_normal_imu_grav_neural(np.array(quat_rot([0,*np.array(nAxis,dtype=mpf)],quat))[1:4],np.array([0,1,0],dtype=mpf) , np.array(quat_rot([0,*(nAccelerometer*(self.dt))],quat))[1:4],np.array(quat_rot([0,*(grav*(self.dt))],quat))[1:4], np.array(quat_rot([0,*normal],(quat2)))[1:4], np.array(quat_rot([0,*self.surf_center],(quat2)))[1:4],start = logrot1,heuristic=self.heuristic,correction = False)
+        if self.neural and self.ind>400:
+            speed = np.array(quat_rot([0,*(self.speed-self.proj_speed)],quat2))[1:4]
+            acc1,rot1,irot1,acc2,rot2,irot2,acc3,rot3,irot3,corrected,not_corrected,angle_acc,t0,t2,t3,t4,et0,et2,et3,et4,head0,head1,head_ref= acc_from_normal_imu_grav_neural(np.array(quat_rot([0,*np.array(nAxis,dtype=mpf)],quat))[1:4],np.array([0,1,0],dtype=mpf) , np.array(quat_rot([0,*(nAccelerometer*(self.dt))],quat))[1:4],np.array(quat_rot([0,*(grav*(self.dt))],quat))[1:4], np.array(quat_rot([0,*normal],(quat2)))[1:4], np.array(quat_rot([0,*self.surf_center],(quat2)))[1:4],start = logrot1,heuristic=self.heuristic,correction = False,speed=speed,magneto=Magnetometer)
             self.t0 = t0
             self.t2 = t2
             self.t3 = t3
@@ -127,8 +127,11 @@ class PredictFilter(Filter):
             self.et2 = et2
             self.et3 = et3
             self.et4 = et4
+            self.head0 = head0
+            self.head1 = head1
+            self.head_ref = head_ref
             
-            angles_last = np.array([t0,t2,t3,t4,et0,et2,et3,et4],dtype=np.float32)
+            angles_last = np.array([t0,t2,t3,t4,et0,et2,et3,et4,head0,head1,head_ref],dtype=np.float32)
             if len(self.xtensor)>0:
                 if len(self.xtensor.shape)!=2:
                     angles_last_extra = angles_last[np.newaxis, :]
@@ -144,7 +147,7 @@ class PredictFilter(Filter):
                     correction = (p_class1 > 0.75)# and (et3<=0) 
                     #correction = (p_class1 > 0.75) and (et3>=0) 
                     print("probas",p_class0,p_class1)
-                    acc1,rot1,irot1,acc2,rot2,irot2,acc3,rot3,irot3,corrected,not_corrected,angle_acc,t0,t2,t3,t4,et0,et2,et3,et4= acc_from_normal_imu_grav_neural(np.array(quat_rot([0,*np.array(nAxis,dtype=mpf)],quat))[1:4],np.array([0,1,0],dtype=mpf) , np.array(quat_rot([0,*(nAccelerometer*(self.dt))],quat))[1:4],np.array(quat_rot([0,*(grav*(self.dt))],quat))[1:4], np.array(quat_rot([0,*normal],(quat2)))[1:4], np.array(quat_rot([0,*self.surf_center],(quat2)))[1:4],start = logrot1,heuristic=self.heuristic,correction = correction)
+                    acc1,rot1,irot1,acc2,rot2,irot2,acc3,rot3,irot3,corrected,not_corrected,angle_acc,t0,t2,t3,t4,et0,et2,et3,et4,head0,head1,head_ref= acc_from_normal_imu_grav_neural(np.array(quat_rot([0,*np.array(nAxis,dtype=mpf)],quat))[1:4],np.array([0,1,0],dtype=mpf) , np.array(quat_rot([0,*(nAccelerometer*(self.dt))],quat))[1:4],np.array(quat_rot([0,*(grav*(self.dt))],quat))[1:4], np.array(quat_rot([0,*normal],(quat2)))[1:4], np.array(quat_rot([0,*self.surf_center],(quat2)))[1:4],start = logrot1,heuristic=self.heuristic,correction = correction,speed=speed,magneto=Magnetometer)
                     self.t0 = t0
                     self.t2 = t2
                     self.t3 = t3
@@ -153,14 +156,17 @@ class PredictFilter(Filter):
                     self.et2 = et2
                     self.et3 = et3
                     self.et4 = et4
+                    self.head0 = head0
+                    self.head1 = head1
+                    self.head_ref = head_ref
                 else:
                     X_input = np.concatenate([self.xtensor.flatten(),angles_last]).flatten().reshape(1, -1)
                     probs_loaded  = self.model(X_input)
                     
                     print("probas",probs_loaded)
-                    correction= (probs_loaded[0,1] > 0.75).astype(int)# and et3<=0 and np.abs(et4)<np.abs(et3)
+                    correction= (probs_loaded[0,1] > 0.75).astype(int) and et3<=0 and np.abs(et4)<np.abs(et3)
                     #pdb.set_trace()
-                    acc1,rot1,irot1,acc2,rot2,irot2,acc3,rot3,irot3,corrected,not_corrected,angle_acc,t0,t2,t3,t4,et0,et2,et3,et4= acc_from_normal_imu_grav_neural(np.array(quat_rot([0,*np.array(nAxis,dtype=mpf)],quat))[1:4],np.array([0,1,0],dtype=mpf) , np.array(quat_rot([0,*(nAccelerometer*(self.dt))],quat))[1:4],np.array(quat_rot([0,*(grav*(self.dt))],quat))[1:4], np.array(quat_rot([0,*normal],(quat2)))[1:4], np.array(quat_rot([0,*self.surf_center],(quat2)))[1:4],start = logrot1,heuristic=self.heuristic,correction = correction)
+                    acc1,rot1,irot1,acc2,rot2,irot2,acc3,rot3,irot3,corrected,not_corrected,angle_acc,t0,t2,t3,t4,et0,et2,et3,et4,head0,head1,head_ref= acc_from_normal_imu_grav_neural(np.array(quat_rot([0,*np.array(nAxis,dtype=mpf)],quat))[1:4],np.array([0,1,0],dtype=mpf) , np.array(quat_rot([0,*(nAccelerometer*(self.dt))],quat))[1:4],np.array(quat_rot([0,*(grav*(self.dt))],quat))[1:4], np.array(quat_rot([0,*normal],(quat2)))[1:4], np.array(quat_rot([0,*self.surf_center],(quat2)))[1:4],start = logrot1,heuristic=self.heuristic,correction = correction,speed=speed,magneto=Magnetometer)
                     self.t0 = t0
                     self.t2 = t2
                     self.t3 = t3
@@ -169,13 +175,23 @@ class PredictFilter(Filter):
                     self.et2 = et2
                     self.et3 = et3
                     self.et4 = et4
+                    self.head0 = head0
+                    self.head1 = head1
+                    self.head_ref = head_ref
         else:
             if self.manual:
-                acc1,rot1,irot1,acc2,rot2,irot2,acc3,rot3,irot3,corrected,not_corrected,label,angle_acc,t0,t2,t3,t4,et0,et2,et3,et4= acc_from_normal_imu_grav_manual(np.array(quat_rot([0,*np.array(nAxis,dtype=mpf)],quat))[1:4],np.array([0,1,0],dtype=mpf) , np.array(quat_rot([0,*(nAccelerometer*(self.dt))],quat))[1:4],np.array(quat_rot([0,*(grav*(self.dt))],quat))[1:4], np.array(quat_rot([0,*normal],(quat2)))[1:4], np.array(quat_rot([0,*self.surf_center],(quat2)))[1:4],start = logrot1,heuristic=self.heuristic,correction = self.correction,ind=self.ind)
+                #heading = np.arctan2(Magnetometer[1],Magnetometer[0])
+                speed = np.array(quat_rot([0,*(self.speed-self.proj_speed)],quat2))[1:4]
+                dt = self.dt
+                
+                acc1,rot1,irot1,acc2,rot2,irot2,acc3,rot3,irot3,corrected,not_corrected,label,angle_acc,t0,t2,t3,t4,et0,et2,et3,et4,head0,head1,head_ref= acc_from_normal_imu_grav_manual(np.array(quat_rot([0,*np.array(nAxis,dtype=mpf)],quat))[1:4],np.array([0,1,0],dtype=mpf) , np.array(quat_rot([0,*(nAccelerometer*(self.dt))],quat))[1:4],self.gravity*dt, np.array(quat_rot([0,*normal],(quat2)))[1:4], np.array(quat_rot([0,*self.surf_center],(quat2)))[1:4],start = logrot1,heuristic=self.heuristic,correction = self.correction,ind=self.ind,speed=speed,magneto=Magnetometer)
                 self.label=label
             else:
                 #pdb.set_trace()
                 acc1,rot1,irot1,acc2,rot2,irot2,acc3,rot3,irot3,corrected,not_corrected,angle_acc,t0,t2,t3,t4,et0,et2,et3,et4= acc_from_normal_imu_grav(np.array(quat_rot([0,*np.array(nAxis,dtype=mpf)],quat))[1:4],np.array([0,1,0],dtype=mpf) , np.array(quat_rot([0,*(nAccelerometer*(self.dt))],quat))[1:4],np.array(quat_rot([0,*(grav*(self.dt))],quat))[1:4], np.array(quat_rot([0,*normal],(quat2)))[1:4], np.array(quat_rot([0,*self.surf_center],(quat2)))[1:4],start = logrot1,heuristic=self.heuristic,correction = self.correction)
+                head0=0
+                head1=0
+                head_ref=0
             self.t0 = t0
             self.t2 = t2
             self.t3 = t3
@@ -184,6 +200,9 @@ class PredictFilter(Filter):
             self.et2 = et2
             self.et3 = et3
             self.et4 = et4
+            self.head0 = head0
+            self.head1 = head1
+            self.head_ref = head_ref
         if corrected:
             self.corrected=True
             #print(angle_acc)

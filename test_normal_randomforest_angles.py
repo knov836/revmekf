@@ -163,7 +163,7 @@ if mmode == 'OdoAccPre':
 
 n_start = 9090
 n_end=4000
-n_end=n_start +10000
+n_end=n_start +3000
 cols = np.array([0,1,2,3,10,11,12,19,20,21])
 cols = np.array([0,7,8,9,16,17,18,25,26,27])
 cols = np.array(range(10))
@@ -481,7 +481,7 @@ df.interpolate(method='linear', axis=0, inplace=True)
 df.fillna(method='bfill', inplace=True)
 df.fillna(method='ffill', inplace=True)
 blocks = ["normal","acc", "gyro", "mag"]
-angles = ["t0","t2", "t3", "t4","et0","et2", "et3", "et4",]
+angles = ["t0","t2", "t3", "t4","et0","et2", "et3", "et4","head0","head1","head_ref"]
 
 axes = ["x", "y", "z"]
 timesteps = 20  
@@ -553,7 +553,7 @@ preds_threshold = np.zeros(N)
 probs = np.zeros(N)
 
 import pickle
-with open("random_forest_model_angle_20251027_131523.pkl", "rb") as f:
+with open("random_forest_model_angle_20251028_093220.pkl", "rb") as f:
     rf_loaded = pickle.load(f)
 threshold=0.45
 
@@ -613,7 +613,7 @@ for i in range(0,N-1,1):
     Solv1.update(time[i+1], np.copy(gyro_i), np.copy(acc_i), np.copy(mag_i), np.copy(normal),correction=0)
     Solv2.update(time[i+1], np.copy(gyro_i), np.copy(acc_i), np.copy(mag_i), np.copy(normal),correction=correction,xtensor=X_input,model=rf_loaded["model"].predict_proba)
     
-    current_angles = np.array([Solv2.KFilter.t0,Solv2.KFilter.t2,Solv2.KFilter.t3,Solv2.KFilter.t4,Solv2.KFilter.et0,Solv2.KFilter.et2,Solv2.KFilter.et3,Solv2.KFilter.et4])
+    current_angles = np.array([Solv2.KFilter.t0,Solv2.KFilter.t2,Solv2.KFilter.t3,Solv2.KFilter.t4,Solv2.KFilter.et0,Solv2.KFilter.et2,Solv2.KFilter.et3,Solv2.KFilter.et4,Solv2.KFilter.head0,Solv2.KFilter.head1,Solv2.KFilter.head_ref])
 
     angles_array = np.roll(angles_array, shift=-1, axis=1)
     angles_array[:, -1] = current_angles  

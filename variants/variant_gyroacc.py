@@ -60,6 +60,9 @@ class Filter:
         self.et4 = 0
         self.et2 = 0
         self.et3 = 0
+        self.head0=0
+        self.head1=0
+        self.head_ref=0
         self.ind=0
         
         

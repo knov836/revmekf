@@ -82,7 +82,7 @@ class LSTMClassifier(nn.Module):
 #good model
 #model = torch.load("lstm_model_20251012_173153.pth",weights_only=False)
 
-model = torch.load("lstm_model_20251027_132405.pth",weights_only=False)
+model = torch.load("lstm_model_20251028_173751.pth",weights_only=False)
 #model = torch.load("rnn_model.pth",weights_only=False)
 model.eval()
 
@@ -462,6 +462,10 @@ for p1 in range(window,N,1):
         row[f"et2_{k}"] = float(0)
         row[f"et3_{k}"] = float(0)
         row[f"et4_{k}"] = float(0)
+        
+        row[f"head0_{k}"] = float(0)
+        row[f"head1_{k}"] = float(0)
+        row[f"headref_{k}"] = float(0)
     for k, j in enumerate(indices):
         row[f"acc_x_{k}"] = float(newset.acc[j,0])
     for k, j in enumerate(indices):
@@ -506,7 +510,7 @@ df.fillna(method='bfill', inplace=True)
 df.fillna(method='ffill', inplace=True)
 
 blocks = ["normal","acc", "gyro", "mag"]
-angles = ["t0","t2", "t3", "t4","et0","et2", "et3", "et4",]
+angles = ["t0","t2", "t3", "t4","et0","et2", "et3", "et4","head0","head1","headref"]
 
 axes = ["x", "y", "z"]
 timesteps = 20  
@@ -555,7 +559,7 @@ for block in blocks:
 
 #seq_features += [f"normal_{a}" for a in {"z"} for i in range(timesteps)]
 seq_features = seq_features+extra_features
-input_dim = 12+8+len(extra_features)
+input_dim = 12+11+len(extra_features)
 #X = df[seq_features].values.reshape(len(df), timesteps, input_dim)
 
 X_seq = df[[f for f in seq_features if f not in extra_features]].values
@@ -640,7 +644,9 @@ with torch.no_grad():
         Solv1.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], normal)
         Solv2.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], normal,correction=correction,model=model,xtensor=X_input)
         
-        current_angles = np.array([Solv2.KFilter.t0,Solv2.KFilter.t2,Solv2.KFilter.t3,Solv2.KFilter.t4,Solv2.KFilter.et0,Solv2.KFilter.et2,Solv2.KFilter.et3,Solv2.KFilter.et4])
+        Solv2.KFilter.ind = i+1
+        
+        current_angles = np.array([Solv2.KFilter.t0,Solv2.KFilter.t2,Solv2.KFilter.t3,Solv2.KFilter.t4,Solv2.KFilter.et0,Solv2.KFilter.et2,Solv2.KFilter.et3,Solv2.KFilter.et4,Solv2.KFilter.head0,Solv2.KFilter.head1,Solv2.KFilter.head_ref])
         #print(angles_array)
         angles_array = np.roll(angles_array, shift=-1, axis=1)
         #print(angles_array)

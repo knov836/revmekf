@@ -24,7 +24,9 @@ from scipy.signal import savgol_filter
 #files = glob.glob("corrections_windows_angles_20251012_1051310.csv")
 #files = glob.glob("corrections_windows_angles_20251012_1357260.csv")
 #files = glob.glob("corrections_windows_angles_20251026_1846029090.csv")
-files = glob.glob("corrections_windows_angles_20251027_1312119090.csv")
+#files = glob.glob("corrections_windows_angles_20251027_1312119090.csv")
+files = glob.glob("corrections_windows_angles_20251028_0923099090.csv")
+
 
 #files = glob.glob("corrections_windows_20251006_1029030.csv")
 df_list = [pd.read_csv(f) for f in files]
@@ -36,7 +38,7 @@ df.fillna(method='ffill', inplace=True)
 
 
 blocks = ["normal","acc", "gyro", "mag"]
-angles = ["t0","t2", "t3", "t4","et0","et2", "et3", "et4",]
+angles = ["t0","t2", "t3", "t4","et0","et2", "et3", "et4","head0","head1","headref"]
 axes = ["x", "y", "z"]
 timesteps = 20  
 
@@ -94,7 +96,7 @@ angle_features= (
 extra_features+=angle_features
 #seq_features += [f"normal_{a}" for a in {"z"} for i in range(timesteps)]
 seq_features = seq_features+extra_features
-input_dim = 12+8+len(extra_features)
+input_dim = 12+11+len(extra_features)
 #X = df[seq_features].values.reshape(len(df), timesteps, input_dim)
 
 X_seq = df[[f for f in seq_features if f not in extra_features]].values
@@ -102,7 +104,7 @@ X_extra = df[extra_features].values  # shape = (n_samples, n_extra)
 
 X_extra_seq = np.repeat(X_extra[:, np.newaxis, :], timesteps, axis=1)
 
-X = np.concatenate([X_seq.reshape(len(df), timesteps, 12+8), X_extra_seq], axis=2)
+X = np.concatenate([X_seq.reshape(len(df), timesteps, 12+11), X_extra_seq], axis=2)
 
 #y = df["correction_applied"].values
 y = np.array(df["correction_applied"].values)# & np.array(df["et3_last"]>=0)
