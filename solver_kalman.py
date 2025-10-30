@@ -2,7 +2,7 @@ import numpy as np
 from math import pi
 import math
 import matplotlib.pyplot as plt
-
+import pdb
 from mpmath import mp
 from mpmath import mpf
 from function_quat import *
@@ -115,7 +115,7 @@ class SolverFilterPlan:
         self.speed = np.zeros((N, 3),dtype=mpf)
         self.position = np.zeros((N, 3),dtype=mpf)
 
-        
+        #pdb.set_trace()
         self.KFilter = kfilter(dt, QQ,RR,PK, X,Quat, bias, normal,mag0=mag0,rotsurf=self.rotsurf,proj_fun=proj_fun,time=time0,base_width=base_width,heuristic=heuristic,neural=neural,manual=manual)
         self.gravity_r[0,:] = self.KFilter.gravity_r
         self.ind =0

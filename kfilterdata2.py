@@ -5,6 +5,7 @@ import math
 import matplotlib.pyplot as plt
 from scipy.spatial.transform import Rotation
 import numdifftools as nd 
+import pdb
 
 from mpmath import mp
 from mpmath import mpf
@@ -210,7 +211,7 @@ def acc_mag_to_rotation(acc, mag, declination_deg=0.0, degrees=False):
         }
 
 class KFilterDataFile:
-    def __init__(self, data,mode='GyroAccMag',g_bias = np.array([0,0,0],dtype=mpf),base_width=mpf(1.0),surf=np.array([-1,1,0],dtype=mpf),normal=np.array([]),gravity=np.array([]),normals=np.array([])):
+    def __init__(self, data,mode='GyroAccMag',g_bias = np.array([0,0,0],dtype=mpf),base_width=mpf(1.0),surf=np.array([-1,1,0],dtype=mpf),normal=np.array([]),gravity=np.array([]),normals=np.array([]),start=np.array([])):
         gyro = np.array(data[:,4:7],dtype=mpf)#/180*np.pi
         acc = np.array(data[:,1:4],dtype=mpf)
         mag = np.array(data[:,7:10],dtype=mpf)
@@ -226,7 +227,7 @@ class KFilterDataFile:
         
         self.freq = np.mean(1/dtime[ind])
         self.size=len(time)
-        self.c_size = 200
+        self.c_size = 5
         self.DT = mpf(1)/mpf(self.freq)
         self.grav = np.mean([mp.norm(a) for a in acc])
         
@@ -246,7 +247,10 @@ class KFilterDataFile:
         self.gyro = np.copy(gyro-self.g_bias)
         self.c_mag = np.copy(self.cmag(normal=self.normal))
         calib = self.new_orient_calib()
-        quat_calib = np.mean(calib[:self.c_size,:],axis=0)
+        if(len(start) ==0):
+            quat_calib = np.mean(calib[:self.c_size,:],axis=0)
+        else:
+            quat_calib = start
         
         self.quat_calib = quat_calib/np.linalg.norm(quat_calib)
         
@@ -308,7 +312,10 @@ class KFilterDataFile:
         self.orient[0,:] = self.quat_calib
         
         
-        self.mag0 = np.array(quat_rot([0,*np.mean(self.mag[:300,:].astype(float),axis=0)], self.quat_calib))[1:4]
+        self.mag0 = np.array(quat_rot([0,*np.mean(self.mag[:10,:].astype(float),axis=0)], self.quat_calib))[1:4].astype(float)
+        
+        #self.mag0 = np.array(quat_rot([0,*self.mag0],ExpQua(np.array([0,0,-np.arctan2(self.mag0[1],self.mag0[0])]))))[1:4]
+        #pdb.set_trace()
         self.mag0 = self.mag0/np.linalg.norm(self.mag0)
         #self.mag0 = np.array(quat_rot([0,*np.mean(self.mag[:300,:].astype(float),axis=0)], quat_inv(self.quat_calib)))[1:4]
         

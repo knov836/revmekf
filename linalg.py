@@ -1469,7 +1469,7 @@ def acc_from_normal_imu_grav(norm0,norm,acc,grav,normal,center,start=[0,0,1],s_r
         ##FF = FF_normal/t1t0
         #pdb.set_trace()
         
-        gamma = 0.1
+        gamma = 0.5
         
         prob = np.random.random(1)
         prob = 0
