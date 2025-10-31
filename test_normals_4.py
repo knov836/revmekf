@@ -95,8 +95,8 @@ mag_x = len(mag_columns_x)
 mag_y = len(mag_columns_y)
 mag_z = len(mag_columns_z)
 
-acc_gyro=pd.read_csv('raw_data/harbor_imu_sequence_01.csv')
-mag=pd.read_csv('raw_data/harbor_mag_sequence_01.csv')
+acc_gyro_csv=pd.read_csv('raw_data/harbor_imu_sequence_01.csv')
+mag_csv=pd.read_csv('raw_data/harbor_mag_sequence_01.csv')
 img=pd.read_csv('raw_data/harbor_img_sequence_01.csv')
 
 """from pyubx2 import UBXReader
@@ -122,17 +122,17 @@ with open("Geoloc_ds022023/S1/TEST_01/raw_measurement/gnss.csv", "w", newline=""
 ground_truth = pd.read_csv('raw_data/harbor_colmap_traj_sequence_01.txt', sep=r'\s+', header=None)
 
 # Extraire les colonnes 1 à 4 (attention, Python est 0-indexé → colonnes 1:5)
-gps = ground_truth.iloc[:, 1:3]
-ori = ground_truth.iloc[:,3:7].values
+gps = ground_truth.iloc[:, 1:4]
+ori = ground_truth.iloc[:,4:8].values
 ori = np.array([o/np.linalg.norm(o) for o in ori])
 ground_truth['timestamp'] = img[img.columns[0]].to_numpy()[ground_truth.iloc[:, 0].astype(int)]/10**(9)
 gps_v = gps.values[:,[0,1]]
 
-acc_v = acc_gyro.values[:,4:7]
-t_acc = acc_gyro.values[:,0]/10**(9)
-mag_v = mag.values[:,1:4]*1e6
+acc_v = acc_gyro_csv.values[:,4:7]
+t_acc = acc_gyro_csv.values[:,0]/10**(9)
+mag_v = mag_csv.values[:,1:4]*1e6
 mag_v0 = np.copy(mag_v)
-t_mag = mag.values[:,0]/10**(9)
+t_mag = mag_csv.values[:,0]/10**(9)
 mag_v[:,0] = mag_v0[:,1]
 mag_v[:,1] = mag_v0[:,0]
 mag_v[:,2] = -mag_v0[:,2]
@@ -141,8 +141,8 @@ mag_v[:,2] = -mag_v0[:,2]
 
 
 
-gyro_v = acc_gyro.values[:,1:4]
-t_gyro= acc_gyro.values[:,0]/10**(9)
+gyro_v = acc_gyro_csv.values[:,1:4]
+t_gyro= acc_gyro_csv.values[:,0]/10**(9)
 
 
 acc_df = pd.DataFrame({
@@ -165,15 +165,18 @@ mag_df = pd.DataFrame({
     'mag_y': mag_v[:,1],
     'mag_z': mag_v[:,2]
 }).sort_values('timestamp')
-
+"""'ori_w': ori[:,0],
+'ori_x': ori[:,1],
+'ori_y': ori[:,2],
+'ori_z': ori[:,3],"""
 gps_df = pd.DataFrame({
     'timestamp': ground_truth['timestamp'],#*10**9,  # ou ton propre vecteur GPS timestamps
     'gps_x': gps_v[:,0],
     'gps_y': gps_v[:,1],
-    'ori_w': ori[:,3],
     'ori_x': ori[:,0],
     'ori_y': ori[:,1],
     'ori_z': ori[:,2],
+    'ori_w': ori[:,3],
     #'speed': gps[:,2] if gps.shape[1] > 2 else np.nan
 }).sort_values('timestamp')
 
@@ -261,8 +264,8 @@ df[:,2] = accs[:,0]
 df[:,3] = -accs[:,2]
 df[:,4] = gyro[:,1]
 df[:,5] = gyro[:,0]
-df[:,6] = -gyro[:,2]"""
-
+df[:,6] = -gyro[:,2]
+"""
 
 #normal = np.mean(df[:100,7:10],axis=0)
 def Calibrate_Mag(magX, magY, magZ):
@@ -349,15 +352,15 @@ ax.plot_surface(x, y, z, alpha=0.3, color='b')
 
 
 
-calibratedX = np.zeros(mag[:,0].shape)
-calibratedY = np.zeros(mag[:,1].shape)
-calibratedZ = np.zeros(mag[:,2].shape)
+calibratedX = np.zeros(mags[:,0].shape)
+calibratedY = np.zeros(mags[:,1].shape)
+calibratedZ = np.zeros(mags[:,2].shape)
 
 
-c_mag = np.zeros(mag[:,:].shape)
+c_mag = np.zeros(mags[:,:].shape)
 totalError = 0
 for i in range(len(c_mag)):
-    h = np.array([np.array([mag[:,0][i], mag[:,1][i], mag[:,2][i]]).flatten().reshape((3,1))])
+    h = np.array([np.array([mags[:,0][i], mags[:,1][i], mags[:,2][i]]).flatten().reshape((3,1))])
     hHat = np.matmul(Ainv, h-b)
     hHat = hHat[:, :, 0]
     calibratedX[i] = hHat[0][0]
@@ -367,9 +370,13 @@ for i in range(len(c_mag)):
     err = (mag0[0][0] - 1)**2
     totalError += err
 print("Total Error: %f" % totalError)
+"""mag_unit = mags / np.linalg.norm(mags, axis=1, keepdims=True)
+calibratedX,calibratedY,calibratedZ = mag_unit.T"""
 c_mag[:,0] = calibratedX.flatten()
 c_mag[:,1] = calibratedY.flatten()
 c_mag[:,2] = calibratedZ.flatten()
+
+
 
 fig = plt.figure(1)
 ax = fig.add_subplot(111, projection='3d')
@@ -386,7 +393,7 @@ ax.plot_wireframe(x, y, z, rstride=10, cstride=10, alpha=0.5)
 ax.plot_surface(x, y, z, alpha=0.3, color='b')
 
 
-df[:,7:10] = c_mag
+df[:,7:10] = c_mag[n_start:n_end,:]
 mag = np.copy(df[:,7:10])
 """df[:,7] = mag[:,1]
 df[:,8] = mag[:,0]
@@ -423,7 +430,6 @@ gyro_smooth = np.vstack((gyro_smooth0,gyro_smooth1,gyro_smooth2)).T
 df[:,4:7] = np.copy(gyro_smooth)"""
 
 #g_bias = np.mean(gyro_v[:2000,:],axis=0)
-q_ori = mpu[['ori_w','ori_x','ori_y','ori_z']].values[n_start:n_end,:]
 newset = KFilterDataFile(df[:,:],mode=mmode,g_bias=g_bias,base_width=0.23,normals=normals)#,start=np.array(q_ori[0,:],dtype=mpf))#,gravity=np.array([0,0,9.76],dtype=mpf))#,normal=np.array([0.1101,1,0])) 
 N=newset.size
 #N=len(df)
@@ -580,8 +586,8 @@ q2 = np.zeros((N,3))
 
 
 for i in range(N):
-    q0[i,:] = np.array(quat_rot([0,1,0,0],quat_inv(quaternion0[i,:])))[1:4]
-    q1[i,:] = np.array(quat_rot([0,1,0,0],quat_inv(quaternion1[i,:])))[1:4]
+    q0[i,:] = np.array(quat_rot([0,*newset.mag0],quat_inv(quaternion0[i,:])))[1:4]
+    q1[i,:] = np.array(quat_rot([0,*newset.mag0],quat_inv(quaternion1[i,:])))[1:4]
     q2[i,:] = np.array(quat_rot([0,1,0,0],quat_inv(newset.neworient[i,:])))[1:4]
     
     
@@ -1009,7 +1015,7 @@ gqz = np.zeros((N,3))
 
 
 for i in range(N):
-    gq[i,:] = np.array(quat_rot([0,1,0,0],quat_inv(newset.neworient[i,:])))[1:4]
+    gq[i,:] = np.array(quat_rot([0,*newset.mag0],quat_inv(newset.neworient[i,:])))[1:4]
 
 for i in range(N):
     gqz[i,:] = np.array(quat_rot([0,0,0,1],quat_inv(newset.neworient[i,:])))[1:4]
@@ -1052,7 +1058,7 @@ ax = fig.add_axes([0,0,1,1])
 ax.plot(newset.neworient)
 ax.set_title("newset.neworient ")
 
-q_ori = mpu[['ori_w','ori_x','ori_y','ori_z']].values[n_start:n_end,:]
+q_ori = mpu[['ori_x','ori_y','ori_z','ori_w']].values[n_start:n_end,:]
 
 from scipy.spatial.transform import Rotation as R
 
@@ -1075,7 +1081,8 @@ def test_alignment(A, B):
 def angular_error(A, C):
     diff = R.from_matrix(np.einsum('nij,njk->nik', A, np.transpose(C, (0,2,1))))
     return np.mean(diff.magnitude() * 180/np.pi)
-B_swapped = B[:, [0,2,1], :]  # swap Y and Z axes
+B_swapped = B[:, :, [0,2,1]]  # swap Y and Z axes
+B_swapped1 = B_swapped[:, :, [0,2,1]]  # swap Y and Z axes
 R_AB = test_alignment(A, B_swapped)
 C = R_AB @ B_swapped
 print("Error :", angular_error(A, C))
@@ -1098,3 +1105,145 @@ fig = plt.figure()
 ax = fig.add_axes([0,0,1,1])
 ax.plot(q_ori)
 ax.set_title("q_ori")
+
+roll_g = (np.arctan2(newset.acc[:,1].astype(float),newset.acc[:,2].astype(float)))+np.pi
+pitch_g = (np.arctan2(newset.acc[:,0].astype(float),np.sqrt(newset.acc[:,2].astype(float)**2+newset.acc[:,1].astype(float)**2)))
+heading_g = np.arctan2(-newset.mag[:,1].astype(float),newset.mag[:,0].astype(float))-35*np.pi/180#-np.pi/8#-np.pi/4+np.pi/8#+2*np.pi#+3*np.pi/4+np.pi/8
+
+
+roll_g = (np.arctan2(gqz[:,1].astype(float),gqz[:,2].astype(float)))+np.pi
+pitch_g = (np.arctan2(gqz[:,0].astype(float),np.sqrt(gqz[:,2].astype(float)**2+gqz[:,1].astype(float)**2)))
+heading_g = np.arctan2(-gq[:,1].astype(float),gq[:,0].astype(float))#-35*np.pi/180#-35*np.pi/180#-np.pi/8#-np.pi/4+np.pi/8#+2*np.pi#+3*np.pi/4+np.pi/8
+
+euler_angles_g = np.column_stack((heading_g, pitch_g,roll_g))
+A = R.from_euler('ZYX', euler_angles_g, degrees=False).as_matrix()
+
+#A = R.from_quat(newset.neworient[:,[1,2,3,0]]).as_matrix()  # (N,3,3)
+B = R.from_quat(q_ori[:,[1,2,3,0]]).as_matrix() 
+
+T_imu_cam = np.matrix([[-0.99978035,  0.0169654,  0.01230552],
+  [0.01210101, -0.01210461, 0.99985351],
+  [0.01711187,  0.9997828,  0.01189665]])
+#T_imu_cam = np.eye(3)
+"""T_imu_cam = np.matrix([[-1,  0,  0],
+  [0, 0, 1],
+  [0,  1, 0]])"""
+rrs = [np.array((R.from_matrix(A[i,:]@T_imu_cam).as_euler('ZYX'))) for i in range(len(A))]
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(rrs)
+ax.set_title("rrs")
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(R.from_quat(q_ori).as_euler('ZYX'))
+ax.set_title("q_ori")
+
+rrs = [np.array((R.from_matrix(A[i,:]@T_imu_cam).as_quat())) for i in range(len(A))]
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(rrs)
+ax.set_title("rrs")
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(q_ori)
+ax.set_title("q_ori")
+
+quat0 = R.from_matrix(T_imu_cam).as_quat()[[1,2,3,0]]
+
+rrs = [np.array((R.from_matrix(A[i,:]).as_quat())) for i in range(len(A))]
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(rrs)
+ax.set_title("rrs")
+
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(newset.neworient)
+ax.set_title("newset.neworient ")
+
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(np.linalg.norm(newset.acc.astype(float),axis=1))
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(np.linalg.norm(newset.mag.astype(float),axis=1))
+
+
+
+roll_t = (np.arctan2(q1z[:,1].astype(float),q1z[:,2].astype(float)))+np.pi
+pitch_t = (np.arctan2(q1z[:,0].astype(float),np.sqrt(q1z[:,2].astype(float)**2+q1z[:,1].astype(float)**2)))
+heading_t = np.arctan2(-q1[:,1].astype(float),q1[:,0].astype(float))
+
+"""roll_g = (np.arctan2(gqz[:,1].astype(float),gqz[:,2].astype(float)))+np.pi
+pitch_g = (np.arctan2(gqz[:,0].astype(float),np.sqrt(gqz[:,2].astype(float)**2+gqz[:,1].astype(float)**2)))
+heading_g = np.arctan2(-gq[:,1].astype(float),gq[:,0].astype(float))#-35*np.pi/180#-35*np.pi/180#-np.pi/8#-np.pi/4+np.pi/8#+2*np.pi#+3*np.pi/4+np.pi/8
+"""
+euler_angles_t = np.column_stack((heading_t, pitch_t,roll_t))
+
+T = R.from_euler('ZYX', euler_angles_t, degrees=False).as_matrix()
+
+rrs = [np.array((R.from_matrix(T[i,:]@T_imu_cam).as_euler('ZYX'))) for i in range(len(A))]
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(rrs)
+ax.set_title("rrs")
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(R.from_quat(q_ori).as_euler('ZYX'))
+ax.set_title("q_ori")
+rrs = [np.array((R.from_matrix(T[i,:]@T_imu_cam).as_quat())) for i in range(len(A))]
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(rrs)
+ax.set_title("rrs")
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(q_ori)
+ax.set_title("q_ori")
+
+
+def axes_to_euler_from_axes(gq, gqz, seq='ZYX', degrees=False):
+    # ensure arrays
+    gq = np.asarray(gq)
+    gqz = np.asarray(gqz)
+    N = gq.shape[0]
+    # normalize input axes (avoid zero-length)
+    def safe_norm(v, eps=1e-12):
+        n = np.linalg.norm(v, axis=1, keepdims=True)
+        n[n < eps] = 1.0
+        return v / n
+
+    y = safe_norm(gq)    # column 1
+    z = safe_norm(gqz)   # column 2
+
+    # compute x = y cross z (right-handed). Then orthonormalize:
+    x = np.cross(y, z)   # may need normalization
+    x = safe_norm(x)
+    # recompute y to ensure orthogonality exactly: y = z cross x
+    y = np.cross(z, x)
+    y = safe_norm(y)
+
+    # Build rotation matrices R_mat of shape (N,3,3) with columns [x, y, z]
+    R_mat = np.stack([x, y, z], axis=2)  # shape (N, 3, 3)
+
+    # Convert to Euler angles (seq='ZYX' -> yaw(Z), pitch(Y), roll(X))
+    rot = R.from_matrix(R_mat)   # accepts (N,3,3)
+    euler = rot.as_euler(seq, degrees=degrees)  # shape (N,3)
+    # euler columns: [yaw, pitch, roll] for 'ZYX'
+    return euler  # (N,3)
+
+euler_angles = axes_to_euler_from_axes(gq, gqz, seq='ZYX', degrees=False)
+heading_t = euler_angles[:, 0]  # yaw
+pitch_t   = euler_angles[:, 1]  # pitch
+roll_t    = euler_angles[:, 2]

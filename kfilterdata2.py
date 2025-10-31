@@ -227,7 +227,7 @@ class KFilterDataFile:
         
         self.freq = np.mean(1/dtime[ind])
         self.size=len(time)
-        self.c_size = 5
+        self.c_size = 10
         self.DT = mpf(1)/mpf(self.freq)
         self.grav = np.mean([mp.norm(a) for a in acc])
         
@@ -314,7 +314,7 @@ class KFilterDataFile:
         
         self.mag0 = np.array(quat_rot([0,*np.mean(self.mag[:10,:].astype(float),axis=0)], self.quat_calib))[1:4].astype(float)
         
-        #self.mag0 = np.array(quat_rot([0,*self.mag0],ExpQua(np.array([0,0,-np.arctan2(self.mag0[1],self.mag0[0])]))))[1:4]
+        self.mag0 = np.array(quat_rot([0,*self.mag0],ExpQua(np.array([0,0,-np.arctan2(self.mag0[1],self.mag0[0])]))))[1:4]
         #pdb.set_trace()
         self.mag0 = self.mag0/np.linalg.norm(self.mag0)
         #self.mag0 = np.array(quat_rot([0,*np.mean(self.mag[:300,:].astype(float),axis=0)], quat_inv(self.quat_calib)))[1:4]

@@ -358,6 +358,9 @@ def quat_ntom2(n,m):
     return Quaternion
 def quat_inv(q):
     return [q[0],-q[1],-q[2],-q[3]]
+
+def quat_inv_2(q):
+    return [q[0],-q[1],-q[2],q[3]]
 def quat_mult(q0,q1):
     w0,x0,y0,z0 = q0
     w1,x1,y1,z1 = q1

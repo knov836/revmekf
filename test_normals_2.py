@@ -123,6 +123,13 @@ mpu['gyro_z']= absolute_l(gyro_columns_z, gyro_z)
 mpu['mag_x']= absolute_l(mag_columns_x, mag_x)
 mpu['mag_y']= absolute_l(mag_columns_y, mag_y)
 mpu['mag_z']= absolute_l(mag_columns_z, mag_z)
+
+"""mag_v0 = np.copy(mag_v)
+t_mag = mag.values[:,0]/10**(9)
+mag_v[:,0] = mag_v0[:,1]
+mag_v[:,1] = mag_v0[:,0]
+mag_v[:,2] = -mag_v0[:,2]
+"""
 mpu['gps_x'] =gps[:,0]
 mpu['gps_y'] =gps[:,1]
 mpu['timestamp'] = df_left.values[:,0]
@@ -180,7 +187,7 @@ if mmode == 'OdoAccPre':
 
 n_start = 9090
 n_end=4000
-n_end=n_start +32000
+n_end=n_start +10000
 cols = np.array([0,1,2,3,10,11,12,19,20,21])
 cols = np.array([0,7,8,9,16,17,18,25,26,27])
 cols = np.array(range(10))
@@ -441,7 +448,7 @@ for i in range(0,N-1,1):
     newset.acc[i+1,2] = s_acc_z[i+1]
     Solv0.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], normal)
     Solv1.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], normal)
-    Solv2.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], normal,std_acc_z=std_acc_z)
+    #Solv2.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], normal,std_acc_z=std_acc_z)
     correction_applied[i] = Solv2.KFilter.corrected
     angle_applied[i+1] =angle_applied[i]+Solv2.KFilter.angle
 
@@ -542,8 +549,8 @@ q2 = np.zeros((N,3))
 for i in range(N):
     q0[i,:] = np.array(quat_rot([0,1,0,0],quat_inv(quaternion0[i,:])))[1:4]
     q1[i,:] = np.array(quat_rot([0,1,0,0],quat_inv(quaternion1[i,:])))[1:4]
-    #q2[i,:] = np.array(quat_rot([0,1,0,0],quat_inv(newset.neworient[i,:])))[1:4]
-    q2[i,:] = np.array(quat_rot([0,1,0,0],quat_inv(quaternion2[i,:])))[1:4]
+    q2[i,:] = np.array(quat_rot([0,1,0,0],quat_inv(newset.neworient[i,:])))[1:4]
+    #q2[i,:] = np.array(quat_rot([0,1,0,0],quat_inv(quaternion2[i,:])))[1:4]
     
     
 fig = plt.figure()
@@ -774,15 +781,15 @@ q2z = np.zeros((N,3))
 for i in range(N):
     q0z[i,:] = np.array(quat_rot([0,0,0,1],quat_inv(quaternion0[i,:])))[1:4]
     q1z[i,:] = np.array(quat_rot([0,0,0,1],quat_inv(quaternion1[i,:])))[1:4]
-    #q2z[i,:] = np.array(quat_rot([0,0,0,1],quat_inv(newset.neworient[i,:])))[1:4]
-    q2z[i,:] = np.array(quat_rot([0,0,0,1],quat_inv(quaternion2[i,:])))[1:4]
+    q2z[i,:] = np.array(quat_rot([0,0,0,1],quat_inv(newset.neworient[i,:])))[1:4]
+    #q2z[i,:] = np.array(quat_rot([0,0,0,1],quat_inv(quaternion2[i,:])))[1:4]
 
 fig = plt.figure()
 ax = fig.add_axes([0,0,1,1])
 
-ax.plot(np.arctan2(q2z[:,1],-q2z[:,2]))
-ax.plot(np.arctan2(q1z[:,1],-q1z[:,2]))
-ax.plot(np.arctan2(q0z[:,1],-q0z[:,2]))
+ax.plot(np.arctan2(-q2z[:,1],q2z[:,2]))
+ax.plot(np.arctan2(-q1z[:,1],q1z[:,2]))
+ax.plot(np.arctan2(-q0z[:,1],q0z[:,2]))
 ax.legend(['neworient','mekf','gyro'])
 ax.set_title('roll q2 q1 q0')
 
@@ -805,7 +812,7 @@ ax.plot(np.arctan2(q0[:,1],q0[:,0]))
 ax.legend(['revmekf','mekf','gyro'])
 ax.set_title("q0 q1 heading")
 
-window=1000
+window=50
 global_quatw = savgol_filter(newset.neworient[:,0], window , 2)
 global_quatx = savgol_filter(newset.neworient[:,1], window , 2)
 global_quaty = savgol_filter(newset.neworient[:,2], window , 2)
@@ -873,6 +880,8 @@ theta2 = np.arctan2(speed2[:,1],speed2[:,0])
 mag0 = newset.mag.astype(float)
 #mag = np.array([np.array(quat_rot([0,*m],ExpQua(np.array([-0.5,0.0,0]))))[1:4] for m in mag0]).astype(float)
 mag = mag0
+
+
 delta = theta[int(2000/per)]-np.arctan2(q1[2000,1],q1[2000,0])
 delta = np.pi/2
 fig = plt.figure()
@@ -888,6 +897,24 @@ ax.plot(range(per,len(q2)-per+1,per),theta2[:])"""
 ax.plot(range(per,len(q2)-per+1,per),theta[:]-delta)
 ax.legend(['Magneto','Rev-MEKF','MEKF','Gyro','GPS'])
 ax.set_title('Heading')
+
+bear = -mpu['bearing'][n_start:n_end].to_numpy()*np.pi/180+2*np.pi
+#delta = bear[int(1500)]-np.arctan2(q1[1500,1],q1[1500,0])
+delta = 18*np.pi/180
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+#ax.plot(np.arctan2(newset.neworient[:,1].astype(float),newset.neworient[:,0].astype(float)))
+ax.plot(np.arctan2(q2[:,1],q2[:,0]))
+ax.plot(np.arctan2(q1[:,1],q1[:,0]))
+ax.plot(np.arctan2(q0[:,1],q0[:,0]))
+"""ax.plot(range(per,len(q2)-per+1,per),theta0[:])
+ax.plot(range(per,len(q2)-per+1,per),theta1[:])
+ax.plot(range(per,len(q2)-per+1,per),theta2[:])"""
+
+ax.plot(bear[:]-delta)
+ax.legend(['Magneto','MEKF','Gyro','bearing'])
+ax.set_title('Heading')
+
 
 speed0 = np.diff(position0[:,:].astype(float),axis=0)*newset.freq
 speed1 = np.diff(position1[:,:].astype(float),axis=0)*newset.freq
