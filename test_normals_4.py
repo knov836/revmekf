@@ -487,7 +487,7 @@ for i in range(0,N-1,1):
     print("iteration",i)
     Solv0.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], normal)
     Solv1.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], normal)
-    #Solv2.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], normal,std_acc_z=std_acc_z)
+    Solv2.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], normal,std_acc_z=std_acc_z)
     correction_applied[i] = Solv2.KFilter.corrected
     angle_applied[i+1] =angle_applied[i]+Solv2.KFilter.angle
 
@@ -1153,6 +1153,57 @@ ax.plot(q_ori)
 ax.set_title("q_ori")
 
 quat0 = R.from_matrix(T_imu_cam).as_quat()[[1,2,3,0]]
+quat0 = RotToQuat(T_imu_cam)
+
+quats_ori = [quat_mult(RotToQuat(R.from_quat(q_ori[i,:]).as_matrix()),quat_inv(quat0)) for i in range(len(q_ori))]
+
+quats_ori = np.array([log_q(np.array(quat_mult(RotToQuat(R.from_quat(q_ori[i,:]).as_matrix()),quat_inv(RotToQuat(R.from_quat(q_ori[0,:]).as_matrix()))))) for i in range(len(q_ori))])
+#quats_ori = [quat_mult(q_ori[i,:],quat_inv(quat0)) for i in range(len(q_ori))]
+quat1 = np.array([log_q(np.array(quat_mult(quaternion1[i,:],quat_inv(quaternion1[0,:])))) for i in range(len(quaternion1))])
+quat0 = np.array([log_q(np.array(quat_mult(quaternion0[i,:],quat_inv(quaternion0[0,:])))) for i in range(len(quaternion0))])
+
+quat_accmag = np.array([log_q(np.array(quat_mult(newset.neworient[i,:],quat_inv(newset.neworient[0,:])))) for i in range(len(newset.neworient))])
+
+quats_ori[:,1] =-quats_ori[:,1] 
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(quats_ori)
+ax.set_title("quats_ori")
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(quat_accmag)
+ax.set_title("quat_accmag")
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(quat0)
+ax.set_title("quat0")
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(quat1)
+ax.set_title("quat1")
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot([quat_mult(ExpQua(np.array([0,0,0])),quat_mult(ExpQua(np.array([0,np.pi/2,0])),quaternion1[i,:])) for i in range(len(quaternion1))])
+ax.set_title("quat1")
+
+
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot([quat_mult(ExpQua(np.array([0,0,0])),quat_mult(ExpQua(np.array([0,0,0])),quaternion1[i,:])) for i in range(len(quaternion1))])
+ax.set_title("quat1")
+
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(newset.neworient)
+ax.set_title("newset.neworient ")
+
+
 
 rrs = [np.array((R.from_matrix(A[i,:]).as_quat())) for i in range(len(A))]
 
