@@ -428,6 +428,7 @@ class KFilterDataFile:
             new_m = skewSymmetric(adm)@a
             
             M = np.array([-adm,new_m,a]).T
+            #pdb.set_trace()
             M = np.array([new_m,adm,a]).T
             """M = np.array([new_m,adm,a]).T
             res = acc_mag_to_R_body_to_ned(a, m, declination_deg=0.0)

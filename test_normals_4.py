@@ -237,7 +237,7 @@ if mmode == 'OdoAccPre':
 
 n_start = 0
 n_end=4000
-n_end=n_start +8000
+n_end=n_start +2000
 cols = np.array([0,1,2,3,10,11,12,19,20,21])
 cols = np.array([0,7,8,9,16,17,18,25,26,27])
 cols = np.array(range(10))
@@ -472,13 +472,36 @@ angle_applied = np.zeros(N)
      
 gravity = [0,0,np.mean(np.linalg.norm(acc_smooth[:150,:],axis=1))]
 
+q_ori = mpu[['ori_x','ori_y','ori_z','ori_w']].values[n_start:n_end,:]
 
+quats_ori = np.array([log_q(np.array(quat_mult(RotToQuat(R.from_quat(q_ori[i,:]).as_matrix()),quat_inv(RotToQuat(R.from_quat(q_ori[0,:]).as_matrix()))))) for i in range(len(q_ori))])
+quats_ori[:,1]=-quats_ori[:,1]
+ref = np.array([quat_mult(ExpQua(quats_ori[i,:]),newset.quat_calib) for i in range(len(quats_ori))])
+"""
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(quaternion0)
+ax.set_title('quaternion0')
 
-#s_acc_z = acc_z
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(quaternion1)
+ax.set_title('quaternion1')
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(quaternion2)
+ax.set_title('quaternion2')
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(ref)
+ax.set_title('ref')
+"""
 for i in range(0,N-1,1):
     
     nn+=1
-    normal = np.array([0,0,1])
+    normal = np.array(quat_rot([0,0,1,0],ref[i+1,:]))[1:4]
     std_acc_z =0
     if i<N-1-40 and i> 40:
         std_acc_z = np.std(newset.acc[i-20:i+20,2])
@@ -996,7 +1019,6 @@ pos_accmag,speed_accmag=quat_to_pos(time0,quat_accmag,newset.acc,newset.gravity)
 oriq = np.zeros((N,3))
 oriqz = np.zeros((N,3))
 
-q_ori = np.array([quat_rot(quat_mult(q,quat_inv(mpu[['ori_w','ori_x','ori_y','ori_z']].values[0,:])),quat_mult(newset.neworient[0,:],quat_inv(mpu[['ori_w','ori_x','ori_y','ori_z']].values[0,:]))) for q in mpu[['ori_w','ori_x','ori_y','ori_z']].values[n_start:n_end,:] ])
 
 
 for i in range(N):

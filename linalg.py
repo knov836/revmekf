@@ -1465,11 +1465,11 @@ def acc_from_normal_imu_grav(norm0,norm,acc,grav,normal,center,start=[0,0,1],s_r
             #pdb.set_trace()
             t_v0_acc -=2*np.pi*np.sign(float(t_v0_acc-t_v0))
         t1t0 = t_v0_acc
-        #FF_old = np.copy(FF)
-        ##FF = FF_normal/t1t0
+        FF_old = np.copy(FF)
+        FF = FF_normal/t1t0
         #pdb.set_trace()
         
-        gamma = 0.5
+        gamma = 0.5*2
         
         prob = np.random.random(1)
         prob = 0
@@ -1578,7 +1578,7 @@ def acc_from_normal_imu_grav(norm0,norm,acc,grav,normal,center,start=[0,0,1],s_r
         elif (np.abs(t_v0-t4t0)<np.abs(t_v0-t1t0)*gamma and sign*(teGG-C).dot(normal).evalf(subs={v:(t4t0+t2t0)/2})>=0):
             
             #plot(((teGG-C).dot(normal).subs(v,v+sym.Rational(float(t_v0)))),(v,-0.1,0.1),title="t_v0 "+str(t_v0))
-            #FF = FF_old
+            FF = FF_old
             
             """x_pts = [float(t1t0 - t_v0),float(t4t0 - t_v0), float(t2t0 - t_v0)]
             y_pts = np.array([l_HH.evalf(subs={v: float(t1t0 - t_v0)}),
