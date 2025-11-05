@@ -1,6 +1,6 @@
 import numpy as np
 from scipy import *
-
+from scipy.spatial.transform import Rotation as R
 from math import pi
 import math
 import matplotlib.pyplot as plt
@@ -95,9 +95,9 @@ mag_x = len(mag_columns_x)
 mag_y = len(mag_columns_y)
 mag_z = len(mag_columns_z)
 
-acc_gyro_csv=pd.read_csv('raw_data/harbor_imu_sequence_01.csv')
-mag_csv=pd.read_csv('raw_data/harbor_mag_sequence_01.csv')
-img=pd.read_csv('raw_data/harbor_img_sequence_01.csv')
+acc_gyro_csv=pd.read_csv('raw_data2/harbor_imu_sequence_02.csv')
+mag_csv=pd.read_csv('raw_data2/harbor_mag_sequence_02.csv')
+img=pd.read_csv('raw_data2/harbor_img_sequence_02.csv')
 
 """from pyubx2 import UBXReader
 import csv
@@ -119,12 +119,12 @@ with open("Geoloc_ds022023/S1/TEST_01/raw_measurement/gnss.csv", "w", newline=""
     writer.writerow(["iTOW", "Latitude", "Longitude", "Altitude (m)"])
     writer.writerows(coords)
 """
-ground_truth = pd.read_csv('raw_data/harbor_colmap_traj_sequence_01.txt', sep=r'\s+', header=None)
+ground_truth = pd.read_csv('raw_data2/new_harbor_colmap_traj_sequence_02.txt', sep=r'\s+', header=None)
 
 # Extraire les colonnes 1 à 4 (attention, Python est 0-indexé → colonnes 1:5)
 gps = ground_truth.iloc[:, 1:4]
 ori = ground_truth.iloc[:,4:8].values
-ori = np.array([o/np.linalg.norm(o) for o in ori])
+#ori = np.array([o/np.linalg.norm(o) for o in ori])
 ground_truth['timestamp'] = img[img.columns[0]].to_numpy()[ground_truth.iloc[:, 0].astype(int)]/10**(9)
 gps_v = gps.values[:,[0,1]]
 
@@ -133,9 +133,10 @@ t_acc = acc_gyro_csv.values[:,0]/10**(9)
 mag_v = mag_csv.values[:,1:4]*1e6
 mag_v0 = np.copy(mag_v)
 t_mag = mag_csv.values[:,0]/10**(9)
-mag_v[:,0] = mag_v0[:,1]
-mag_v[:,1] = mag_v0[:,0]
-mag_v[:,2] = -mag_v0[:,2]
+
+mag_v[:,0] = mag_v0[:,2]
+mag_v[:,1] = -mag_v0[:,1]
+mag_v[:,2] = mag_v0[:,0]
 
 
 
@@ -264,9 +265,19 @@ df[:,2] = accs[:,0]
 df[:,3] = -accs[:,2]
 df[:,4] = gyro[:,1]
 df[:,5] = gyro[:,0]
-df[:,6] = -gyro[:,2]
-"""
+df[:,6] = -gyro[:,2]"""
 
+"""df[:,1] = accs[:,2]
+df[:,2] = -accs[:,1]
+df[:,3] = accs[:,0]
+df[:,4] = gyro[:,2]
+df[:,5] = -gyro[:,1]
+df[:,6] = gyro[:,0]
+"""
+#df[:,2] = -accs[:,1]
+#df[:,3] = -accs[:,2]
+"""df[:,4] = -gyro[:,2]
+df[:,6] = -gyro[:,0]"""
 #normal = np.mean(df[:100,7:10],axis=0)
 def Calibrate_Mag(magX, magY, magZ):
     x2 = (magX ** 2)
@@ -442,7 +453,7 @@ angle = int(N/2)
 orient = newset.orient
 pos_earth = newset.pos_earth
 
-q0,q1,r0,r1 = 10**(-2), 10**(-2), 10**(0), 10**(0)
+q0,q1,r0,r1 = 10**(-2), 10**(-2), 10**(-1), 10**(-1)
 normal = newset.normal
 
 
@@ -475,13 +486,56 @@ gravity = [0,0,np.mean(np.linalg.norm(acc_smooth[:150,:],axis=1))]
 q_ori = mpu[['ori_x','ori_y','ori_z','ori_w']].values[n_start:n_end,:]
 
 quats_ori = np.array([log_q(np.array(quat_mult(RotToQuat(R.from_quat(q_ori[i,:]).as_matrix()),quat_inv(RotToQuat(R.from_quat(q_ori[0,:]).as_matrix()))))) for i in range(len(q_ori))])
-xs = np.copy(quats_ori[:,1])
-quats_ori[:,1]=-np.copy(quats_ori[:,1])
+xs = np.copy(quats_ori)
+"""quats_ori[:,1]=-np.copy(quats_ori[:,1])
 #quats_ori[:,0]=xs
+quats_ori[:,0]=-np.copy(quats_ori[:,0])"""
+quats_ori[:,2] = -xs[:,2]
+quats_ori[:,1] = xs[:,1]
+quats_ori[:,0] = -xs[:,0]
+quats_ori[:,1] = xs[:,1]
+quats_ori[:,0] = -xs[:,0]
+
+
 ref = np.array([quat_mult(ExpQua(quats_ori[i,:]),newset.quat_calib) for i in range(len(quats_ori))])
 normals = np.zeros((N,3))
 for i in range(0,N,1):
     normals[i] = np.array(quat_rot([0,0,1,0],ref[i,:]))[1:4]
+
+    
+ref_mag = np.zeros((N,3))
+
+for i in range(0,N,1):
+    ref_mag[i] = np.array(quat_rot([0,*newset.mag0],quat_inv(ref[i,:])))[1:4]
+
+ref_acc = np.zeros((N,3))
+
+for i in range(0,N,1):
+    ref_acc[i] = np.array(quat_rot([0,0,0,1],quat_inv(ref[i,:])))[1:4]
+
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot([np.dot(newset.acc[i,:],newset.mag[i,:]) for i in range(N)])
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot([np.dot(ref_acc[i,:],newset.mag[i,:]) for i in range(N)])
+
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(newset.mag)
+ax.plot(ref_mag)
+ax.set_title('diff mag')
+    
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(newset.acc)
+ax.plot(ref_acc*np.linalg.norm(newset.gravity))
+ax.set_title('diff acc')
+
 for i in range(0,N-1,1):
     
     nn+=1
@@ -492,9 +546,13 @@ for i in range(0,N-1,1):
     std_acc_zs[i+1] = std_acc_z 
     #print(std_acc_z)
     print("iteration",i)
+    acci = np.array(quat_rot([0,0,0,1],quat_inv(ref[i+1,:])))[1:4]
+    magi = np.array(quat_rot([0,*newset.mag0],quat_inv(ref[i+1,:])))[1:4]
+    ref_mag[i+1,:] = magi
     Solv0.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], normal)
     Solv1.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], normal)
-    #Solv2.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], normal,std_acc_z=std_acc_z)
+    #Solv1.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], normal)
+    Solv2.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], normal,std_acc_z=std_acc_z)
     correction_applied[i] = Solv2.KFilter.corrected
     angle_applied[i+1] =angle_applied[i]+Solv2.KFilter.angle
 
@@ -517,6 +575,8 @@ position0 = Solv0.position[:N,:]
 position1 = Solv1.position[:N,:]
 position2 = Solv2.position[:N,:]
 gravity_r = Solv2.gravity_r[:N,:]
+time0=time-time[0]
+size  =n_end-n_start
 
 
 fig = plt.figure()
@@ -550,10 +610,9 @@ ax.plot(ref)
 ax.set_title('ref')
 
 
-quats_ori = np.array([log_q(np.array(quat_mult(RotToQuat(R.from_quat(q_ori[i,:]).as_matrix()),quat_inv(RotToQuat(R.from_quat(q_ori[0,:]).as_matrix()))))) for i in range(len(q_ori))])
-xs = np.copy(quats_ori[:,1])
-quats_ori[:,1]=-np.copy(quats_ori[:,1])
-#quats_ori[:,0]=xs
+
+
+
 quat2 = np.array([log_q(np.array(quat_mult(quaternion2[i,:],quat_inv(quaternion2[0,:])))) for i in range(len(quaternion1))])
 quat1 = np.array([log_q(np.array(quat_mult(quaternion1[i,:],quat_inv(quaternion1[0,:])))) for i in range(len(quaternion1))])
 quat0 = np.array([log_q(np.array(quat_mult(quaternion0[i,:],quat_inv(quaternion0[0,:])))) for i in range(len(quaternion0))])
@@ -566,15 +625,161 @@ ax.plot(quats_ori)
 ax.set_title("quats_ori")
 fig = plt.figure()
 ax = fig.add_axes([0,0,1,1])
-ax.plot(quat2-quats_ori)
+ax.plot(quat2)
 ax.set_title("quat2")
 fig = plt.figure()
 ax = fig.add_axes([0,0,1,1])
-ax.plot(quat1-quats_ori)
+ax.plot(quat1)
 ax.set_title("quat1")
       
 fig = plt.figure()
 ax = fig.add_axes([0,0,1,1])
 ax.plot(quat0)
 ax.set_title("quat0")
-          
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(np.linalg.norm(quats_ori.astype(float),axis=1))
+ax.plot(np.linalg.norm(quat2.astype(float),axis=1))
+ax.plot(np.linalg.norm(quat1.astype(float),axis=1))
+ax.plot(np.linalg.norm(quat0.astype(float),axis=1))
+
+ax.set_title("norms_ori")
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(np.linalg.norm(quat1.astype(float),axis=1))
+ax.set_title("norms_quat1")
+
+ground_truth = pd.read_csv('raw_data/harbor_colmap_traj_sequence_01.txt', sep=r'\s+', header=None)
+ori0 = ground_truth.iloc[:,4:8].values
+n_ori0 = np.array([np.linalg.norm(o) for o in ori0])
+
+q0 = np.zeros((N,3))
+q1 = np.zeros((N,3))
+q2 = np.zeros((N,3))
+
+
+for i in range(N):
+    q0[i,:] = np.array(quat_rot([0,1,0,0],quat_inv(quaternion0[i,:])))[1:4]
+    q1[i,:] = np.array(quat_rot([0,1,0,0],quat_inv(quaternion1[i,:])))[1:4]
+    q2[i,:] = np.array(quat_rot([0,1,0,0],quat_inv(newset.neworient[i,:])))[1:4]
+    #q2[i,:] = np.array(quat_rot([0,1,0,0],quat_inv(quaternion2[i,:])))[1:4]
+q0z = np.zeros((N,3))
+q1z = np.zeros((N,3))
+q2z = np.zeros((N,3))
+
+
+for i in range(N):
+    q0z[i,:] = np.array(quat_rot([0,0,0,1],quat_inv(quaternion0[i,:])))[1:4]
+    q1z[i,:] = np.array(quat_rot([0,0,0,1],quat_inv(quaternion1[i,:])))[1:4]
+    q2z[i,:] = np.array(quat_rot([0,0,0,1],quat_inv(newset.neworient[i,:])))[1:4]
+    #q2z[i,:] = np.array(quat_rot([0,0,0,1],quat_inv(quaternion2[i,:])))[1:4]
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+
+ax.plot(np.arctan2(-q2z[:,1],q2z[:,2]))
+ax.plot(np.arctan2(-q1z[:,1],q1z[:,2]))
+ax.plot(np.arctan2(-q0z[:,1],q0z[:,2]))
+ax.legend(['neworient','mekf','gyro'])
+ax.set_title('roll q2 q1 q0')
+
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(np.arctan2(-q2z[:,0],np.sqrt(q2z[:,2]**2+q2z[:,1]**2)))
+ax.plot(np.arctan2(-q1z[:,0],np.sqrt(q1z[:,2]**2+q1z[:,1]**2)))
+ax.plot(np.arctan2(-q0z[:,0],np.sqrt(q0z[:,2]**2+q0z[:,1]**2)))
+ax.legend(['revmekf','mekf','gyro'])
+ax.set_title('pitch q2 q1 q0')
+
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(np.arctan2(q2[:,1],q2[:,0]))
+ax.plot(np.arctan2(q1[:,1],q1[:,0]))
+ax.plot(np.arctan2(q0[:,1],q0[:,0]))
+ax.legend(['revmekf','mekf','gyro'])
+ax.set_title("q0 q1 heading")
+
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(q0)
+ax.set_title("q0")
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(q1)
+ax.set_title("q1")
+
+for i in range(N):
+    q0[i,:] = np.array(quat_rot([0,*newset.mag0],quat_inv(quaternion0[i,:])))[1:4]
+    q1[i,:] = np.array(quat_rot([0,*newset.mag0],quat_inv(quaternion1[i,:])))[1:4]
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(q0)
+ax.set_title("q0")
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(q1)
+ax.set_title("q1")
+
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(newset.mag)
+ax.set_title("newset mag")
+
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(q0z)
+ax.set_title("q0z")
+
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(q1z)
+ax.set_title("q1z")
+
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(newset.acc)
+ax.set_title("newset acc")
+
+dquats_ori = np.zeros((N,3))
+dquats0 = np.zeros((N,3))
+dquats1 = np.zeros((N,3))
+per = 1
+for i in range(0,N-per,per):
+    print(i)
+    #lq =(np.array(quat_mult(quat_inv(RotToQuat(R.from_quat(q_ori[i+1,:]).as_matrix())),(RotToQuat(R.from_quat(q_ori[i,:]).as_matrix()))))).astype(float)
+    lq =(np.array(quat_mult(quat_inv(ref[i+per]),(ref[i])))).astype(float)
+    lq0 =(np.array(quat_mult(quat_inv(quaternion0[i+per]),(quaternion0[i])))).astype(float)
+    lq1 =(np.array(quat_mult(quat_inv(quaternion1[i+per]),(quaternion1[i])))).astype(float)
+    print(lq,lq0,lq1)
+    dquats_ori[i,:] = np.array(log_q(lq/np.linalg.norm(lq)))
+    dquats0[i,:] = np.array(log_q(lq0/np.linalg.norm(lq0)))
+    dquats1[i,:] = np.array(log_q(lq1/np.linalg.norm(lq1)))
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(dquats_ori)
+ax.set_title("dquats_ori")
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(dquats0)
+ax.set_title("dquats0")
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(dquats1)
+ax.set_title("dquats1")
+
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(newset.gyro[:,:]/newset.freq)
