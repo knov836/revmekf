@@ -243,7 +243,7 @@ class PredictFilter(Filter):
             #mag1 = np.array(quat_rot([0,*mag0],ExpQua(-nzaxis*np.pi/2)))[1:4]
             #mag = np.array(quat_rot([0,*mag0], quat_inv(self.Quaternion)))[1:4]
             #acc = self.linalg_correct(Gyroscope, acc, mag, Orient,normal=np.cross(self.normal,np.array(quat_rot([0,1,0,0],self.Quaternion))[1:4]))
-            mag0 = np.array([0,1,0])
+            mag0 = np.array([1,0,0])
             mag = np.array(quat_rot([0,*mag0], quat_inv(self.Quaternion)))[1:4]#.astype(float)
             acc = self.linalg_correct(Gyroscope, acc, mag, Orient,normal=self.normal).astype(float)
             
