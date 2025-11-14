@@ -541,7 +541,7 @@ angle = int(N/2)
 orient = newset.orient
 pos_earth = newset.pos_earth
 
-q0,q1,r0,r1 = 10**(-2), 10**(-2), 10**(0), 10**(0)
+q0,q1,r0,r1 = 10**(-2), 10**(-2), 10**(1), 10**(1)
 normal = newset.normal
 
 
@@ -591,9 +591,33 @@ quats_ori[:lag,:] = 0
 quats_ori[lag:,2]= xs[:len(xs)-lag,2]
 quats_ori[lag:,1] = -xs[:len(xs)-lag,0]
 quats_ori[lag:,0] = xs[:len(xs)-lag,1]
+def fit_linear_R(a, b):
+    a = np.asarray(a).astype(float)
+    b = np.asarray(b).astype(float)
+    if a.ndim == 2 and a.shape[0] == 3 and a.shape[1] != 3:
+        a = a.T
+    if b.ndim == 2 and b.shape[0] == 3 and b.shape[1] != 3:
+        b = b.T
 
+    A = a.T
+    B = b.T
 
-ref = np.array([quat_mult(ExpQua(quats_ori[i,:]),newset.quat_calib) for i in range(len(quats_ori))])
+    H = A @ B.T
+    U, S, Vt = np.linalg.svd(H)
+    R = Vt.T @ U.T
+
+    # fix reflection if it occurred (ensure det = +1)
+    if np.linalg.det(R) < 0:
+        Vt[2, :] *= -1
+        R = Vt.T @ U.T
+
+    return R
+
+RR = fit_linear_R(np.array(quats_ori)[10000:12000,:],np.array(quat0)[10000:12000,:])
+rotated_quats_ori = (RR@np.array(quats_ori).astype(float).T).T
+ref = np.array([quat_mult(ExpQua(rotated_quats_ori[i,:]),newset.quat_calib) for i in range(len(rotated_quats_ori))])
+
+#ref = np.array([quat_mult(ExpQua(quats_ori[i,:]),newset.quat_calib) for i in range(len(quats_ori))])
 
 
 normals = np.zeros((N,3))
@@ -779,17 +803,32 @@ ax = fig.add_axes([0,0,1,1])
 ax.plot(np.linalg.norm(quat2.astype(float)-quats_ori.astype(float),axis=1))
 ax.plot(np.linalg.norm(quat1.astype(float)-quats_ori.astype(float),axis=1))
 ax.plot(np.linalg.norm(quat0.astype(float)-quats_ori.astype(float),axis=1))
+
+ax.plot([(log_q(np.array(quat_mult(quaternion0[j,:],quat_inv(ref[j,:]))))) for j in range(1,len(ref))], label='Solv0')
+
 ax.legend(['RevMEKF','MEKF','Int Gyro'])
 ax.set_title("log of Quat_GT^(-1)*Quat_filter")
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+
+ax.plot([((np.array(quat_mult(quaternion0[j,:],quat_inv(ref[j,:]))))) for j in range(1,len(ref))], label='Solv0')
+
+ax.legend(['Int Gyro'])
+ax.set_title("log of Quat_GT^(-1)*Quat_filter")
+
 
 fig = plt.figure()
 ax = fig.add_axes([0,0,1,1])
 ax.plot(np.linalg.norm(quat1.astype(float),axis=1))
 ax.set_title("norms_quat1")
 
-ground_truth = pd.read_csv('raw_data/harbor_colmap_traj_sequence_01.txt', sep=r'\s+', header=None)
-ori0 = ground_truth.iloc[:,4:8].values
-n_ori0 = np.array([np.linalg.norm(o) for o in ori0])
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+#ax.plot(np.linalg.norm(quats_ori.astype(float),axis=1))
+ax.plot(np.cumsum(np.linalg.norm(quat2.astype(float)-quats_ori.astype(float),axis=1)-np.linalg.norm(quat1.astype(float)-quats_ori.astype(float),axis=1))[:])
+ax.legend(['RevMEKF-MEKF'])
+ax.set_title("log of Quat_GT^(-1)*Quat_filter")
 
 q0 = np.zeros((N,3))
 q1 = np.zeros((N,3))

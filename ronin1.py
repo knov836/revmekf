@@ -101,7 +101,7 @@ mag_z = len(mag_columns_z)
 
 
 acc_csv=pd.read_csv('advio-01/iphone/accelerometer.csv')
-mag_csv=pd.read_csv('advio-01/iphone/magnetometer.csv')
+mag_csv=pd.read_csv('advio-01/iphone/magnetometer1.csv')
 gyro_csv=pd.read_csv('advio-01/iphone/gyro.csv')
 
 
@@ -126,6 +126,7 @@ ground_truth['timestamp'] = corr_ground_truth[:, 0]
 gps_v = gps[:,[0,1]]
 
 acc_v = acc_csv.values[:,1:4]
+
 t_acc = acc_csv.values[:,0]#/10**(9)
 mag_v = mag_csv.values[:,1:4]
 mag_v0 = np.copy(mag_v)
@@ -229,7 +230,7 @@ if mmode == 'OdoAccPre':
 
 n_start = 0
 n_end=4000
-n_end=n_start +25000
+n_end=n_start +25100
 cols = np.array(range(10))
 df = data.values[n_start:n_end,cols]
 
@@ -544,6 +545,7 @@ acc_z = df[:,3]
 s_acc_z = acc_z
 #s_acc_z = kalman_filter_1d(acc_z,10**(-2),0.1)
 df[:,3] = s_acc_z
+#df[:,1:4] = np.array([quat_rot([0,0,0,1],quat_inv(q_ori[i,:])) for i in range(len(q_ori))])[:,1:4]
 
 """df[:,1:4] = np.copy(acc_smooth)
 df[:,4:7] = df[:,4:7]-np.mean(gyro_v[:2000,:],axis=0)
@@ -571,7 +573,7 @@ angle = int(N/2)
 orient = newset.orient
 pos_earth = newset.pos_earth
 
-q0,q1,r0,r1 = 10**(-2), 10**(-2), 10**(0), 10**(0)
+q0,q1,r0,r1 = 10**(-2), 10**(-2), 10**(6), 10**(6)
 normal = newset.normal
 
 
@@ -608,12 +610,13 @@ angle_applied = np.zeros(N)
 gravity = [0,0,np.mean(np.linalg.norm(acc_smooth[:150,:],axis=1))]
 
 
-
 q_ori = mpu[['ori_w','ori_x','ori_y','ori_z']].values[n_start:n_end,:]
+
+
 q_arkit = mpu[['ori_arkit_w','ori_arkit_x','ori_arkit_y','ori_arkit_z']].values[n_start:n_end,:]
 q_tango= mpu[['ori_tango_w','ori_tango_x','ori_tango_y','ori_tango_z']].values[n_start:n_end,:]
 quats_arkit = np.array([log_q(np.array(quat_mult(q_arkit[i,:],quat_inv(q_arkit[0,:])))) for i in range(len(q_arkit))])
-arkit_xs = np.copy(quats_ori)
+arkit_xs = np.copy(quats_arkit)
 """quats_ori[:,1]=-np.copy(quats_ori[:,1])
 #quats_ori[:,0]=xs
 quats_ori[:,0]=-np.copy(quats_ori[:,0])"""
@@ -627,9 +630,9 @@ quats_ori[:,0] = xs[:,1]"""
 
 lag = 0
 #quats_ori[:lag,:] = 0
-quats_arkit[:len(xs)-lag,2]= arkit_xs[lag:,2]
-quats_arkit[:len(xs)-lag,1] = arkit_xs[lag:,1]
-quats_arkit[:len(xs)-lag,0] = arkit_xs[lag:,0]
+quats_arkit[:len(arkit_xs)-lag,2]= arkit_xs[lag:,2]
+quats_arkit[:len(arkit_xs)-lag,1] = arkit_xs[lag:,1]
+quats_arkit[:len(arkit_xs)-lag,0] = arkit_xs[lag:,0]
 
 
 quats_tango = np.array([log_q(np.array(quat_mult(q_tango[i,:],quat_inv(q_tango[0,:])))) for i in range(len(q_tango))])
@@ -647,9 +650,9 @@ quats_ori[:,0] = xs[:,1]"""
 
 lag = 0
 #quats_ori[:lag,:] = 0
-quats_tango[:len(xs)-lag,2]= -tango_xs[lag:,2]
-quats_tango[:len(xs)-lag,1] = -tango_xs[lag:,0]
-quats_tango[:len(xs)-lag,0] = tango_xs[lag:,1]
+quats_tango[:len(tango_xs)-lag,2]= -tango_xs[lag:,2]
+quats_tango[:len(tango_xs)-lag,1] = -tango_xs[lag:,0]
+quats_tango[:len(tango_xs)-lag,0] = tango_xs[lag:,1]
 
 
 quats_ori = np.array([log_q(np.array(quat_mult(q_ori[i,:],quat_inv(q_ori[0,:])))) for i in range(len(q_ori))])
@@ -661,28 +664,57 @@ quats_ori[:,0]=-np.copy(quats_ori[:,0])"""
 quats_ori[:,1] = -xs[:,2]
 quats_ori[:,2] = xs[:,0]
 """
-"""quats_ori[:,2]= -xs[:,2]
-quats_ori[:,1] = xs[:,0]
-quats_ori[:,0] = xs[:,1]"""
+quats_ori[:,2]= xs[:,2]
+quats_ori[:,1] = xs[:,1]
+quats_ori[:,0] = xs[:,0]
+"""exp_quats_ori = np.array([ExpQua(quats_ori[i,:]) for i in range(len(quats_ori))])
 
-lag = 0
+
+lag = 0"""
 #quats_ori[:lag,:] = 0
-quats_ori[lag:,2]= xs[:len(xs)-lag,2]
+"""quats_ori[lag:,2]= xs[:len(xs)-lag,2]
 quats_ori[lag:,1] = -xs[:len(xs)-lag,0]
 quats_ori[lag:,0] = -xs[:len(xs)-lag,1]
-
+"""
 #RR = fit_linear_R(np.array(quats_ori)[:2000,:],np.array(quat0)[:2000,:])
 
-RR = np.array([[ 0.73782088, -2.01876324,  0.09351722],
+"""RR = np.array([[ 0.73782088, -2.01876324,  0.09351722],
        [ 0.64439038,  0.61856525,  0.02743773],
        [-0.13016829, -2.15355985,  0.60531245]])
+
+RR = fit_linear_R(np.array(quats_ori)[0:10,:],np.array(quat_accmag)[0:10,:])
 rotated_quats_ori = (RR@np.array(quats_ori).astype(float).T).T
-ref = np.array([quat_mult(ExpQua(rotated_quats_ori[i,:]),newset.quat_calib) for i in range(len(rotated_quats_ori))])
+exp_rotated_quats_ori = np.array([ExpQua(rotated_quats_ori[i,:]) for i in range(len(rotated_quats_ori))])
+
+ref = np.array([quat_mult(quat_mult(exp_rotated_quats_ori[i,:],quat_inv(exp_rotated_quats_ori[0,:])),newset.quat_calib) for i in range(len(rotated_quats_ori))])
+ref_quats_ori = np.array([log_q(np.array(ref[i,:])) for i in range(len(ref))])
+RR = fit_linear_R(np.array(ref_quats_ori)[0:50,:],np.array(quat0)[0:50,:])
+exp_rotated_ref_quats_ori = np.array([ExpQua((RR@np.array(ref_quats_ori[i,:]).astype(float).T).T) for i in range(len(rotated_quats_ori))])
+"""
+
+x_ori = np.array([np.array(quat_rot([0,1,0,0],quat_inv(q_ori[i,:])))[1:4] for i in range(len(q_ori))])
+x_n = np.array([np.array(quat_rot([0,1,0,0],quat_inv(newset.neworient[i,:])))[1:4] for i in range(len(newset.neworient))])
+
+z_ori = np.array([np.array(quat_rot([0,0,0,1],quat_inv(q_ori[i,:])))[1:4] for i in range(len(q_ori))])
+z_n = np.array([np.array(quat_rot([0,0,0,1],quat_inv(newset.neworient[i,:])))[1:4] for i in range(len(newset.neworient))])
+
+v_ori = np.zeros((len(x_n)*2,3))
+v_n = np.zeros((len(x_n)*2,3))
+v_ori[::2] = x_ori
+v_n[::2] = x_n
+v_ori[1::2] = z_ori
+v_n[1::2] = z_n
+RRR = fit_linear_R(v_ori[0:2000,:],v_n[0:2000,:])
+qqq = RotToQuat(RRR)
+qqq = np.array(ExpQua(np.array([0,0,-3*np.pi/4])))
+rotated_q_ori = np.array([quat_mult(qqq,q_ori[i,:]) for i in range(len(q_ori))])
+ref = rotated_q_ori
+quats_ori = np.array([log_q(np.array(rotated_q_ori[i,:])) for i in range(len(q_ori))])
 
 
 normals = np.zeros((N,3))
 for i in range(0,N,1):
-    normals[i] = np.array(quat_rot([0,0.2,0.95, -0.15],ref[i,:]))[1:4]
+    normals[i] = np.array(quat_rot([0,0,1,0],ref[i,:]))[1:4]
     normals[i] = normals[i]/np.linalg.norm(normals[i])
     
 fig = plt.figure()
@@ -707,7 +739,7 @@ for i in range(0,N-1,1):
     #Solv3.update(time[i+1], gyr_gps[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], normal)
     Solv1.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], normal)
     #Solv1.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], normal)
-    Solv2.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], normal,std_acc_z=std_acc_z)
+    #Solv2.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], normal,std_acc_z=std_acc_z)
     correction_applied[i] = Solv2.KFilter.corrected
     angle_applied[i+1] =angle_applied[i]+Solv2.KFilter.angle
 
@@ -739,7 +771,7 @@ for i in range(0,N-1,1):
         ax.grid(True)
         
         ax = axs[1]
-        ax.plot([(log_q(np.array(quat_mult(Solv0.quaternion[j,:],quat_inv(ref[j,:]))))) for j in range(1,i+1)], label='Solv0')
+        ax.plot([((np.array((Solv0.quaternion[j,:])))) for j in range(1,i+1)], label='Solv0')
         #ax.plot([quat2[j, k] for j in range(i+1)], label='Solv2')
 
         #ax.plot([quats_ori[j, k] for j in range(i+1)], label='ref')
@@ -753,7 +785,7 @@ for i in range(0,N-1,1):
         ax.grid(True)
         
         ax = axs[2]
-        ax.plot([(log_q(np.array(quat_mult(Solv1.quaternion[j,:],quat_inv(ref[j,:]))))) for j in range(1,i+1)], label='Solv1')
+        ax.plot([((np.array((Solv1.quaternion[j,:])))) for j in range(1,i+1)], label='Solv1')
         #ax.plot([quat2[j, k] for j in range(i+1)], label='Solv2')
 
         #ax.plot([quats_ori[j, k] for j in range(i+1)], label='ref')
@@ -765,7 +797,23 @@ for i in range(0,N-1,1):
         ax.set_title('d normLogQuaternion')
         ax.legend()
         ax.grid(True)
-            
+        
+        
+        ax = axs[3]
+        ax.plot([((np.array((ref[j,:])))) for j in range(1,i+1)], label='Solv1')
+        #ax.plot([quat2[j, k] for j in range(i+1)], label='Solv2')
+
+        #ax.plot([quats_ori[j, k] for j in range(i+1)], label='ref')
+        
+        # points de correction
+        indices = np.argwhere(correction_applied).flatten()
+        #ax.plot(indices, [quat2[j, k] for j in indices], '.', markersize=10, label='correction')
+    
+        ax.set_title('d normLogQuaternion')
+        ax.legend()
+        ax.grid(True)
+        
+        
         plt.tight_layout()
         plt.show()
         
@@ -822,14 +870,19 @@ ax.set_title('q_ori_arkit')
 
 fig = plt.figure()
 ax = fig.add_axes([0,0,1,1])
-ax.plot(q_ori)
+ax.plot(rotated_q_ori)
 ax.set_title('q_ori')
 
-quat2 = np.array([log_q(np.array(quat_mult(quaternion2[i,:],quat_inv(quaternion2[0,:])))) for i in range(len(quaternion1))])
-quat1 = np.array([log_q(np.array(quat_mult(quaternion1[i,:],quat_inv(quaternion1[0,:])))) for i in range(len(quaternion1))])
-quat0 = np.array([log_q(np.array(quat_mult(quaternion0[i,:],quat_inv(quaternion0[0,:])))) for i in range(len(quaternion0))])
+quat2r = np.array([log_q(np.array(quat_mult(quaternion2[i,:],quat_inv(quaternion2[0,:])))) for i in range(len(quaternion1))])
+quat1r = np.array([log_q(np.array(quat_mult(quaternion1[i,:],quat_inv(quaternion1[0,:])))) for i in range(len(quaternion1))])
+quat0r = np.array([log_q(np.array(quat_mult(quaternion0[i,:],quat_inv(quaternion0[0,:])))) for i in range(len(quaternion0))])
 
-quat_accmag = np.array([log_q(np.array(quat_mult(newset.neworient[i,:],quat_inv(newset.neworient[0,:])))) for i in range(len(newset.neworient))])
+quat2 = np.array([log_q(np.array(quaternion2[i,:])) for i in range(len(quaternion1))])
+quat1 = np.array([log_q(np.array(quaternion1[i,:])) for i in range(len(quaternion1))])
+quat0 = np.array([log_q(np.array(quaternion0[i,:])) for i in range(len(quaternion0))])
+
+
+quat_accmag = np.array([log_q(np.array(newset.neworient[i,:])) for i in range(len(newset.neworient))])
 fig = plt.figure()
 ax = fig.add_axes([0,0,1,1])
 ax.plot(quats_arkit)
@@ -1107,3 +1160,36 @@ def sync_a(x,y):
             min = norm
             score=t0
     return score
+
+
+x_ori = np.array([np.array(quat_rot([0,1,0,0],quat_inv(q_ori[i,:])))[1:4] for i in range(len(q_ori))])
+x_rori = np.array([np.array(quat_rot([0,1,0,0],quat_inv(rotated_q_ori[i,:])))[1:4] for i in range(len(rotated_q_ori))])
+x_n = np.array([np.array(quat_rot([0,1,0,0],quat_inv(newset.neworient[i,:])))[1:4] for i in range(len(newset.neworient))])
+x_0 = np.array([np.array(quat_rot([0,1,0,0],quat_inv(quaternion0[i,:])))[1:4] for i in range(len(q_ori))])
+x_1 = np.array([np.array(quat_rot([0,1,0,0],quat_inv(quaternion1[i,:])))[1:4] for i in range(len(q_ori))])
+
+y_ori = np.array([np.array(quat_rot([0,0,1,0],quat_inv(q_ori[i,:])))[1:4] for i in range(len(q_ori))])
+y_rori = np.array([np.array(quat_rot([0,0,1,0],quat_inv(rotated_q_ori[i,:])))[1:4] for i in range(len(rotated_q_ori))])
+y_n = np.array([np.array(quat_rot([0,0,1,0],quat_inv(newset.neworient[i,:])))[1:4] for i in range(len(newset.neworient))])
+y_0 = np.array([np.array(quat_rot([0,0,1,0],quat_inv(quaternion0[i,:])))[1:4] for i in range(len(q_ori))])
+y_1 = np.array([np.array(quat_rot([0,0,1,0],quat_inv(quaternion1[i,:])))[1:4] for i in range(len(q_ori))])
+
+
+
+
+z_ori = np.array([np.array(quat_rot([0,0,0,1],quat_inv(q_ori[i,:])))[1:4] for i in range(len(q_ori))])
+z_rori = np.array([np.array(quat_rot([0,0,0,1],quat_inv(rotated_q_ori[i,:])))[1:4] for i in range(len(rotated_q_ori))])
+z_n = np.array([np.array(quat_rot([0,0,0,1],quat_inv(newset.neworient[i,:])))[1:4] for i in range(len(newset.neworient))])
+z_0 = np.array([np.array(quat_rot([0,0,0,1],quat_inv(quaternion0[i,:])))[1:4] for i in range(len(q_ori))])
+z_1 = np.array([np.array(quat_rot([0,0,0,1],quat_inv(quaternion1[i,:])))[1:4] for i in range(len(q_ori))])
+
+
+v_ori = np.zeros((len(x_n)*2,3))
+v_n = np.zeros((len(x_n)*2,3))
+v_ori[::2] = x_ori
+v_n[::2] = x_n
+v_ori[1::2] = z_ori
+v_n[1::2] = z_n
+RRR = fit_linear_R(v_ori[0:2000,:],v_n[0:2000,:])
+
+qqq = RotToQuat(RRR)

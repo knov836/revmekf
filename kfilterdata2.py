@@ -221,12 +221,13 @@ class KFilterDataFile:
         self.normal = normal
         dtime = np.diff(time)
         print("time",dtime)
+        
         ind = np.where(1/dtime<1000)[0]
         #print(data[])
         
         self.freq = np.mean(1/dtime[ind])
         self.size=len(time)
-        self.c_size = 150
+        self.c_size = 2
         self.c_bias= 100
         self.DT = mpf(1)/mpf(self.freq)
         self.grav = np.mean([mp.norm(a) for a in acc])
@@ -243,7 +244,7 @@ class KFilterDataFile:
         self.m_noise = 0
         self.acc = acc
         self.mag = mag
-        self.g_bias = np.mean(gyro[:self.c_bias,:],axis=0)
+        self.g_bias = np.mean(gyro[:self.c_bias,:],axis=0)*0
         self.gyro = np.copy(gyro-self.g_bias)
         self.c_mag = np.copy(self.cmag(normal=self.normal))
         calib = self.new_orient_calib()
@@ -312,9 +313,9 @@ class KFilterDataFile:
         self.orient[0,:] = self.quat_calib
         
         
-        self.mag0 = np.array(quat_rot([0,*np.mean(self.mag[:150,:].astype(float),axis=0)], self.quat_calib))[1:4].astype(float)
+        self.mag0 = np.array(quat_rot([0,*np.mean(self.mag[:self.c_size,:].astype(float),axis=0)], self.quat_calib))[1:4].astype(float)
         
-        self.mag0 = np.array(quat_rot([0,*self.mag0],ExpQua(np.array([0,0,-np.arctan2(self.mag0[1],self.mag0[0])]))))[1:4]
+        #self.mag0 = np.array(quat_rot([0,*self.mag0],ExpQua(np.array([0,0,-np.arctan2(self.mag0[1],self.mag0[0])]))))[1:4]
         #pdb.set_trace()
         self.mag0 = self.mag0/np.linalg.norm(self.mag0)
         #self.mag0 = np.array(quat_rot([0,*np.mean(self.mag[:300,:].astype(float),axis=0)], quat_inv(self.quat_calib)))[1:4]
@@ -430,6 +431,7 @@ class KFilterDataFile:
             M = np.array([-adm,new_m,a]).T
             #pdb.set_trace()
             M = np.array([new_m,adm,a]).T
+            #pdb.set_trace()
             """M = np.array([new_m,adm,a]).T
             res = acc_mag_to_R_body_to_ned(a, m, declination_deg=0.0)
             M = res['R']
