@@ -244,7 +244,7 @@ class KFilterDataFile:
         self.m_noise = 0
         self.acc = acc
         self.mag = mag
-        self.g_bias = np.mean(gyro[:self.c_bias,:],axis=0)*0
+        self.g_bias = np.mean(gyro[:self.c_bias,:],axis=0)*0+g_bias
         self.gyro = np.copy(gyro-self.g_bias)
         self.c_mag = np.copy(self.cmag(normal=self.normal))
         calib = self.new_orient_calib()
