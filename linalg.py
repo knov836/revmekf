@@ -1469,6 +1469,7 @@ def acc_from_normal_imu_grav(norm0,norm,acc,grav,normal,center,start=[0,0,1],s_r
         FF = FF_normal/t1t0
         #pdb.set_trace()
         
+        gamma = 0.5
         gamma = 1.0
         
         prob = np.random.random(1)
@@ -1611,7 +1612,8 @@ def acc_from_normal_imu_grav(norm0,norm,acc,grav,normal,center,start=[0,0,1],s_r
             ax.legend()
             plt.show()"""
             t1t0=t4t0
-            corrected=True 
+            corrected=True
+            #pdb.set_trace()
             
         """else:
             if not((t4t0 == t2t0 and sign*(teGG-C).dot(normal).evalf(subs={v:(t4t0+t2t0)/2})<0) or sign*(teGG-C).dot(normal).evalf(subs={v:(t4t0+t2t0)/2})<0 ):

@@ -210,7 +210,7 @@ pos_earth = newset.pos_earth
 q0,q1,r0,r1 = 10**(-5), 10**(-5), 10**(8), 10**(-2) 
 q0,q1,r0,r1 = 10**(-4), 10**(-4), 10**(-2), 10**(-1)
 q0,q1,r0,r1 = 10**(-4), 10**(-4), 10**(-2), 10**(-1)
-q0,q1,r0,r1 = 10**(-2), 10**(-2), 10**(1), 10**(-1)*2
+q0,q1,r0,r1 = 10**(-2), 10**(-2), 10**(-1), 10**(-1)
 #normal = np.array([-1,1,0],dtype=mpf)10
 normal = newset.normal
 
@@ -223,7 +223,7 @@ Solv0 = SolverFilterPlan(Integration,q0,q1,r0,r1,normal,newset,start=np.array(ne
 Solv1 = SolverFilterPlan(MEKF,q0,q1,r0,r1,normal,newset,start=np.array(newset.quat_calib,dtype=mpf),proj_fun=proj_func)#,grav=newset.grav)
 #q0,q1,r0,r1 = 10**(-2), 10**(-2), 10**(0), 10**(-2)
 
-Solv2 = SolverFilterPlan(Rev,q0,q1,r0,r1,normal,newset,start=np.array(newset.quat_calib,dtype=mpf),proj_fun=proj_func,heuristic=False)#,grav=newset.grav)
+Solv2 = SolverFilterPlan(Rev,q0,q1,r0,r1,normal,newset,start=np.array(newset.quat_calib,dtype=mpf),proj_fun=proj_func,heuristic=True)#,grav=newset.grav)
 
 #Solv2 = SolverFilterPlan(PredictFilterPlan,q0,q1,r0,r1,normal,None)   
 
@@ -238,6 +238,8 @@ newset.orient = Solv0.quaternion[:,:]
 nn=0
 #neworient = newset.new_orient()
 #N=2
+correction_applied = np.zeros(N)
+
 for i in range(0,N-1,1):
     nn+=1
     print("iteration",i)
@@ -247,6 +249,8 @@ for i in range(0,N-1,1):
     Solv0.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], newset.normal)
     Solv1.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], newset.normal)
     Solv2.update(time[i+1], newset.gyro[i+1,:], newset.acc[i+1,:], newset.mag[i+1,:], newset.normal)
+    correction_applied[i] = Solv2.KFilter.corrected
+
     #print(Solv0.KFilter.speed,Solv1.KFilter.speed)
     
     if i%10 ==0 and i>0:
@@ -276,298 +280,78 @@ position2 = Solv2.position[:N,:]
 
 gravity_r = Solv2.gravity_r[:N,:]
 
+metric0 = np.zeros(N,dtype=mpf)
+metric1 = np.zeros(N,dtype=mpf)
+metric2 = np.zeros(N,dtype=mpf)
 
-fig = plt.figure()
-ax = fig.add_axes([0,0,1,1])
-ax.plot(quaternion0[:,0],quaternion0[:,1],'*')
-ax.plot(quaternion2[:,0],quaternion2[:,1],'*')
+time0=time-time[0]
+size  =n_end-n_start
+size=N
+acc_earth = np.array([np.array(quat_rot([0,*newset.acc[i,:]], quaternion2[i,:]))[1:4] for i in range(size-1)])
 
-ax.legend(['Input quaternion','Resulting quaternion'])
-ax.set_title('Comparison of initial quaternion and result with freq=' + str(newset.freq))
-
-
+ground_truth = np.zeros((N,4))
+q_mean = np.mean(newset.neworient,axis=0)
+q_mean = q_mean/np.linalg.norm(q_mean)
 for i in range(N):
-    #print(quat_mult(quaternion[i,:],quat_inv(orient[i,:])))
-    compare[i,:] = normalize(quat_mult(quaternion0[i,:],quat_inv(orient[i,:])))-np.array([1,0,0,0])
-    compare2[i,:] = normalize(quat_mult(quaternion2[i,:],quat_inv(orient[i,:])))-np.array([1,0,0,0])
-    #compare2[i,:] = quaternion2[i,:]-orient[i,:]
+    ground_truth[i,:] = q_mean
 
-nn=int(N/2)    
-fig = plt.figure()
-ax = fig.add_axes([0,0,1,1])
-ax.plot(orient[:nn,0],orient[:nn,3],'*')
-ax.plot(quaternion0[:nn,0],quaternion0[:nn,3],'*')
-ax.plot(quaternion2[:nn,0],quaternion2[:nn,3],'*')
+for i in range(1,N):
+    metric0[i] = metric0[i-1] + np.abs(1-quat_mult(quaternion0[i,:],quat_inv(ground_truth[i,:]))[0])
+    metric1[i] = metric1[i-1] + np.abs(1-quat_mult(quaternion1[i,:],quat_inv(ground_truth[i,:]))[0])
+    metric2[i] = metric2[i-1] + np.abs(1-quat_mult(quaternion2[i,:],quat_inv(ground_truth[i,:]))[0])
 
 fig = plt.figure()
 ax = fig.add_axes([0,0,1,1])
-ax.plot(orient[:nn,0],orient[:nn,1],'*')
-ax.plot(quaternion0[:nn,0],quaternion0[:nn,1],'*')
+ax.plot(time0[:size],metric1-metric2)
+ax.plot(time0[np.argwhere(correction_applied).flatten()], [np.linalg.norm((metric1-metric2)[j]) for j in np.argwhere(correction_applied).flatten()],'.',**dict(markersize=10))
 
-
-fig = plt.figure()
-ax = fig.add_axes([0,0,1,1])
-ax.plot(orient[nn:,0],orient[nn:,3],'*')
-ax.plot(quaternion0[nn:,0],quaternion0[nn:,3],'*')
-ax.plot(quaternion2[:nn,0],quaternion2[:nn,3],'*')
-
-fig = plt.figure()
-ax = fig.add_axes([0,0,1,1])
-ax.plot(orient[nn:,0],orient[nn:,1],'*')
-ax.plot(quaternion1[nn:,0],quaternion1[nn:,1],'*')
-
-ax.legend(['Input quaternion','Resulting quaternion'])
-ax.set_title('Comparison of initial quaternion and result with freq=' + str(newset.freq))
-
-fig = plt.figure()
-ax = fig.add_axes([0,0,2,2])
-ax.plot([mp.norm(compare[i,:]) for i in range(len(compare))],'*')
-ax.plot([mp.norm(compare2[i,:]) for i in range(len(compare2))],'*')
-ax.set_title('angle = ' + str(angle) + ' rad, bias =' +str(g_bias) + ', gyro noise =' + str(g_noise) + ', acc noise =' + str(a_noise))
-
-
-#print(list(map(surf,position2)))
-
-diff_pos1 = [np.linalg.norm(a) for a in position1-pos_earth]
-diff_pos2 = [np.linalg.norm(a) for a in position2-pos_earth]
-fig = plt.figure()
-ax = fig.add_axes([0,0,1,1])
-ax.plot(diff_pos1)
-
-ax.set_title('Diff Position with EKF with Reality in 3D, ProjAlgo')
-
-fig = plt.figure()
-ax = fig.add_axes([0,0,1,1])
-ax.plot(diff_pos2)
-
-ax.set_title('Diff Position with EKF with Reality in 3D, CorrProjAlgo')
-
-fig = plt.figure()
-ax = fig.add_axes([0,0,1,1])
-ax.plot(position2-pos_earth)
-
-ax.set_title('Diff Position with EKF with Reality in 3D, CorrProjAlgo')
-
-
-"""fig = plt.figure()
-ax = fig.add_axes([0,0,2,2])
-ax.plot([mp.norm(compare[i,:]) for i in range(len(compare))],'*')
-ax.plot([mp.norm(compare2[i,:]) for i in range(len(orient))],'*')
-ax.set_title('angle = ' + str(angle) + ' rad, bias =' +str(g_bias) + ', gyro noise =' + str(g_noise) + ', acc noise =' + str(a_noise))"""
-
-fig = plt.figure()
-ax = fig.add_axes([0,0,2,2])
-ax.plot([mp.norm(compare[i,:]) for i in range(len(compare[:,:]))],'*')
-ax.plot([mp.norm(compare2[i,:]) for i in range(len(orient))],'*')
-ax.legend(['ProjAlgo','CorrProjAlgo'])
-
-fig = plt.figure()
-ax = fig.add_axes([0,0,2,2])
-ax.plot(compare2)
-
-fig = plt.figure()
-ax = fig.add_axes([0,0,1,1])
-ax.plot(quaternion0)
-ax.set_title('quaternion0')
-
-fig = plt.figure()
-ax = fig.add_axes([0,0,1,1])
-ax.plot(quaternion1)
-ax.set_title('quaternion1')
-
-fig = plt.figure()
-ax = fig.add_axes([0,0,1,1])
-ax.plot(quaternion2)
-ax.set_title('quaternion2')
-
-fig = plt.figure()
-ax = fig.add_axes([0,0,1,1])
-ax.plot(newset.orient)
-ax.set_title('orient')
-
-fig = plt.figure()
-ax = fig.add_axes([0,0,1,1])
-ax.plot(position0)
-ax.set_title('Position from Integration of gyroscope')
-fig = plt.figure()
-ax = fig.add_axes([0,0,1,1])
-ax.plot(position1)
-ax.set_title('Position from MEKF')
-
-fig = plt.figure()
-ax = fig.add_axes([0,0,1,1])
-ax.plot(position2)
-ax.set_title('Position from Rev-MEKF')
-
-fig = plt.figure()
-ax = fig.add_axes([0,0,1,1])
-ax.plot(pos_earth)
-ax.set_title('pos_earth')
-
-
-
-fig = plt.figure()
-ax = fig.add_axes([0,0,1,1])
-ax.plot(pos_earth-position0)
-ax.set_title('dpos_earth0')
-
-
-fig = plt.figure()
-ax = fig.add_axes([0,0,1,1])
-ax.plot(pos_earth-position1)
-ax.set_title('dpos_earth1')
-
-fig = plt.figure()
-ax = fig.add_axes([0,0,1,1])
-ax.plot(pos_earth-position2)
-ax.set_title('dpos_earth2')
-
-compare0 = np.zeros((N,4))
-for ind in range(N):
-    quat=newset.orient[ind,:]
-    compare0[ind,:] = normalize(quat_mult(quaternion0[ind,:],quat_inv(newset.orient[ind,:])))-np.array([1,0,0,0])
-
-
-compare1 = np.zeros((N,4))
-quat = newset.rotsurf
-for ind in range(N):
-    #quat=newset.orient[ind,:]
-    compare1[ind,:] = normalize(quat_mult(quaternion1[ind,:],quat_inv(newset.orient[ind,:])))-np.array([1,0,0,0])
-    #compare1[ind,:] = normalize(quat_mult(quaternion1[ind,:],quat_inv(quat)),quat_inv(newset.orient[ind,:])))-np.array([1,0,0,0])
-
-
-compare2 = np.zeros((N,4))
-quat = newset.rotsurf
-for ind in range(N):
-    #quat=newset.orient[ind,:]
-    compare2[ind,:] = normalize(quat_mult(quaternion2[ind,:],quat_inv(newset.orient[ind,:])))-np.array([1,0,0,0])
-    #compare1[ind,:] = normalize(quat_mult(quaternion1[ind,:],quat_inv(quat)),quat_inv(newset.orient[ind,:])))-np.array([1,0,0,0])
-compare3 = np.zeros((N,4))
-quat = newset.rotsurf
-for ind in range(N):
-    #quat=newset.orient[ind,:]
-    compare3[ind,:] = normalize(quat_mult(quaternion2[ind,:],quat_inv(quaternion1[ind,:])))-np.array([1,0,0,0])
-    #compare1[ind,:] = normalize(quat_mult(quaternion1[ind,:],quat_inv(quat)),quat_inv(newset.orient[ind,:])))-np.array([1,0,0
-
-fig = plt.figure()
-ax = fig.add_axes([0,0,1,1])
-ax.plot(compare0)
-ax.set_title('compare0')
-
-
-fig = plt.figure()
-ax = fig.add_axes([0,0,1,1])
-ax.plot(compare1)
-ax.set_title('compare1')
-
-
-fig = plt.figure()
-ax = fig.add_axes([0,0,1,1])
-ax.plot(compare2)
-ax.set_title('compare2')
-
-fig = plt.figure()
-ax = fig.add_axes([0,0,1,1])
-ax.plot(compare3)
-ax.set_title('compare3')
-
-
-fig = plt.figure()
-ax = fig.add_axes([0,0,1,1])
-ax.plot(pos_earth[:,0],pos_earth[:,1])
-ax.set_title('True trajectory')
-fig = plt.figure()
-ax = fig.add_axes([0,0,1,1])
-ax.plot(position0[:,0],position0[:,1])
-ax.set_title('Position with Integration of gyroscope')
-fig = plt.figure()
-ax = fig.add_axes([0,0,1,1])
-ax.plot(position1[:,0],position1[:,1])
-ax.legend(['x axis','y axis','z axis'])
-plt.xlabel('Samples')
-plt.ylabel('meters')
-ax.set_title('Position with MEKF')
-
-fig = plt.figure()
-ax = fig.add_axes([0,0,1,1])
-ax.plot(position2[:,0],position2[:,1])
-ax.legend(['x axis','y axis','z axis'])
-plt.xlabel('Samples')
-plt.ylabel('meters')
-ax.set_title('Position with Reversible MEKF')
-fig = plt.figure()
-ax = fig.add_axes([0,0,1,1])
-ax.plot(position1)
-ax.legend(['x axis','y axis','z axis'])
-plt.xlabel('Samples')
-plt.ylabel('meters')
-ax.set_title('Position from MEKF')
-
-fig = plt.figure()
-ax = fig.add_axes([0,0,1,1])
-ax.plot(position2)
-ax.legend(['x axis','y axis','z axis'])
-plt.xlabel('Samples')
-plt.ylabel('meters')
-ax.set_title('Position from Rev-MEKF')
-
-
-
-fig = plt.figure()
-ax = fig.add_axes([0,0,1,1])
-ax.plot(gravity_r[1:])
-ax.set_title('Acc')
-
-
-'''
-leica_file = 'leica_data.csv'
-
-#N = 10000
-leica=pd.read_csv(leica_file)
-df = leica.values
-time_leica = df[:,0]/10**9
-fig = plt.figure()
-ax = fig.add_axes([0,0,1,1])
-ax.plot(time_leica[n_start:n_end]-time_leica[0]-20,df[n_start:n_end,1:])
-ax.plot(time[1:]-time[0],position1[1:,0])
-ax.set_title('leica pos')
-
-fig = plt.figure()
-ax = fig.add_axes([0,0,1,1])
-ax.plot(time_leica[n_start:n_end]-time_leica[0]-20,df[n_start:n_end,3])
-ax.plot(time[1:]-time[0],position0[1:,2])
-ax.plot(time[1:]-time[0],position1[1:,2])
-ax.plot(time[1:]-time[0],position2[1:,2])
-ax.set_title('leica vs odo')
-
-fig = plt.figure()
-ax = fig.add_axes([0,0,1,1])
-ax.plot(time_leica[n_start:n_end]-time_leica[0],df[n_start:n_end,3])
-ax.plot(time[1:]-time[0],position0[1:,2])
-ax.plot(time[1:]-time[0],position1[1:,2])
-ax.plot(time[1:]-time[0],position2[1:,2])
-ax.set_title('leica vs odo')
-
-fig = plt.figure()
-ax = fig.add_axes([0,0,1,1])
-ax.plot(newset.pressure)'''
-fig = plt.figure()
-ax = fig.add_axes([0,0,1,1])
-ax.plot(position1)
-ax.legend(['x axis','y axis','z axis'])
-plt.xlabel('Samples')
-plt.ylabel('meters')
-ax.set_title('Position from MEKF')
-
-fig = plt.figure()
-ax = fig.add_axes([0,0,1,1])
-ax.plot([np.linalg.norm(p) for p in position1])
-ax.plot([np.linalg.norm(p) for p in position2])
-ax.legend(['Norm of position with MEKF','Norm of position with Heuristical Rev-MEKF'])
+#ax.plot(metric2)
+ax.legend(['Lambda(X_MEKF,T) - Lambda(X_REVMEKF,T)','Correction applied'])
 #plt.yscale("log")
-plt.xlabel('Samples')
-plt.ylabel('meters')
-ax.set_title('Norm of difference of position computed by MEKF and Heuristical Rev-MEKF')
+plt.xlabel('Seconds')
+plt.ylabel('Cumulated error')
+ax.set_title('Difference of the metric computed by MEKF and Heuristical Rev-MEKF')
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(time0[:size],metric1)
+ax.plot(time0[:size],metric2)
+ax.legend(['Lambda(X_MEKF,T)','Lambda(X_REVMEKF,T)'])
+plt.yscale("log")
+plt.xlabel('Seconds')
+plt.ylabel('Cumulated error')
+ax.set_title('Metric computed by MEKF and Heuristical Rev-MEKF')
+
+acc_ext = acc_earth-Solv2.KFilter.gravity
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(time0[:size-1],np.linalg.norm(acc_ext,axis=1))
+ax.plot(time0[np.argwhere(correction_applied).flatten()], [np.linalg.norm(acc_ext[j,:]) for j in np.argwhere(correction_applied).flatten()],'.',**dict(markersize=10))
+
+ax.set_xlabel('Seconds')
+ax.set_ylabel('m.s^(-2)')
+ax.set_title('Norm of external acceleration')
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(time0[:size],np.linalg.norm(newset.acc.astype(float),axis=1))
+ax.plot(time0[np.argwhere(correction_applied).flatten()], [np.linalg.norm(newset.acc.astype(float)[j,:]) for j in np.argwhere(correction_applied).flatten()],'.',**dict(markersize=10))
+
+ax.set_xlabel('Seconds')
+ax.set_ylabel('m.s^(-2)')
+ax.set_title('Norm of acceleration')
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(gravity_r[1:size-1,2]*Solv2.KFilter.gravity[2])
 
 
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
 
+ax.plot(time0[:size-1],newset.acc[1:size,2])
+ax.plot(time0[:size-1],gravity_r[1:size,2]*Solv2.KFilter.gravity[2])
+ax.set_xlabel('Seconds')
+ax.set_ylabel('m.s^(-2)')
+ax.legend(['Z coordinate of Accelerometer','Z coordinate of gravity vector returned by Rev-MEKF'])
+ax.set_title('Comparison of z coordinates for different acceleration computed')
