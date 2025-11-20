@@ -48,8 +48,6 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)).split('/examples')[0]
 
 from scipy.spatial.transform import Rotation
 from solver_kalman import SolverFilterPlan
-from ronin2 import *
-
 
 acc_columns_x = [
     'x',
@@ -101,99 +99,76 @@ mag_y = len(mag_columns_y)
 mag_z = len(mag_columns_z)
 
 
-#sentral = loadmat('V1000/Sequencia1/SENTRAL.mat')
-sentral = loadmat('V1000/Sequencia1/MPU6050DMP.mat')
-ori_abb = sentral['ABBquaternion'].T
-ori = sentral['SENSquat'].T
-ori_z = np.copy(ori[:,1])
-ori[:,1] = np.copy(ori[:,2])
-ori[:,2] = ori_z
+acc_gyro_csv=pd.read_csv('outdoor_1_sensors/px4_imu.csv')
 
-gps_v = sentral['ABBposition'][:2,:].T
-sentral_time = sentral['MATLABtime'].flatten()
-MPU9150 = loadmat('V1000/Sequencia1/MPU9150.mat')
-MPU6050RM3100 = loadmat('V1000/Sequencia1/MPU6050RM3100.mat')
+mag_csv=pd.read_csv('outdoor_1_sensors/px4_mag.csv')
 
-mpu_abb = MPU9150['ABBquaternion'].T
+ground_truth = pd.read_csv('outdoor_1_sensors/ground_truth/ground_truth_80hz.csv')
 
-grav = 9.80
-acc_v = MPU9150['SENSacc'].T*grav
-gyro_v = MPU9150['SENSgyro'].T*np.pi/180
-mag_v = MPU9150['SENSmag'].T
+# Extraire les colonnes 1 à 4 (attention, Python est 0-indexé → colonnes 1:5)
+gps = ground_truth.iloc[:, 1:4]
+ori = ground_truth.iloc[:,4:8].values
+ori = np.array([o/np.linalg.norm(o) for o in ori])
+ground_truth['timestamp'] = ground_truth.iloc[:, 0].values
+gps_v = gps.values[:,[0,1]]
+
+acc_v = acc_gyro_csv.values[:,1:4]
+t_acc = acc_gyro_csv.values[:,0]#/10**(9)
+mag_v = mag_csv.values[:,1:4]#*1e6
+
 mag_v0 = np.copy(mag_v)
-mag_v[:,0] = mag_v0[:,1]
+t_mag = mag_csv.values[:,0]#/10**(9)
+"""mag_v[:,0] = mag_v0[:,1]
 mag_v[:,1] = mag_v0[:,0]
-mag_v[:,2] = -mag_v0[:,2]
-time = MPU9150['MATLABtime'].flatten()
+mag_v[:,2] = -mag_v0[:,2]"""
 
-fig = plt.figure()
-ax = fig.add_axes([0,0,1,1])
-ax.plot(MPU9150['MATLABtime'].flatten(),gyro_v)
-ax.set_xlabel('Seconds')
-ax.set_ylabel('rad.s^(-1)')
-ax.legend(['x axis','y axis','z axis'])
-ax.set_title("Gyroscope data")
+
+
+
+
+gyro_v = acc_gyro_csv.values[:,4:7]
+t_gyro= acc_gyro_csv.values[:,0]#/10**(9)
+
 
 acc_df = pd.DataFrame({
-    'timestamp': time,
+    'timestamp': t_acc,
     'acc_x': acc_v[:,0],
     'acc_y': acc_v[:,1],
     'acc_z': acc_v[:,2]
 }).sort_values('timestamp')
 
-acc_df = acc_df.dropna()
-acc_df = acc_df.drop(acc_df.index[0])
-
 gyro_df = pd.DataFrame({
-    'timestamp': time,
+    'timestamp': t_gyro,
     'gyro_x': gyro_v[:,0],
     'gyro_y': gyro_v[:,1],
     'gyro_z': gyro_v[:,2]
 }).sort_values('timestamp')
-gyro_df = gyro_df.dropna()
-gyro_df = gyro_df.drop(gyro_df.index[0])
 
 mag_df = pd.DataFrame({
-    'timestamp': time,
+    'timestamp': t_mag,
     'mag_x': mag_v[:,0],
     'mag_y': mag_v[:,1],
     'mag_z': mag_v[:,2]
 }).sort_values('timestamp')
-mag_df = mag_df.dropna()
 """'ori_w': ori[:,0],
 'ori_x': ori[:,1],
 'ori_y': ori[:,2],
 'ori_z': ori[:,3],"""
 gps_df = pd.DataFrame({
-    'timestamp': sentral_time,#*10**9,  # ou ton propre vecteur GPS timestamps
+    'timestamp': ground_truth['timestamp'],#*10**9,  # ou ton propre vecteur GPS timestamps
     'gps_x': gps_v[:,0],
     'gps_y': gps_v[:,1],
-    'ori_x': -ori[:,1],
+    'ori_w': ori[:,0],
+    'ori_x': ori[:,1],
     'ori_y': ori[:,2],
     'ori_z': ori[:,3],
-    'ori_w': ori[:,0],
-    
-    'ori_abb_x': ori_abb[:,1],
-    'ori_abb_y': ori_abb[:,2],
-    'ori_abb_z': ori_abb[:,3],
-    'ori_abb_w': ori_abb[:,0],
     #'speed': gps[:,2] if gps.shape[1] > 2 else np.nan
 }).sort_values('timestamp')
 
-sens_df = pd.DataFrame({
-    'timestamp': time,#*10**9,  # ou ton propre vecteur GPS timestamps
-    'ori_sens_x': mpu_abb[:,1],
-    'ori_sens_y': mpu_abb[:,2],
-    'ori_sens_z': mpu_abb[:,3],
-    'ori_sens_w': mpu_abb[:,0],
-    #'speed': gps[:,2] if gps.shape[1] > 2 else np.nan
-}).sort_values('timestamp')
-
-gps_df = gps_df.dropna()
 mpu = pd.merge_asof(acc_df, gyro_df, on='timestamp', direction='nearest')
 mpu = pd.merge_asof(mpu, mag_df, on='timestamp', direction='nearest')
 mpu = pd.merge_asof(mpu, gps_df, on='timestamp', direction='nearest')
-mpu = pd.merge_asof(mpu, sens_df, on='timestamp', direction='nearest')
+
 
 
 mpu = mpu.dropna(how="all")
@@ -226,9 +201,9 @@ if mmode == 'OdoAccPre':
     Rev = RevOdoAccPre
 
 
-n_start = 1200
+n_start = 2000
 n_end=4000
-n_end=n_start +1880
+n_end=n_start +30000
 cols = np.array(range(10))
 df = data.values[n_start:n_end,cols]
 
@@ -453,70 +428,10 @@ def Calibrate_Mag_improved(magX, magY, magZ, reg=1e-8, refine=False, refine_maxi
 
     return Minv, b, Ainv
 
-
-
 mags = np.array([mpu['mag_x'].values,mpu['mag_y'].values,mpu['mag_z'].values]).T
-new_mags = mpu[['mag_x','mag_y','mag_z']].rename(columns={'mag_x': 'x', 'mag_y': 'y', 'mag_z': 'z'})
-filtered_mags = filter_outlier(new_mags, 0.02, 0.02)
-
-offset_x, offset_y, offset_z, filtered_offset_mags = apply_offset_correction(filtered_mags)
-scale_x, scale_y, scale_z, filtered_offset_scale_mags = apply_scale_correction(filtered_offset_mags)
-
 N = len(mags[:,0])
-N0 = len(filtered_offset_scale_mags.values[:,0])
-mX,mY,mZ = new_mags.values[:,0],new_mags.values[:,1],new_mags.values[:,2]#.reshape((N,1)),filtered_mags[:,1].reshape((N,1)),filtered_mags[:,2].reshape((N,1))
-mX,mY,mZ = new_mags.values[0:5000:1,0],new_mags.values[0:5000:1,1],new_mags.values[0:5000:1,2]
-mX,mY,mZ = filtered_mags.values[:10000,0],filtered_mags.values[:10000,1],filtered_mags.values[:10000,2] #.reshape((N,1)),filtered_mags[:,1].reshape((N,1)),filtered_mags[:,2].reshape((N,1))
-"""filtered_mags = filter_outlier(new_mags, 0.02, 0.05).values
-
-
-
-N = len(mags[:,0])
-mX,mY,mZ = filtered_mags[:,0],filtered_mags[:,1],filtered_mags[:,2]#.reshape((N,1)),filtered_mags[:,1].reshape((N,1)),filtered_mags[:,2].reshape((N,1))
-"""
-#Minv, b, Ainv = Calibrate_Mag(mX.reshape((N0,1)), mY.reshape((N0,1)), mZ.reshape((N0,1)))
-
-def calib_mag(mX,mY,mZ):
-    Q, n, d = fitEllipsoid(mX.flatten(), mY.flatten(), mZ.flatten())
-    print(n)
-    print("d",d)
-    Qinv = np.linalg.inv(Q)
-    b = -np.dot(Qinv, n)
-    print(Qinv)
-    print(np.dot(n.T, np.dot(Qinv, n)))
-    print(np.real(1 / np.sqrt(np.dot(n.T, np.dot(Qinv, n)) - d)) )
-    Ainv = np.real(1 / np.sqrt(np.dot(n.T, np.dot(Qinv, n)) - d) * linalg.sqrtm(Q))
-    N0 = len(mX)
-    return Calibrate_Mag(mX.reshape((N0,1)), mY.reshape((N0,1)), mZ.reshape((N0,1)))
-    #return Qinv,b,Ainv
-Q, n, d = fitEllipsoid(mX.flatten(), mY.flatten(), mZ.flatten())
-Qinv = np.linalg.inv(Q)
-b = -np.dot(Qinv, n)
-Ainv = np.real(1 / np.sqrt(np.dot(n.T, np.dot(Qinv, n)) - d) * linalg.sqrtm(Q))
-#Qinv,b,Ainv= calib_mag(mX, mY, mZ)
-#Qinv,b,Ainv= calib_mag(filtered_offset_mags.values[:,0], filtered_offset_mags.values[:,1], filtered_offset_mags.values[:,2])
-#Ainv = np.array([[ 0.05486116, -0.00011346, 0.00146397],
-#                                  [-0.00011346,  0.05951535,  0.00731025],
-#                                  [0.00146397,  0.00731025,  0.07483137]])
-#b = np.array([-2.50627418, -11.4804655, -29.53963506]).transpose() 
-
-fig = plt.figure(1)
-ax = fig.add_subplot(111, projection='3d')
-ax.scatter(new_mags['x'], new_mags['y'], new_mags['z'], s=5, color='r')
-ax.set_xlabel('X')
-ax.set_ylabel('Y')
-ax.set_zlabel('Z')
-
-
-u = np.linspace(0, 2 * np.pi, 100)
-v = np.linspace(0, np.pi, 100)
-x = np.outer(np.cos(u), np.sin(v))
-y = np.outer(np.sin(u), np.sin(v))
-z = np.outer(np.ones(np.size(u)), np.cos(v))
-ax.plot_wireframe(x, y, z, rstride=10, cstride=10, alpha=0.5)
-ax.plot_surface(x, y, z, alpha=0.3, color='b')
-plt.show()
-
+mX,mY,mZ = mags[:,0].reshape((N,1)),mags[:,1].reshape((N,1)),mags[:,2].reshape((N,1))
+Minv, b, Ainv = Calibrate_Mag(mX, mY, mZ)
 fig = plt.figure(1)
 ax = fig.add_subplot(111, projection='3d')
 ax.scatter(mX, mY, mZ, s=5, color='r')
@@ -532,41 +447,7 @@ y = np.outer(np.sin(u), np.sin(v))
 z = np.outer(np.ones(np.size(u)), np.cos(v))
 ax.plot_wireframe(x, y, z, rstride=10, cstride=10, alpha=0.5)
 ax.plot_surface(x, y, z, alpha=0.3, color='b')
-plt.show()
 
-fig = plt.figure(1)
-ax = fig.add_subplot(111, projection='3d')
-ax.scatter(filtered_offset_mags['corrected_x'],filtered_offset_mags['corrected_y'],filtered_offset_mags['corrected_z'], s=5, color='r')
-ax.set_xlabel('X')
-ax.set_ylabel('Y')
-ax.set_zlabel('Z')
-
-
-u = np.linspace(0, 2 * np.pi, 100)
-v = np.linspace(0, np.pi, 100)
-x = np.outer(np.cos(u), np.sin(v))
-y = np.outer(np.sin(u), np.sin(v))
-z = np.outer(np.ones(np.size(u)), np.cos(v))
-ax.plot_wireframe(x, y, z, rstride=10, cstride=10, alpha=0.5)
-ax.plot_surface(x, y, z, alpha=0.3, color='b')
-plt.show()
-
-fig = plt.figure(1)
-ax = fig.add_subplot(111, projection='3d')
-ax.scatter(filtered_offset_scale_mags['scaled_corrected_x'],filtered_offset_scale_mags['scaled_corrected_y'],filtered_offset_scale_mags['scaled_corrected_z'], s=5, color='r')
-ax.set_xlabel('X')
-ax.set_ylabel('Y')
-ax.set_zlabel('Z')
-
-
-u = np.linspace(0, 2 * np.pi, 100)
-v = np.linspace(0, np.pi, 100)
-x = np.outer(np.cos(u), np.sin(v))
-y = np.outer(np.sin(u), np.sin(v))
-z = np.outer(np.ones(np.size(u)), np.cos(v))
-ax.plot_wireframe(x, y, z, rstride=10, cstride=10, alpha=0.5)
-ax.plot_surface(x, y, z, alpha=0.3, color='b')
-plt.show()
 
 
 
@@ -609,7 +490,7 @@ y = np.outer(np.sin(u), np.sin(v))
 z = np.outer(np.ones(np.size(u)), np.cos(v))
 ax.plot_wireframe(x, y, z, rstride=10, cstride=10, alpha=0.5)
 ax.plot_surface(x, y, z, alpha=0.3, color='b')
-plt.show()
+
 
 df[:,7:10] = c_mag[n_start:n_end,:]
 mag = np.copy(df[:,7:10])
@@ -638,10 +519,17 @@ s_acc_z = acc_z
 #s_acc_z = kalman_filter_1d(acc_z,10**(-2),0.1)
 df[:,3] = s_acc_z
 
-g_bias = np.zeros(3)
-bb =np.mean(df[:100,4:7],axis=0)
-
-newset = KFilterDataFile(df[:,:],mode=mmode,g_bias=g_bias,base_width=0.23,normals=normals)#,gravity=np.array([0,0,grav]))#,gravity=np.array([0,0,grav],dtype=mpf))#,start=np.array(q_ori[0,:],dtype=mpf))#,gravity=np.array([0,0,9.76],dtype=mpf))#,normal=np.array([0.1101,1,0])) 
+"""df[:,1:4] = np.copy(acc_smooth)
+df[:,4:7] = df[:,4:7]-np.mean(gyro_v[:2000,:],axis=0)
+"""
+"""gyro_smooth0 = savgol_filter(df[:,4], 20, 2)
+gyro_smooth1 = savgol_filter(df[:,5], 20, 2)
+gyro_smooth2 = savgol_filter(df[:,6], 20, 2)
+gyro_smooth = np.vstack((gyro_smooth0,gyro_smooth1,gyro_smooth2)).T
+df[:,4:7] = np.copy(gyro_smooth)"""
+grav=9.80
+#g_bias = np.mean(gyro_v[:2000,:],axis=0)
+newset = KFilterDataFile(df[:,:],mode=mmode,g_bias=g_bias,base_width=0.23,normals=normals,gravity=np.array([0,0,grav]))#,gravity=np.array([0,0,grav],dtype=mpf))#,start=np.array(q_ori[0,:],dtype=mpf))#,gravity=np.array([0,0,9.76],dtype=mpf))#,normal=np.array([0.1101,1,0])) 
 N=newset.size
 #N=len(df)
 nn = N-1
@@ -653,7 +541,7 @@ angle = int(N/2)
 orient = newset.orient
 pos_earth = newset.pos_earth
 
-q0,q1,r0,r1 = 10**(-2), 10**(-2), 10**(2), 10**(2)
+q0,q1,r0,r1 = 10**(-2), 10**(-2), 10**(1), 10**(1)
 normal = newset.normal
 
 
@@ -692,19 +580,15 @@ gravity = [0,0,np.mean(np.linalg.norm(acc_smooth[:150,:],axis=1))]
 
 q_ori = mpu[['ori_w','ori_x','ori_y','ori_z']].values[n_start:n_end,:]
 
-q_abb = mpu[['ori_abb_w','ori_abb_x','ori_abb_y','ori_abb_z']].values[n_start:n_end,:]
-q_abb_sens = mpu[['ori_sens_w','ori_sens_x','ori_sens_y','ori_sens_z']].values[n_start:n_end,:]
 xs = np.copy(q_ori)
-xs_abb = np.copy(q_abb)
-xs_abb_sens = np.copy(q_abb_sens)
+
 for i in range(len(q_ori)):
     q_ori[i,:] = xs[i,:]/np.linalg.norm(xs[i,:])
-    q_abb[i,:] = xs_abb[i,:]/np.linalg.norm(xs_abb[i,:])
-    q_abb_sens[i,:] = xs_abb_sens[i,:]/np.linalg.norm(xs_abb_sens[i,:])
 
 
 
-qqq0 = np.array(quat_mult(ExpQua(np.array([0,0,(0)])),ExpQua(np.array([0,0*np.pi/2,0]))))
+qqq0 = np.array(quat_mult(ExpQua(np.array([0,0,(0)])),ExpQua(np.array([0,0,(np.pi/8-np.pi/64)]))))
+#qqq0 = np.array(quat_mult(ExpQua(np.array([0,0,(0)])),ExpQua(np.array([0,0,(np.pi/2)]))))
 qqq1 = np.array([mpf('0.9996484354327505351079027482754353367820997'),
        mpf('-0.01754938359241596422050686462013313924100325'),
        mpf('0.01403845962988671022803964339446865007225605'),
@@ -713,26 +597,16 @@ qqq1 = np.array([mpf('0.9996484354327505351079027482754353367820997'),
 
 rotated_q_ori0= np.array([quat_mult(qqq0,q_ori[i,:]) for i in range(len(q_ori))])
 
-
-inv_newset2 = [np.array(quat_mult(q_abb_sens[j,:],quat_inv(newset.neworient[j,:]))) for j in range(10)]
-
-qqq2 = np.mean(inv_newset2,axis=0)#quat_mult(newset.quat_calib,quat_inv(rotated_q_ori0[0,:]))
-qqq2 = qqq2/np.linalg.norm(qqq2)
-rotated_orient = np.array([quat_mult(newset.neworient[i,:],qqq2) for i in range(len(q_ori))])
-orient_ref = rotated_orient
-
-
-inv_newset1 = [np.array(quat_mult(q_abb[j,:],quat_inv(q_ori[j,:]))) for j in range(10)]
+inv_newset1 = [np.array(quat_mult(quat_inv(rotated_q_ori0[j,:]),newset.neworient[j,:])) for j in range(100)]
 
 qqq1 = np.mean(inv_newset1,axis=0)#quat_mult(newset.quat_calib,quat_inv(rotated_q_ori0[0,:]))
 qqq1 = qqq1/np.linalg.norm(qqq1)
-
-rotated_q_ori = np.array([quat_mult(q_ori[i,:],qqq1) for i in range(len(q_ori))])
-ref = np.array([quat_mult(rotated_q_ori[i,:],quat_inv(qqq2)) for i in range(len(q_ori))])
+rotated_q_ori = np.array([quat_mult(rotated_q_ori0[i,:],qqq1) for i in range(len(q_ori))])
+ref = rotated_q_ori
 
 
 quats_ori = np.array([log_q(np.array(rotated_q_ori[i,:])) for i in range(len(q_ori))])
-quat_accmag = np.array([log_q(np.array(orient_ref[i,:])) for i in range(len(q_ori))])
+quat_accmag = np.array([log_q(np.array(newset.neworient[i,:])) for i in range(len(q_ori))])
 
 
 fig = plt.figure()
@@ -745,13 +619,14 @@ ax = fig.add_axes([0,0,1,1])
 ax.plot(quats_ori)
 ax.set_title("quats_ori")
 
-fig = plt.figure()
-ax = fig.add_axes([0,0,1,1])
-ax.plot(rotated_q_ori)
 
 fig = plt.figure()
 ax = fig.add_axes([0,0,1,1])
-ax.plot(orient_ref)
+ax.plot(quat_accmag-quats_ori)
+ax.set_title("quataccmag")
+
+
+
 
 fig = plt.figure()
 ax = fig.add_axes([0,0,1,1])
@@ -765,15 +640,13 @@ plt.show()
 
 normals = np.zeros((N,3))
 for i in range(0,N,1):
-    normals[i] = np.array(quat_rot([0,1,0,0],ref[i,:]))[1:4]
+    normals[i] = np.array(quat_rot([0,0,0,1],ref[i,:]))[1:4]
     normals[i] = normals[i]/np.linalg.norm(normals[i])
     
 fig = plt.figure()
 ax = fig.add_axes([0,0,1,1])
 ax.plot(normals)
 ax.set_title("normals")
-#qq0 = quat_ntom(normals[4000,:], np.array([1,0,0]))
-#normals = np.array([np.array(quat_rot([0,*normals[i,:]],qq0))[1:4] for i in range(len(normals))])
 #gyr_gps = mpu[['w_x','w_y','w_z']].to_numpy()[n_start:n_end,:]
 
 for i in range(0,N-1,1):
@@ -921,8 +794,8 @@ ax.set_title('Difference of the metric computed by Gyro Integration and MEKF')
 
 fig = plt.figure()
 ax = fig.add_axes([0,0,1,1])
-ax.plot(time[:size],metric1-metric2)
-ax.plot(time[np.argwhere(correction_applied).flatten()], [((metric1-metric2)[j]) for j in np.argwhere(correction_applied).flatten()],'.',**dict(markersize=10))
+ax.plot(time0[:size],metric1-metric2)
+ax.plot(time0[np.argwhere(correction_applied).flatten()], [((metric1-metric2)[j]) for j in np.argwhere(correction_applied).flatten()],'.',**dict(markersize=10))
 
 #ax.plot(metric2)
 ax.legend(['Lambda(X_MEKF,T) - Lambda(X_REVMEKF,T)','Correction applied'])
@@ -933,9 +806,9 @@ ax.set_title('Difference of the metric computed by MEKF and Heuristical Rev-MEKF
 
 fig = plt.figure()
 ax = fig.add_axes([0,0,1,1])
-ax.plot(time[:size],metric0)
-ax.plot(time[:size],metric1)
-ax.plot(time[:size],metric2)
+ax.plot(time0[:size],metric0)
+ax.plot(time0[:size],metric1)
+ax.plot(time0[:size],metric2)
 ax.legend(['Lambda(X_Gyro,T)','Lambda(X_MEKF,T)','Lambda(X_REVMEKF,T)'])
 #plt.yscale("log")
 plt.xlabel('Seconds')
@@ -957,7 +830,7 @@ metric2[i] = metric2[i-1] + np.abs(1-quat_mult(quaternion2[i,:],quat_inv(ground_
 acc_ext = acc_earth-Solv2.KFilter.gravity
 fig = plt.figure()
 ax = fig.add_axes([0,0,1,1])
-ax.plot(time0[:size-1],np.linalg.norm(acc_ext,axis=1))
+ax.plot(time0[:size-1],np.linalg.norm(acc_ext.astype(float),axis=1))
 ax.plot(time0[np.argwhere(correction_applied).flatten()], [np.linalg.norm(acc_ext[j,:]) for j in np.argwhere(correction_applied).flatten()],'.',**dict(markersize=10))
 
 ax.set_xlabel('Seconds')
@@ -966,8 +839,8 @@ ax.set_title('Norm of external acceleration')
 
 fig = plt.figure()
 ax = fig.add_axes([0,0,1,1])
-ax.plot(time[:size],np.linalg.norm(newset.acc.astype(float),axis=1))
-ax.plot(time[np.argwhere(correction_applied).flatten()], [np.linalg.norm(newset.acc.astype(float)[j,:]) for j in np.argwhere(correction_applied).flatten()],'.',**dict(markersize=10))
+ax.plot(time0[:size],np.linalg.norm(newset.acc.astype(float),axis=1))
+ax.plot(time0[np.argwhere(correction_applied).flatten()], [np.linalg.norm(newset.acc.astype(float)[j,:]) for j in np.argwhere(correction_applied).flatten()],'.',**dict(markersize=10))
 
 ax.set_xlabel('Seconds')
 ax.set_ylabel('m.s^(-2)')
@@ -987,16 +860,15 @@ ax.set_xlabel('Seconds')
 ax.set_ylabel('m.s^(-2)')
 ax.legend(['Z coordinate of Accelerometer','Z coordinate of gravity vector returned by Rev-MEKF'])
 ax.set_title('Comparison of z coordinates for different acceleration computed')
+quat2 = np.array([log_q(np.array(quaternion2[i,:])) for i in range(len(quaternion2))])
+quat1 = np.array([log_q(np.array(quaternion1[i,:])) for i in range(len(quaternion1))])
+quat0 = np.array([log_q(np.array(quaternion0[i,:])) for i in range(len(quaternion0))])
 
-quat2 = np.array([log_q(np.array(quat_mult(quaternion2[i,:],quat_inv(quaternion2[0,:])))) for i in range(len(quaternion1))])
-quat1 = np.array([log_q(np.array(quat_mult(quaternion1[i,:],quat_inv(quaternion1[0,:])))) for i in range(len(quaternion1))])
-quat0 = np.array([log_q(np.array(quat_mult(quaternion0[i,:],quat_inv(quaternion0[0,:])))) for i in range(len(quaternion0))])
-
-quat_accmag = np.array([log_q(np.array(quat_mult(newset.neworient[i,:],quat_inv(newset.neworient[0,:])))) for i in range(len(newset.neworient))])
+quat_accmag = np.array([log_q(np.array(newset.neworient[i,:])) for i in range(len(q_ori))])
 
 fig = plt.figure()
 ax = fig.add_axes([0,0,1,1])
-ax.plot(dquats_ori)
+ax.plot(quats_ori)
 ax.set_title("dquats_ori")
 fig = plt.figure()
 ax = fig.add_axes([0,0,1,1])
@@ -1015,53 +887,3 @@ fig = plt.figure()
 ax = fig.add_axes([0,0,1,1])
 ax.plot(quat0)
 ax.set_title("quat0")
-
-quats_ori = np.array([log_q(np.array(rotated_q_ori[i,:])) for i in range(len(q_ori))])
-quat_accmag = np.array([log_q(np.array(orient_ref[i,:])) for i in range(len(q_ori))])
-
-
-fig, axs = plt.subplots(1, 2, figsize=(10, 4))  # 2x2 sous-graphiques
-axs = axs.flatten()  # pour accéder facilement via axs[k]
-ax = axs[0]
-ax.plot(time,quats_ori)
-ax.set_xlabel('Seconds')
-#ax.set_ylabel('m.s^(-2)')
-ax.legend(['X axis','Y axis','Z axis'])
-ax.set_title("Orientation of the ground-truth")
-
-
-ax= axs[1]
-ax.plot(time,quat_accmag)
-ax.set_xlabel('Seconds')
-ax.legend(['X axis','Y axis','Z axis'])
-ax.set_title("Orientation from Accelerometer and Magnetometer")
-
-fig, axs = plt.subplots(1, 2, figsize=(10, 4))  # 2x2 sous-graphiques
-axs = axs.flatten()  # pour accéder facilement via axs[k]
-ax = axs[0]
-ax.plot(time[:size],metric1-metric2)
-ax.plot(time[np.argwhere(correction_applied).flatten()], [((metric1-metric2)[j]) for j in np.argwhere(correction_applied).flatten()],'.',**dict(markersize=10))
-
-#ax.plot(metric2)
-ax.legend(['Lambda(X_MEKF,T) -\n Lambda(X_REVMEKF,T)','Correction applied'])
-#plt.yscale("log")
-ax.set_xlabel('Seconds')
-ax.set_ylabel('Cumulated error')
-ax.set_title('Difference of the metric of MEKF and Heuristical Rev-MEKF')
-ax= axs[1]
-ax.plot(time[:size],np.linalg.norm(newset.acc.astype(float),axis=1))
-ax.plot(time[np.argwhere(correction_applied).flatten()], [np.linalg.norm(newset.acc.astype(float)[j,:]) for j in np.argwhere(correction_applied).flatten()],'.',**dict(markersize=10))
-ax.legend(['Norm of the acceleration','Corrections applied'])
-ax.set_xlabel('Seconds')
-ax.set_ylabel('m.s^(-2)')
-ax.set_title('Norm of acceleration')
-
-
-fig = plt.figure()
-ax = fig.add_axes([0,0,1,1])
-ax.plot(ref)
-
-fig = plt.figure()
-ax = fig.add_axes([0,0,1,1])
-ax.plot(newset.neworient)
-
