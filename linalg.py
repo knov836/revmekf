@@ -1471,6 +1471,7 @@ def acc_from_normal_imu_grav(norm0,norm,acc,grav,normal,center,start=[0,0,1],s_r
         
         gamma = 0.5
         gamma = 1.0
+        #gamma= 0.1
         
         prob = np.random.random(1)
         prob = 0
@@ -2062,3 +2063,5 @@ def acc_from_normal_imu_grav_manual(norm0,norm,acc,grav,normal,center,start=[0,0
     irot= (SymExpRot2(FF,-t0))
     
     return np.array(irot1,dtype=mpf)@np.array([0,0,1],dtype=mpf),irot1,rot1,np.array(irot2,dtype=mpf)@np.array([0,0,1],dtype=mpf),irot2,rot2,np.array(irot3,dtype=mpf)@np.array([0,0,1],dtype=mpf),irot3,rot3,corrected,not_corrected,label,np.abs(t_v0_acc-t1t0),rt0,rt2,rt3,rt4,ert0,ert2,ert3,ert4,head0,head1,head_ref
+
+

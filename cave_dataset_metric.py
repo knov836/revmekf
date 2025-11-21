@@ -50,64 +50,11 @@ from scipy.spatial.transform import Rotation
 from solver_kalman import SolverFilterPlan
 from ronin2 import *
 
-acc_columns_x = [
-    'x',
-    #'acc_x_above_suspension',
-    #'acc_x_below_suspension'
-]
-acc_columns_y = [
-    'y',
-    #'acc_y_above_suspension',
-    #'acc_y_below_suspension'
-]
-acc_columns_z = [
-    'z',
-    #'acc_z_above_suspension',
-    #'acc_z_below_suspension'
-]
-gyro_columns_x = [
-    'x'#,
-    #'gyro_x_above_suspension'#,'gyro_x_below_suspension'
-]
-gyro_columns_y = [
-    'y'#,
-    #'gyro_y_above_suspension'#,'gyro_y_below_suspension'
-]
-gyro_columns_z = [
-    'z'#,
-    #'gyro_z_above_suspension'#,'gyro_z_below_suspension'
-]
-mag_columns_x = [
-    'x',
-    #'mag_x_above_suspension'#,'mag_x_below_suspension'
-]
-mag_columns_y = [
-    'y',
-    #'mag_y_above_suspension'#,'mag_y_below_suspension'
-]
-mag_columns_z = [
-    'z',
-    #'mag_z_above_suspension'#,'mag_z_below_suspension'
-]
-acc_x = len(acc_columns_x)
-acc_y = len(acc_columns_y)
-acc_z = len(acc_columns_z)
-gyro_x = len(gyro_columns_x)
-gyro_y = len(gyro_columns_y)
-gyro_z = len(gyro_columns_z)
-mag_x = len(mag_columns_x)
-mag_y = len(mag_columns_y)
-mag_z = len(mag_columns_z)
-
 
 imu_csv=pd.read_csv('cave/full_dataset/imu_adis.txt')
-
-
 ground_truth = pd.read_csv('cave/full_dataset/imu_adis.txt')
 tf_pos = pd.read_csv('cave/full_dataset/tf.txt')
 
-
-# Extraire les colonnes 1 à 4 (attention, Python est 0-indexé → colonnes 1:5)
 gps = tf_pos.values[:len(ground_truth.values), 2:5]
 ori = ground_truth.values[:,6:10]
 ori = np.array([o/np.linalg.norm(o) for o in ori])
@@ -204,9 +151,9 @@ if mmode == 'OdoAccPre':
     Rev = RevOdoAccPre
 
 
-n_start = 0
+n_start = 3000+2250+1000+2000
 n_end=4000
-n_end=n_start +19000
+n_end=n_start +1000
 cols = np.array(range(10))
 df = data.values[n_start:n_end,cols]
 
@@ -221,30 +168,8 @@ accs = np.copy(df[:,1:7])
 #df[:,4:7]=df[:,4:7]*np.pi/180
 gyro = np.copy(df[:,4:7])
 time= np.array(df[:,0],dtype=mpf)#/10**9
-#time = time-2*time[0]+time[1]
 df[:,0]*=10**9
-#time = time-2*time[0]+time[1]#
-#df[:,7:10] = c_mag
 
-"""df[:,1] = accs[:,1]
-df[:,2] = accs[:,0]
-df[:,3] = -accs[:,2]
-df[:,4] = gyro[:,1]
-df[:,5] = gyro[:,0]
-df[:,6] = -gyro[:,2]"""
-
-"""df[:,1] = accs[:,2]
-df[:,2] = -accs[:,1]
-df[:,3] = accs[:,0]
-df[:,4] = gyro[:,2]
-df[:,5] = -gyro[:,1]
-df[:,6] = gyro[:,0]
-"""
-#df[:,2] = -accs[:,1]
-#df[:,3] = -accs[:,2]
-"""df[:,4] = -gyro[:,2]
-df[:,6] = -gyro[:,0]"""
-#normal = np.mean(df[:100,7:10],axis=0)
 def Calibrate_Mag(magX, magY, magZ):
     x2 = (magX ** 2)
     y2 = (magY ** 2)
@@ -707,7 +632,7 @@ qqq1 = np.array([mpf('0.9996484354327505351079027482754353367820997'),
 
 rotated_q_ori0= np.array([quat_mult(qqq0,q_ori[i,:]) for i in range(len(q_ori))])
 
-inv_newset1 = [np.array(quat_mult(quat_inv(rotated_q_ori0[j,:]),newset.neworient[j,:])) for j in range(1500)]
+inv_newset1 = [np.array(quat_mult(quat_inv(rotated_q_ori0[j,:]),newset.neworient[j,:])) for j in range(10)]
 
 qqq1 = np.mean(inv_newset1,axis=0)#quat_mult(newset.quat_calib,quat_inv(rotated_q_ori0[0,:]))
 qqq1 = qqq1/np.linalg.norm(qqq1)
@@ -1004,7 +929,7 @@ ax.set_title("quat0")
 fig, axs = plt.subplots(1, 2, figsize=(10, 4))  # 2x2 sous-graphiques
 axs = axs.flatten()  # pour accéder facilement via axs[k]
 ax = axs[0]
-ax.plot(time,quats_ori)
+ax.plot(time0,quats_ori)
 ax.set_xlabel('Seconds')
 #ax.set_ylabel('m.s^(-2)')
 ax.legend(['X axis','Y axis','Z axis'])
@@ -1012,7 +937,27 @@ ax.set_title("Orientation of the ground-truth")
 
 
 ax= axs[1]
-ax.plot(time,quat_accmag)
+ax.plot(time0,quat_accmag)
 ax.set_xlabel('Seconds')
 ax.legend(['X axis','Y axis','Z axis'])
 ax.set_title("Orientation from Accelerometer and Magnetometer")
+fig, axs = plt.subplots(1, 2, figsize=(10, 4))  # 2x2 sous-graphiques
+axs = axs.flatten()  # pour accéder facilement via axs[k]
+ax = axs[0]
+ax.plot(time0[:size],metric1-metric2)
+ax.plot(time0[np.argwhere(correction_applied).flatten()], [((metric1-metric2)[j]) for j in np.argwhere(correction_applied).flatten()],'.',**dict(markersize=10))
+
+#ax.plot(metric2)
+ax.legend([r'$\Lambda(X_\text{MEKF},\mathcal{T})$ - $\Lambda(X_\text{Rev-MEKF},\mathcal{T})$','Correction applied'],fontsize=14,loc='lower center')
+#plt.yscale("log")
+#plt.legend(fontsize=14)
+ax.set_xlabel('Seconds')
+ax.set_ylabel('Cumulated error')
+ax.set_title('Difference of the metric of MEKF and Heuristical Rev-MEKF')
+ax= axs[1]
+ax.plot(time0[:size],np.linalg.norm(newset.acc.astype(float),axis=1))
+ax.plot(time0[np.argwhere(correction_applied).flatten()], [np.linalg.norm(newset.acc.astype(float)[j,:]) for j in np.argwhere(correction_applied).flatten()],'.',**dict(markersize=10))
+ax.legend(['Norm of the acceleration','Corrections applied'],fontsize=14,loc='lower center')
+ax.set_xlabel('Seconds')
+ax.set_ylabel('m.s^(-2)')
+ax.set_title('Norm of acceleration')
