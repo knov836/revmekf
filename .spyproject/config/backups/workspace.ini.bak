@@ -4,7 +4,7 @@ save_data_on_exit = True
 save_history = True
 save_non_project_files = False
 project_type = 'empty-project-type'
-recent_files = ['industrial_robot.py', 'linalg.py', 'kfilterdata2.py', 'ronin1.py', 'advio-01/iphone/magnetometer1.csv', 'ronin3.py', 'oxiord/data1/raw/vi1.csv', 'oxiord/data1/raw/imu1.csv']
+recent_files = ['industrial_robot.py', 'linalg.py', 'kfilterdata2.py', 'ronin1.py', 'advio-01/iphone/magnetometer1.csv', 'ronin3.py', 'oxiord/data1/raw/vi1.csv', 'oxiord/data1/raw/imu1.csv', 'industrial_robot_metric.py', 'function_quat.py', 'ronin_run_metric.py', 'ronin_walk_metric.py', 'ronin2.py', 'uav_mars_metric1.py', 'uav_mars.py', 'cave_dataset.py', 'cave_dataset_metric.py', 'variants/reversible_gyroaccmag.py']
 
 [main]
 version = 0.2.0

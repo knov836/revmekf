@@ -61,8 +61,8 @@ if mmode == 'OdoAccPre':
     Integration = IntegrationOdoAccPre
     MEKF = MEKFOdoAccPre
     Rev = RevOdoAccPre
-delt = 50
-newset = KFilterData(100,mpf(100.)/mpf(1.),mode=mmode,traj='Rand',lw_noise=0.1*0,rw_noise=0.1*0,g_bias= 10**(-3)*0,g_noise=10**(-10)*0,a_noise=10**(-5)*0,params_test={'alpha':angle},surf=np.array([0,1,-1],dtype=mpf),delta = 10**(-delt*0.1)) 
+delt = 40
+newset = KFilterData(100,mpf(100.)/mpf(1.),mode=mmode,traj='Rand',lw_noise=0.1*0,rw_noise=0.1*0,g_bias= 10**(-2),g_noise=10**(-2),a_noise=10**(-2),params_test={'alpha':angle},surf=np.array([0,1,-1],dtype=mpf),delta = 10**(-delt*0.1)) 
 orient = newset.orient
 pos_earth = newset.pos_earth
 

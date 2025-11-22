@@ -151,9 +151,11 @@ if mmode == 'OdoAccPre':
     Rev = RevOdoAccPre
 
 
-n_start = 3000+2250+1000+2000
+#n_start = 3000+2250+1000+2000
+n_start = 0
 n_end=4000
-n_end=n_start +1000
+#n_end=n_start +1000
+n_end = 18000
 cols = np.array(range(10))
 df = data.values[n_start:n_end,cols]
 
@@ -961,3 +963,18 @@ ax.legend(['Norm of the acceleration','Corrections applied'],fontsize=14,loc='lo
 ax.set_xlabel('Seconds')
 ax.set_ylabel('m.s^(-2)')
 ax.set_title('Norm of acceleration')
+
+d_metric = metric1-metric2
+dd_metric = np.diff(d_metric)
+good = np.where(dd_metric>0)[0]
+len(good)/N
+interv = 275.0
+a_paquets = np.arange(0,time0[size-1],interv)
+paquets = np.zeros(len(a_paquets))
+for i in range(0,len(a_paquets)):
+    mask_total = (time0 >= a_paquets[i]) & (time0 < a_paquets[i] + interv)
+    total_in_interval = mask_total.sum()
+    print(total_in_interval)
+    paquets[i] = len(np.where( (time0[good] < a_paquets[i] + interv) & (time0[good] >= a_paquets[i]))[0])/total_in_interval
+
+    print("paquet ",i,paquets[i])

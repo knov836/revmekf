@@ -51,55 +51,6 @@ from solver_kalman import SolverFilterPlan
 from ronin2 import *
 
 
-acc_columns_x = [
-    'x',
-    #'acc_x_above_suspension',
-    #'acc_x_below_suspension'
-]
-acc_columns_y = [
-    'y',
-    #'acc_y_above_suspension',
-    #'acc_y_below_suspension'
-]
-acc_columns_z = [
-    'z',
-    #'acc_z_above_suspension',
-    #'acc_z_below_suspension'
-]
-gyro_columns_x = [
-    'x'#,
-    #'gyro_x_above_suspension'#,'gyro_x_below_suspension'
-]
-gyro_columns_y = [
-    'y'#,
-    #'gyro_y_above_suspension'#,'gyro_y_below_suspension'
-]
-gyro_columns_z = [
-    'z'#,
-    #'gyro_z_above_suspension'#,'gyro_z_below_suspension'
-]
-mag_columns_x = [
-    'x',
-    #'mag_x_above_suspension'#,'mag_x_below_suspension'
-]
-mag_columns_y = [
-    'y',
-    #'mag_y_above_suspension'#,'mag_y_below_suspension'
-]
-mag_columns_z = [
-    'z',
-    #'mag_z_above_suspension'#,'mag_z_below_suspension'
-]
-acc_x = len(acc_columns_x)
-acc_y = len(acc_columns_y)
-acc_z = len(acc_columns_z)
-gyro_x = len(gyro_columns_x)
-gyro_y = len(gyro_columns_y)
-gyro_z = len(gyro_columns_z)
-mag_x = len(mag_columns_x)
-mag_y = len(mag_columns_y)
-mag_z = len(mag_columns_z)
-
 
 #sentral = loadmat('V1000/Sequencia1/SENTRAL.mat')
 sentral = loadmat('V1000/Sequencia1/MPU6050DMP.mat')
@@ -226,9 +177,9 @@ if mmode == 'OdoAccPre':
     Rev = RevOdoAccPre
 
 
-n_start = 1200
+n_start = 1150
 n_end=4000
-n_end=n_start +1880
+n_end=n_start +600
 cols = np.array(range(10))
 df = data.values[n_start:n_end,cols]
 
@@ -936,7 +887,7 @@ ax = fig.add_axes([0,0,1,1])
 ax.plot(time[:size],metric0)
 ax.plot(time[:size],metric1)
 ax.plot(time[:size],metric2)
-ax.legend([r'$\Lambda(X_\text{Gyro},\mathcal{T})$',r'$\Lambda(X_\text{MEKF},\mathcal{T})$',r'$\Lambda(X_\text{Rev-MEKF},\mathcal{T})$'])
+ax.legend([r'$\Lambda(X_\text{Gyro},\mathcal{T})$',r'$\Lambda(X_\text{MEKF},\mathcal{T})$',r'$\Lambda(X_\text{Rev-MEKF},\mathcal{T})$'],fontsize=14)
 #plt.yscale("log")
 plt.xlabel('Seconds')
 plt.ylabel('Cumulated error')
@@ -996,8 +947,8 @@ quat_accmag = np.array([log_q(np.array(quat_mult(newset.neworient[i,:],quat_inv(
 
 fig = plt.figure()
 ax = fig.add_axes([0,0,1,1])
-ax.plot(dquats_ori)
-ax.set_title("dquats_ori")
+ax.plot(quats_ori)
+ax.set_title("quats_ori")
 fig = plt.figure()
 ax = fig.add_axes([0,0,1,1])
 ax.plot(quat_accmag)
@@ -1072,7 +1023,7 @@ good = np.where(dd_metric>0)[0]
 len(good)/N
 
 fig = plt.figure()
-ax = fig.add_axes([0,0,1,1])
+ax = fig.add_axes([0,0,1,1])    
 ax.plot(time[:size],metric1-metric2)
 ax.plot(time[:size-1],dd_metric)
 ax.plot(time[good], [((metric1-metric2)[j]) for j in (good).flatten()],'.',**dict(markersize=10))
@@ -1083,3 +1034,14 @@ ax.legend([r'$\Lambda(X_\text{MEKF},\mathcal{T})$ - $\Lambda(X_\text{Rev-MEKF},\
 ax.set_xlabel('Seconds')
 ax.set_ylabel('Cumulated error')
 ax.set_title('Difference of the metric of MEKF and Heuristical Rev-MEKF')
+
+interv = 2.5
+a_paquets = np.arange(0,time0[size-1],interv)
+paquets = np.zeros(len(a_paquets))
+for i in range(0,len(a_paquets)):
+    mask_total = (time0 >= a_paquets[i]) & (time0 < a_paquets[i] + interv)
+    total_in_interval = mask_total.sum()
+    print(total_in_interval)
+    paquets[i] = len(np.where( (time0[good] < a_paquets[i] + interv) & (time0[good] >= a_paquets[i]))[0])/total_in_interval
+
+    print("paquet ",i,paquets[i])
