@@ -310,7 +310,7 @@ ax.legend(['Lambda(X_MEKF,T) - Lambda(X_REVMEKF,T)','Correction applied'])
 #plt.yscale("log")
 plt.xlabel('Seconds')
 plt.ylabel('Cumulated error')
-ax.set_title('Difference of the metric computed by MEKF and Heuristical Rev-MEKF')
+ax.set_title('Difference of the metric computed by MEKF and Heuristic Rev-MEKF')
 
 fig = plt.figure()
 ax = fig.add_axes([0,0,1,1])
@@ -320,7 +320,7 @@ ax.legend(['Lambda(X_MEKF,T)','Lambda(X_REVMEKF,T)'])
 plt.yscale("log")
 plt.xlabel('Seconds')
 plt.ylabel('Cumulated error')
-ax.set_title('Metric computed by MEKF and Heuristical Rev-MEKF')
+ax.set_title('Metric computed by MEKF and Heuristic Rev-MEKF')
 
 
 fig = plt.figure()
@@ -331,7 +331,7 @@ ax.legend([r'$\Lambda(X_\text{MEKF},\mathcal{T})$',r'$\Lambda(X_\text{Rev-MEKF},
 plt.yscale("log")
 plt.xlabel('Seconds')
 plt.ylabel('Cumulated error')
-ax.set_title('Metric computed by MEKF and Heuristical Rev-MEKF')
+ax.set_title('Metric computed by MEKF and Heuristic Rev-MEKF')
 
 fig = plt.figure()
 ax = fig.add_axes([0,0,1,1])
@@ -343,7 +343,7 @@ ax.legend([r'$\Lambda(X_\text{MEKF},\mathcal{T}) - \Lambda(X_\text{Rev-MEKF},\ma
 #plt.yscale("log")
 plt.xlabel('Seconds')
 plt.ylabel('Cumulated error')
-ax.set_title('Difference of the metric computed by MEKF and Heuristical Rev-MEKF')
+ax.set_title('Difference of the metric computed by MEKF and Heuristic Rev-MEKF')
 
 acc_ext = acc_earth-Solv2.KFilter.gravity
 fig = plt.figure()

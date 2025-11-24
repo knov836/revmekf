@@ -223,7 +223,7 @@ Solv0 = SolverFilterPlan(Integration,q0,q1,r0,r1,normal,newset,start=np.array(ne
 Solv1 = SolverFilterPlan(MEKF,q0,q1,r0,r1,normal,newset,start=np.array(newset.quat_calib,dtype=mpf),proj_fun=proj_func)#,grav=newset.grav)
 #q0,q1,r0,r1 = 10**(-2), 10**(-2), 10**(0), 10**(-2)
 
-Solv2 = SolverFilterPlan(Rev,q0,q1,r0,r1,normal,newset,start=np.array(newset.quat_calib,dtype=mpf),proj_fun=proj_func,heuristic=True)#,grav=newset.grav)
+Solv2 = SolverFilterPlan(Rev,q0,q1,r0,r1,normal,newset,start=np.array(newset.quat_calib,dtype=mpf),proj_fun=proj_func,heuristic=False)#,grav=newset.grav)
 
 #Solv2 = SolverFilterPlan(PredictFilterPlan,q0,q1,r0,r1,normal,None)   
 
@@ -563,11 +563,11 @@ fig = plt.figure()
 ax = fig.add_axes([0,0,1,1])
 ax.plot([np.linalg.norm(p) for p in position1])
 ax.plot([np.linalg.norm(p) for p in position2])
-ax.legend(['Norm of position with MEKF','Norm of position with Heuristical Rev-MEKF'])
+ax.legend(['Norm of position with MEKF','Norm of position with Heuristic Rev-MEKF'])
 #plt.yscale("log")
 plt.xlabel('Samples')
 plt.ylabel('meters')
-ax.set_title('Norm of difference of position computed by MEKF and Heuristical Rev-MEKF')
+ax.set_title('Norm of difference of position computed by MEKF and Heuristic Rev-MEKF')
 
 
 

@@ -660,6 +660,7 @@ for i in range(0,N-1,1):
     
     nn+=1
     normal = normals[i+1,:]
+    #normal=np.array([0,0,1])
     
     std_acc_z =0
     if i<N-1-40 and i> 40:
@@ -899,7 +900,7 @@ dd_metric = np.diff(d_metric)
 good = np.where(dd_metric>0)[0]
 len(good)/N
 
-interv = 15
+interv = 1
 a_paquets = np.arange(0,time0[size-1],interv)
 paquets = np.zeros(len(a_paquets))
 for i in range(0,len(a_paquets)):
@@ -909,3 +910,217 @@ for i in range(0,len(a_paquets)):
     paquets[i] = len(np.where( (time0[good] < a_paquets[i] + interv) & (time0[good] >= a_paquets[i]))[0])/total_in_interval
 
     print("paquet ",i,paquets[i])
+    
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(time0[np.where((time0<81) & (time0>80))[0]],np.linalg.norm(newset.acc.astype(float),axis=1)[np.where((time0<81) & (time0>80))[0]])
+#ax.plot(time0[np.argwhere(correction_applied).flatten()], [np.linalg.norm(newset.acc.astype(float)[j,:]) for j in np.argwhere(correction_applied).flatten()],'.',**dict(markersize=10))
+
+ax.set_xlabel('Seconds')
+ax.set_ylabel('m.s^(-2)')
+ax.set_title('Norm of acceleration')
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(time0[np.where((time0<20) & (time0>15))[0]],np.linalg.norm(newset.acc.astype(float),axis=1)[np.where((time0<20) & (time0>15))[0]])
+#ax.plot(time0[np.argwhere(correction_applied).flatten()], [np.linalg.norm(newset.acc.astype(float)[j,:]) for j in np.argwhere(correction_applied).flatten()],'.',**dict(markersize=10))
+
+ax.set_xlabel('Seconds')
+ax.set_ylabel('m.s^(-2)')
+ax.set_title('Norm of acceleration')
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(time0[np.where((time0<91) & (time0>90))[0]],np.linalg.norm(newset.acc.astype(float),axis=1)[np.where((time0<91) & (time0>90))[0]])
+#ax.plot(time0[np.argwhere(correction_applied).flatten()], [np.linalg.norm(newset.acc.astype(float)[j,:]) for j in np.argwhere(correction_applied).flatten()],'.',**dict(markersize=10))
+
+ax.set_xlabel('Seconds')
+ax.set_ylabel('m.s^(-2)')
+ax.set_title('Norm of acceleration')
+
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(time0[np.where((time0<85) & (time0>80))[0]],(newset.mag.astype(float))[np.where((time0<85) & (time0>80))[0]])
+#ax.plot(time0[np.argwhere(correction_applied).flatten()], [np.linalg.norm(newset.acc.astype(float)[j,:]) for j in np.argwhere(correction_applied).flatten()],'.',**dict(markersize=10))
+
+ax.set_xlabel('Seconds')
+ax.set_ylabel('m.s^(-2)')
+ax.set_title('mag')
+
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(time0[np.where((time0<95) & (time0>90))[0]],(newset.mag.astype(float))[np.where((time0<95) & (time0>90))[0]])
+#ax.plot(time0[np.argwhere(correction_applied).flatten()], [np.linalg.norm(newset.acc.astype(float)[j,:]) for j in np.argwhere(correction_applied).flatten()],'.',**dict(markersize=10))
+
+ax.set_xlabel('Seconds')
+ax.set_ylabel('m.s^(-2)')
+ax.set_title('mag')
+
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(time0[np.where((time0<95) & (time0>90))[0]],(normals.astype(float))[np.where((time0<95) & (time0>90))[0]])
+#ax.plot(time0[np.argwhere(correction_applied).flatten()], [np.linalg.norm(newset.acc.astype(float)[j,:]) for j in np.argwhere(correction_applied).flatten()],'.',**dict(markersize=10))
+
+ax.set_xlabel('Seconds')
+ax.set_ylabel('m.s^(-2)')
+ax.set_title('normals')
+
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(time0[np.where((time0<85) & (time0>80))[0]],(normals.astype(float))[np.where((time0<85) & (time0>80))[0]])
+#ax.plot(time0[np.argwhere(correction_applied).flatten()], [np.linalg.norm(newset.acc.astype(float)[j,:]) for j in np.argwhere(correction_applied).flatten()],'.',**dict(markersize=10))
+
+ax.set_xlabel('Seconds')
+ax.set_ylabel('m.s^(-2)')
+ax.set_title('normals')
+
+
+for i in range(len(a_paquets)):
+    print(paquets[i])
+    print(np.mean(np.linalg.norm(newset.acc.astype(float),axis=1)[np.where((time0<a_paquets[i]+interv) & (time0>a_paquets[i]))[0]]))
+    
+    
+df0 = pd.read_csv('metric_diff_and_corrections_run.csv')
+
+# Extract into numpy arrays
+diff0 = df0['metric_difference'].to_numpy()
+corr0 = df0['correction_applied'].to_numpy()
+acc_run =df0[['acc_x','acc_y','acc_z']].to_numpy()
+time_run = df0['time'].to_numpy()
+size_run = len(time_run)
+interv_run = 1
+
+a_paquets = np.arange(0,time_run[size_run-1],interv_run)
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(time_run[:],diff0)
+ax.plot(time_run[np.argwhere(corr0).flatten()], [((diff0)[j]) for j in np.argwhere(corr0).flatten()],'.',**dict(markersize=5))
+
+#ax.plot(metric2)
+ax.legend(
+    [
+        r'$\Lambda(X_\text{MEKF},\mathcal{T})$ - $\Lambda(X_\text{Rev-MEKF},\mathcal{T})$',
+        'Correction applied'
+    ],
+    fontsize=14,
+    loc='lower center',
+    bbox_to_anchor=(0.5, 1.02),
+)
+
+#plt.yscale("log")
+plt.xlabel('Seconds')
+plt.ylabel('Cumulated error')
+#ax.set_title('Difference of the metric computed by Gyro Integration and MEKF')
+ax.set_title(
+    'Difference of the metric of MEKF and Heuristic Rev-MEKF on Running',
+    fontsize=14,
+    y=-0.25
+)
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(time_run[np.where((time_run<a_paquets[55]) & (time_run>a_paquets[45]))[0]],np.linalg.norm(acc_run.astype(float),axis=1)[np.where((time_run<a_paquets[55]) & (time_run>a_paquets[45]))[0]])
+#ax.plot(time0[np.argwhere(correction_applied).flatten()], [np.linalg.norm(newset.acc.astype(float)[j,:]) for j in np.argwhere(correction_applied).flatten()],'.',**dict(markersize=10))
+
+ax.set_xlabel('Seconds')
+ax.set_ylabel('m.s^(-2)')
+ax.set_title('Norm of acceleration')
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(time_run[np.where((time_run<a_paquets[90]) & (time_run>a_paquets[80]))[0]],np.linalg.norm(acc_run.astype(float),axis=1)[np.where((time_run<a_paquets[90]) & (time_run>a_paquets[80]))[0]])
+#ax.plot(time0[np.argwhere(correction_applied).flatten()], [np.linalg.norm(newset.acc.astype(float)[j,:]) for j in np.argwhere(correction_applied).flatten()],'.',**dict(markersize=10))
+
+ax.set_xlabel('Seconds')
+ax.set_ylabel('m.s^(-2)')
+ax.set_title('Norm of acceleration')
+
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(time0[np.where((time0<a_paquets[35]) & (time0>a_paquets[30]))[0]],np.linalg.norm(newset.acc.astype(float),axis=1)[np.where((time0<a_paquets[35]) & (time0>a_paquets[30]))[0]])
+#ax.plot(time0[np.argwhere(correction_applied).flatten()], [np.linalg.norm(newset.acc.astype(float)[j,:]) for j in np.argwhere(correction_applied).flatten()],'.',**dict(markersize=10))
+
+ax.set_xlabel('Seconds')
+ax.set_ylabel('m.s^(-2)')
+ax.set_title('Norm of acceleration')
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(time0[np.where((time0<a_paquets[40]) & (time0>a_paquets[35]))[0]],np.linalg.norm(newset.acc.astype(float),axis=1)[np.where((time0<a_paquets[40]) & (time0>a_paquets[35]))[0]])#ax.plot(time0[np.argwhere(correction_applied).flatten()], [np.linalg.norm(newset.acc.astype(float)[j,:]) for j in np.argwhere(correction_applied).flatten()],'.',**dict(markersize=10))
+
+ax.set_xlabel('Seconds')
+ax.set_ylabel('m.s^(-2)')
+ax.set_title('Norm of acceleration')
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(time0[:10000],(metric1-metric2)[:10000])
+ax.plot(time0[[c for c in (np.argwhere(correction_applied).flatten()) if c<10000]], [((metric1-metric2)[j]) for j in [c for c in (np.argwhere(correction_applied).flatten()) if c<10000]],'.',**dict(markersize=5))
+
+#ax.plot(metric2)
+ax.legend(['Lambda(X_MEKF,T) - Lambda(X_REVMEKF,T)','Correction applied'])
+#plt.yscale("log")
+plt.xlabel('Seconds')
+plt.ylabel('Cumulated error')
+ax.set_title('Difference of the metric computed by MEKF and Heuristical Rev-MEKF')
+
+
+diff = metric1 - metric2
+corr = correction_applied.astype(int)   # convert True/False → 1/0
+
+# Build a dataframe
+df = pd.DataFrame({
+    'time':time0,
+    'metric_difference': diff,
+    'correction_applied': corr,
+    'acc_x' : newset.acc.astype(float)[:,0],
+    'acc_y' : newset.acc.astype(float)[:,1],
+    'acc_z' : newset.acc.astype(float)[:,2],
+})
+
+# Save to CSV
+df.to_csv('metric_diff_and_corrections_uav.csv', index=False)
+
+
+fig, axs = plt.subplots(2, 2, figsize=(12, 8))
+axs = axs.flatten()
+
+# --- Subplot 1 ---
+ax = axs[0]
+idx = np.where((time_run < a_paquets[55]) & (time_run > a_paquets[45]))[0]
+ax.plot(time_run[idx], np.linalg.norm(acc_run.astype(float), axis=1)[idx])
+ax.set_xlabel('Seconds')
+ax.set_ylabel('m.s^(-2)')
+ax.set_title('Norm of acceleration (45 → 55s with low score) for Running')
+
+# --- Subplot 2 ---
+ax = axs[1]
+idx = np.where((time_run < a_paquets[90]) & (time_run > a_paquets[80]))[0]
+ax.plot(time_run[idx], np.linalg.norm(acc_run.astype(float), axis=1)[idx])
+ax.set_xlabel('Seconds')
+ax.set_ylabel('m.s^(-2)')
+ax.set_title('Norm of acceleration (80 → 90s with high score) for Running')
+
+# --- Subplot 3 ---
+ax = axs[2]
+idx = np.where((time0 < a_paquets[30]) & (time0 > a_paquets[25]))[0]
+ax.plot(time0[idx], np.linalg.norm(newset.acc.astype(float), axis=1)[idx])
+ax.set_xlabel('Seconds')
+ax.set_ylabel('m.s^(-2)')
+ax.set_title('Norm of acceleration (25 → 30 with low score) for UAV')
+
+# --- Subplot 4 ---
+ax = axs[3]
+idx = np.where((time0 < a_paquets[40]) & (time0 > a_paquets[35]))[0]
+ax.plot(time0[idx], np.linalg.norm(newset.acc.astype(float), axis=1)[idx])
+ax.set_xlabel('Seconds')
+ax.set_ylabel('m.s^(-2)')
+ax.set_title('Norm of acceleration (35 → 40s with high score) for UAV')
+
+plt.tight_layout()
+plt.show()

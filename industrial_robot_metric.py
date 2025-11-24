@@ -178,8 +178,10 @@ if mmode == 'OdoAccPre':
 
 
 n_start = 1150
+#n_start=0
 n_end=4000
 n_end=n_start +600
+#n_end = 1800
 cols = np.array(range(10))
 df = data.values[n_start:n_end,cols]
 
@@ -880,7 +882,7 @@ ax.legend(['Lambda(X_MEKF,T) - Lambda(X_REVMEKF,T)','Correction applied'])
 #plt.yscale("log")
 plt.xlabel('Seconds')
 plt.ylabel('Cumulated error')
-ax.set_title('Difference of the metric computed by MEKF and Heuristical Rev-MEKF')
+ax.set_title('Difference of the metric computed by MEKF and Heuristic Rev-MEKF')
 
 fig = plt.figure()
 ax = fig.add_axes([0,0,1,1])
@@ -891,7 +893,7 @@ ax.legend([r'$\Lambda(X_\text{Gyro},\mathcal{T})$',r'$\Lambda(X_\text{MEKF},\mat
 #plt.yscale("log")
 plt.xlabel('Seconds')
 plt.ylabel('Cumulated error')
-ax.set_title('Comparison of the metric for Gyroscope integration, MEKF and Heuristical Rev-MEKF')
+ax.set_title('Comparison of the metric for Gyroscope integration, MEKF and Heuristic Rev-MEKF')
 
 fig = plt.figure()
 ax = fig.add_axes([0,0,1,1])

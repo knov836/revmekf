@@ -133,6 +133,7 @@ a_noise=10**(-4)
 data=mpu
 
 
+
 #mmode = 'OdoAccPre'
 mmode = 'GyroAccMag'
 
@@ -151,11 +152,11 @@ if mmode == 'OdoAccPre':
     Rev = RevOdoAccPre
 
 
-#n_start = 3000+2250+1000+2000
-n_start = 0
+n_start = 3000+2250+1000+2000
+#n_start = 0
 n_end=4000
-#n_end=n_start +1000
-n_end = 18000
+n_end=n_start +500
+#n_end = 18000
 cols = np.array(range(10))
 df = data.values[n_start:n_end,cols]
 
@@ -170,7 +171,10 @@ accs = np.copy(df[:,1:7])
 #df[:,4:7]=df[:,4:7]*np.pi/180
 gyro = np.copy(df[:,4:7])
 time= np.array(df[:,0],dtype=mpf)#/10**9
+
 df[:,0]*=10**9
+
+tt0 =data.values[0,0]
 
 def Calibrate_Mag(magX, magY, magZ):
     x2 = (magX ** 2)
@@ -805,6 +809,7 @@ metric1 = np.zeros(N,dtype=mpf)
 metric2 = np.zeros(N,dtype=mpf)
 
 time0=time-time[0]
+time0=time-tt0
 size  =n_end-n_start
 size=N
 acc_earth = np.array([np.array(quat_rot([0,*newset.acc[i,:]], quaternion2[i,:]))[1:4] for i in range(size-1)])
@@ -943,6 +948,7 @@ ax.plot(time0,quat_accmag)
 ax.set_xlabel('Seconds')
 ax.legend(['X axis','Y axis','Z axis'])
 ax.set_title("Orientation from Accelerometer and Magnetometer")
+
 fig, axs = plt.subplots(1, 2, figsize=(10, 4))  # 2x2 sous-graphiques
 axs = axs.flatten()  # pour accéder facilement via axs[k]
 ax = axs[0]
@@ -950,19 +956,109 @@ ax.plot(time0[:size],metric1-metric2)
 ax.plot(time0[np.argwhere(correction_applied).flatten()], [((metric1-metric2)[j]) for j in np.argwhere(correction_applied).flatten()],'.',**dict(markersize=10))
 
 #ax.plot(metric2)
-ax.legend([r'$\Lambda(X_\text{MEKF},\mathcal{T})$ - $\Lambda(X_\text{Rev-MEKF},\mathcal{T})$','Correction applied'],fontsize=14,loc='lower center')
+#ax.legend([r'$\Lambda(X_\text{MEKF},\mathcal{T})$ - $\Lambda(X_\text{Rev-MEKF},\mathcal{T})$','Correction applied'],fontsize=14,loc='lower center')
 #plt.yscale("log")
 #plt.legend(fontsize=14)
 ax.set_xlabel('Seconds')
 ax.set_ylabel('Cumulated error')
-ax.set_title('Difference of the metric of MEKF and Heuristical Rev-MEKF')
+#ax.set_title('Difference of the metric of MEKF and Heuristical Rev-MEKF')
+plt.figtext(0.5,      # centered horizontally
+    -0.04,
+    'Difference of the metric of MEKF and Heuristic Rev-MEKF', fontsize=14,
+)
+
+# --- Legend below title ---
+ax.legend(
+    [r'$\Lambda(X_\text{MEKF},\mathcal{T})$ - $\Lambda(X_\text{Rev-MEKF},\mathcal{T})$','Correction applied'],#['prec = 10^(-20)', 'prec = 10^(-30)', 'prec = 10^(-40)', 'prec = 10^(-50)'],
+    fontsize=14,
+    loc='lower center',
+    bbox_to_anchor=(0.5, 1.0),
+    ncol=1
+)
 ax= axs[1]
 ax.plot(time0[:size],np.linalg.norm(newset.acc.astype(float),axis=1))
 ax.plot(time0[np.argwhere(correction_applied).flatten()], [np.linalg.norm(newset.acc.astype(float)[j,:]) for j in np.argwhere(correction_applied).flatten()],'.',**dict(markersize=10))
-ax.legend(['Norm of the acceleration','Corrections applied'],fontsize=14,loc='lower center')
+#ax.legend(['Norm of the acceleration','Corrections applied'],fontsize=14,loc='lower center')
+ax.legend(
+    ['Norm of the acceleration','Corrections applied'],
+    fontsize=14,
+    loc='lower center',
+    bbox_to_anchor=(0.5, 1.0),
+    ncol=1
+)
 ax.set_xlabel('Seconds')
 ax.set_ylabel('m.s^(-2)')
-ax.set_title('Norm of acceleration')
+#ax.set_title('Norm of acceleration')
+plt.figtext(0.5,      # centered horizontally
+    -0.04,
+    'Norm of acceleration',fontsize=14,
+)
+
+
+fig, axs = plt.subplots(1, 2, figsize=(10, 6))
+axs = axs.flatten()
+
+# --- LEFT SUBPLOT ---
+ax = axs[0]
+ax.plot(time0[:size], metric1 - metric2)
+ax.plot(
+    time0[np.argwhere(correction_applied).flatten()],
+    [(metric1 - metric2)[j] for j in np.argwhere(correction_applied).flatten()],
+    '.',
+    markersize=5
+)
+
+ax.set_xlabel('Seconds')
+ax.set_ylabel('Cumulated error')
+
+# Legend above subplot
+ax.legend(
+    [
+        r'$\Lambda(X_\text{MEKF},\mathcal{T})$ - $\Lambda(X_\text{Rev-MEKF},\mathcal{T})$',
+        'Correction applied'
+    ],
+    fontsize=14,
+    loc='lower center',
+    bbox_to_anchor=(0.5, 1.02),
+)
+
+# Title BELOW x-axis (inside subplot)
+ax.set_title(
+    'Difference of the metric of MEKF and Heuristic Rev-MEKF',
+    fontsize=14,
+    y=-0.5
+)
+
+# --- RIGHT SUBPLOT ---
+ax = axs[1]
+
+ax.plot(time0[:size], np.linalg.norm(newset.acc.astype(float), axis=1))
+ax.plot(
+    time0[np.argwhere(correction_applied).flatten()],
+    [np.linalg.norm(newset.acc.astype(float)[j, :]) for j in np.argwhere(correction_applied).flatten()],
+    '.',
+    markersize=5
+)
+
+ax.set_xlabel('Seconds')
+ax.set_ylabel('m.s^(-2)')
+
+# Legend above subplot
+ax.legend(
+    ['Norm of the acceleration', 'Corrections applied'],
+    fontsize=14,
+    loc='lower center',
+    bbox_to_anchor=(0.5, 1.02),
+)
+
+# Title BELOW x-axis (inside subplot)
+ax.set_title(
+    'Norm of acceleration',
+    fontsize=14,
+    y=-0.5
+)
+
+plt.tight_layout()
 
 d_metric = metric1-metric2
 dd_metric = np.diff(d_metric)
@@ -978,3 +1074,60 @@ for i in range(0,len(a_paquets)):
     paquets[i] = len(np.where( (time0[good] < a_paquets[i] + interv) & (time0[good] >= a_paquets[i]))[0])/total_in_interval
 
     print("paquet ",i,paquets[i])
+    
+    
+df0 = pd.read_csv('metric_diff_and_corrections_run.csv')
+
+# Extract into numpy arrays
+diff0 = df0['metric_difference'].to_numpy()
+corr0 = df0['correction_applied'].to_numpy()
+acc_run =df0[['acc_x','acc_y','acc_z']].to_numpy()
+time_run = df0['time'].to_numpy()
+size_run = len(time_run)
+interv_run = 1
+
+a_paquets = np.arange(0,time_run[size_run-1],interv_run)
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(time_run[:],diff0)
+ax.plot(time_run[np.argwhere(corr0).flatten()], [((diff0)[j]) for j in np.argwhere(corr0).flatten()],'.',**dict(markersize=5))
+
+#ax.plot(metric2)
+ax.legend(
+    [
+        r'$\Lambda(X_\text{MEKF},\mathcal{T})$ - $\Lambda(X_\text{Rev-MEKF},\mathcal{T})$',
+        'Correction applied'
+    ],
+    fontsize=14,
+    loc='lower center',
+    bbox_to_anchor=(0.5, 1.02),
+)
+
+#plt.yscale("log")
+plt.xlabel('Seconds')
+plt.ylabel('Cumulated error')
+#ax.set_title('Difference of the metric computed by Gyro Integration and MEKF')
+ax.set_title(
+    'Difference of the metric of MEKF and Heuristic Rev-MEKF on Running',
+    fontsize=14,
+    y=-0.25
+)
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(time_run[np.where((time_run<a_paquets[55]) & (time_run>a_paquets[45]))[0]],np.linalg.norm(acc_run.astype(float),axis=1)[np.where((time_run<a_paquets[55]) & (time_run>a_paquets[45]))[0]])
+#ax.plot(time0[np.argwhere(correction_applied).flatten()], [np.linalg.norm(newset.acc.astype(float)[j,:]) for j in np.argwhere(correction_applied).flatten()],'.',**dict(markersize=10))
+
+ax.set_xlabel('Seconds')
+ax.set_ylabel('m.s^(-2)')
+ax.set_title('Norm of acceleration')
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.plot(time_run[np.where((time_run<a_paquets[85]) & (time_run>a_paquets[75]))[0]],np.linalg.norm(acc_run.astype(float),axis=1)[np.where((time_run<a_paquets[85]) & (time_run>a_paquets[75]))[0]])
+#ax.plot(time0[np.argwhere(correction_applied).flatten()], [np.linalg.norm(newset.acc.astype(float)[j,:]) for j in np.argwhere(correction_applied).flatten()],'.',**dict(markersize=10))
+
+ax.set_xlabel('Seconds')
+ax.set_ylabel('m.s^(-2)')
+ax.set_title('Norm of acceleration')
+
